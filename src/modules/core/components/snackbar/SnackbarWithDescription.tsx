@@ -59,7 +59,7 @@ export const SnackbarWithDescription = memo(
                         elevation={1}
                         severity={severity}
                         action={finalAction}
-                        sx={{ minWidth: '100%' }}
+                        sx={{ minWidth: '100%', wordBreak: 'break-word' }}
                         onClose={() => closeSnackbar(id)}
                     >
                         <TitleComponent>{message}</TitleComponent>

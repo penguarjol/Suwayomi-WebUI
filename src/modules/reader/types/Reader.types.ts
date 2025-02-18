@@ -13,6 +13,7 @@ import { ReaderService } from '@/modules/reader/services/ReaderService.ts';
 import { ReaderStatePages } from '@/modules/reader/types/ReaderProgressBar.types.ts';
 import { TMangaReader } from '@/modules/manga/Manga.types.ts';
 import { useAutomaticScrolling } from '@/modules/core/hooks/useAutomaticScrolling.ts';
+import { NavbarContextType } from '@/modules/navigation-bar/NavigationBar.types.ts';
 
 export enum ProgressBarType {
     HIDDEN,
@@ -78,6 +79,16 @@ export interface ReaderFilterRGBA {
     green: number;
     blue: number;
     alpha: number;
+    blendMode: ReaderBlendMode;
+}
+
+export enum ReaderBlendMode {
+    DEFAULT = 'normal',
+    MULTIPLY = 'multiply',
+    SCREEN = 'screen',
+    OVERLAY = 'overlay',
+    DARKEN = 'darken',
+    LIGHTEN = 'lighten',
 }
 
 export interface ReaderCustomFilter {
@@ -188,10 +199,25 @@ export interface ReaderStateChapters {
      *  - removed duplicate chapters
      */
     chapters: TChapterReader[];
+    chapterForDuplicatesHandling?: TChapterReader | null;
     initialChapter?: TChapterReader | null;
     currentChapter?: TChapterReader | null;
     nextChapter?: TChapterReader;
     previousChapter?: TChapterReader;
+    isCurrentChapterReady: boolean;
+    /**
+     * Based from the initial chapter index
+     */
+    visibleChapters: {
+        leading: number;
+        trailing: number;
+        lastLeadingChapterSourceOrder: number;
+        lastTrailingChapterSourceOrder: number;
+        isLeadingChapterPreloadMode: boolean;
+        isTrailingChapterPreloadMode: boolean;
+        scrollIntoView: boolean;
+        resumeMode?: ReaderResumeMode;
+    };
     setReaderStateChapters: React.Dispatch<React.SetStateAction<Omit<ReaderStateChapters, 'setReaderStateChapters'>>>;
 }
 
@@ -238,17 +264,34 @@ export enum ReaderHotkey {
 
 export interface ReaderPagerProps
     extends Pick<
-        ReaderStatePages,
-        | 'currentPageIndex'
-        | 'pages'
-        | 'totalPages'
-        | 'transitionPageMode'
-        | 'pageLoadStates'
-        | 'retryFailedPagesKeyPrefix'
-    > {
-    imageRefs: MutableRefObject<(HTMLElement | null)[]>;
+            ReaderStatePages,
+            | 'currentPageIndex'
+            | 'pages'
+            | 'totalPages'
+            | 'transitionPageMode'
+            | 'pageLoadStates'
+            | 'retryFailedPagesKeyPrefix'
+        >,
+        Pick<
+            IReaderSettings,
+            | 'readingMode'
+            | 'imagePreLoadAmount'
+            | 'readingDirection'
+            | 'pageScaleMode'
+            | 'pageGap'
+            | 'customFilter'
+            | 'shouldStretchPage'
+            | 'readerWidth'
+        >,
+        Pick<TReaderScrollbarContext, 'scrollbarXSize' | 'scrollbarYSize'>,
+        Pick<NavbarContextType, 'readerNavBarWidth'> {
     onLoad?: (pagesIndex: number, url: string, isPrimary?: boolean) => void;
     onError?: (pageIndex: number, url: string) => void;
+    imageRefs: MutableRefObject<(HTMLElement | null)[]>;
+    isCurrentChapter: boolean;
+    isPreviousChapter: boolean;
+    isNextChapter: boolean;
+    isPreloadMode: boolean;
 }
 
 export enum PageInViewportType {
@@ -267,6 +310,11 @@ export enum ReaderResumeMode {
     START,
     END,
     LAST_READ,
+}
+
+export interface ReaderOpenChapterLocationState {
+    resumeMode: ReaderResumeMode;
+    updateInitialChapter?: boolean;
 }
 
 export type TReaderScrollbarContext = {

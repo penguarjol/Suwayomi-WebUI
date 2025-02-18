@@ -6,7 +6,12 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-import { ReaderPageSpreadState, ReaderResumeMode, ReadingMode } from '@/modules/reader/types/Reader.types.ts';
+import {
+    ReaderPageSpreadState,
+    ReaderResumeMode,
+    ReaderStateChapters,
+    ReadingMode,
+} from '@/modules/reader/types/Reader.types.ts';
 import { UpdateChapterPatchInput } from '@/lib/graphql/generated/graphql.ts';
 import { TChapterReader } from '@/modules/chapter/Chapter.types.ts';
 import { ChapterIdInfo, Chapters } from '@/modules/chapter/services/Chapters.ts';
@@ -14,6 +19,7 @@ import { CHAPTER_READER_FIELDS } from '@/lib/graphql/fragments/ChapterFragments.
 import { isPageOfOutdatedPageLoadStates, isSpreadPage } from '@/modules/reader/utils/ReaderPager.utils.tsx';
 import { ReaderStatePages } from '@/modules/reader/types/ReaderProgressBar.types.ts';
 import { coerceIn } from '@/lib/HelperFunctions.ts';
+import { DirectionOffset } from '@/Base.types.ts';
 
 export const getInitialReaderPageIndex = (
     resumeMode: ReaderResumeMode,
@@ -71,6 +77,20 @@ export const getChapterIdsToDeleteForChapterUpdate = (
     return Chapters.getIds(Chapters.addDuplicates([chapterToDelete], chapters));
 };
 
+export const isInDownloadAheadRange = (
+    currentPageIndex: number,
+    pageCount: number,
+    direction: DirectionOffset = DirectionOffset.NEXT,
+): boolean => {
+    const progress = (currentPageIndex + 1) / pageCount;
+
+    if (direction === DirectionOffset.PREVIOUS) {
+        return progress < 0.75;
+    }
+
+    return progress > 0.25;
+};
+
 export const getChapterIdsForDownloadAhead = (
     chapter: TChapterReader,
     nextChapter: TChapterReader | undefined,
@@ -84,8 +104,10 @@ export const getChapterIdsForDownloadAhead = (
     }
 
     const isDownloadAheadEnabled = !!downloadAheadLimit;
-    const inDownloadRange = (currentPageIndex + 1) / chapterUpToDateData.pageCount > 0.25;
-    const shouldCheckDownloadAhead = isDownloadAheadEnabled && chapterUpToDateData.isDownloaded && inDownloadRange;
+    const shouldCheckDownloadAhead =
+        isDownloadAheadEnabled &&
+        chapterUpToDateData.isDownloaded &&
+        isInDownloadAheadRange(currentPageIndex, chapterUpToDateData.pageCount);
     if (!shouldCheckDownloadAhead) {
         return [];
     }
@@ -165,3 +187,137 @@ export const createUpdateReaderPageLoadState =
             return statePageLoadStates.toSpliced(index, 1, { url: pageLoadState.url, loaded: true });
         });
     };
+
+export const getReaderOpenChapterResumeMode = (
+    isSpecificChapterMode: boolean,
+    isPreviousChapter: boolean,
+): ReaderResumeMode | undefined => {
+    if (!isSpecificChapterMode) {
+        return undefined;
+    }
+
+    if (isPreviousChapter) {
+        return ReaderResumeMode.END;
+    }
+
+    return ReaderResumeMode.START;
+};
+
+export const createHandleReaderPageLoadError =
+    (setPageLoadStates: ReaderStatePages['setPageLoadStates']) => (pageIndex: number, url: string) => {
+        setPageLoadStates((statePageLoadStates) => {
+            const pageLoadState = statePageLoadStates[pageIndex];
+
+            if (isPageOfOutdatedPageLoadStates(url, pageLoadState)) {
+                return statePageLoadStates;
+            }
+
+            return statePageLoadStates.toSpliced(pageIndex, 1, {
+                ...pageLoadState,
+                loaded: false,
+                error: true,
+            });
+        });
+    };
+
+export const updateReaderStateVisibleChapters = (
+    isPreviousChapter: boolean,
+    state: Omit<ReaderStateChapters, 'setReaderStateChapters'>,
+    chapterToOpenSourceOrder: TChapterReader['sourceOrder'],
+    scrollIntoView: boolean,
+    isLeadingChapterPreloadMode?: boolean,
+    isTrailingChapterPreloadMode?: boolean,
+): Omit<ReaderStateChapters, 'setReaderStateChapters'> => {
+    const { leading, trailing, lastLeadingChapterSourceOrder, lastTrailingChapterSourceOrder } = state.visibleChapters;
+
+    const isNewLeadingChapter = isPreviousChapter && chapterToOpenSourceOrder < lastLeadingChapterSourceOrder;
+    const isNewTrailingChapter = !isPreviousChapter && chapterToOpenSourceOrder > lastTrailingChapterSourceOrder;
+
+    return {
+        ...state,
+        visibleChapters: {
+            ...state.visibleChapters,
+            leading: leading + Number(isNewLeadingChapter),
+            trailing: trailing + Number(isNewTrailingChapter),
+            lastLeadingChapterSourceOrder: isNewLeadingChapter
+                ? chapterToOpenSourceOrder
+                : lastLeadingChapterSourceOrder,
+            lastTrailingChapterSourceOrder: isNewTrailingChapter
+                ? chapterToOpenSourceOrder
+                : lastTrailingChapterSourceOrder,
+            isLeadingChapterPreloadMode:
+                isLeadingChapterPreloadMode !== undefined
+                    ? isLeadingChapterPreloadMode
+                    : state.visibleChapters.isLeadingChapterPreloadMode,
+            isTrailingChapterPreloadMode:
+                isTrailingChapterPreloadMode !== undefined
+                    ? isTrailingChapterPreloadMode
+                    : state.visibleChapters.isTrailingChapterPreloadMode,
+            scrollIntoView,
+            resumeMode: isPreviousChapter ? ReaderResumeMode.END : ReaderResumeMode.START,
+        },
+    };
+};
+
+export const getReaderChapterViewerCurrentPageIndex = (
+    currentPageIndex: number,
+    chapter: TChapterReader,
+    currentChapter: TChapterReader,
+    isCurrentChapter: boolean,
+    isCurrentChapterReady: boolean,
+    isLeadingChapter: boolean,
+    isTrailingChapter: boolean,
+    visibleChapters: ReaderStateChapters['visibleChapters'],
+): number => {
+    if (isCurrentChapter) {
+        if (isCurrentChapterReady) {
+            return coerceIn(currentPageIndex, 0, chapter.pageCount - 1);
+        }
+
+        if (visibleChapters.scrollIntoView && visibleChapters.resumeMode !== undefined) {
+            return getInitialReaderPageIndex(visibleChapters.resumeMode, 0, chapter.pageCount - 1);
+        }
+
+        if (isLeadingChapter) {
+            return Math.max(0, chapter.pageCount - 1);
+        }
+
+        if (isTrailingChapter) {
+            return 0;
+        }
+    }
+
+    const isPreviousChapter = chapter.sourceOrder < currentChapter.sourceOrder;
+    if (isPreviousChapter) {
+        return Math.max(chapter.pageCount - 1, 0);
+    }
+
+    return 0;
+};
+
+export const getReaderChapterViewResumeMode = (
+    isCurrentChapter: boolean,
+    isInitialChapter: boolean,
+    isLeadingChapter: boolean,
+    isTrailingChapter: boolean,
+    forcedResumeMode: ReaderResumeMode | undefined,
+    resumeMode: ReaderResumeMode = ReaderResumeMode.START,
+): ReaderResumeMode => {
+    if (isCurrentChapter && forcedResumeMode !== undefined) {
+        return forcedResumeMode;
+    }
+
+    if (isInitialChapter) {
+        return resumeMode;
+    }
+
+    if (isLeadingChapter) {
+        return ReaderResumeMode.END;
+    }
+
+    if (isTrailingChapter) {
+        return ReaderResumeMode.START;
+    }
+
+    return ReaderResumeMode.START;
+};

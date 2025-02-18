@@ -24,7 +24,6 @@ import { useReaderStateChaptersContext } from '@/modules/reader/contexts/state/R
 import {
     PageInViewportType,
     ProgressBarPosition,
-    ReaderResumeMode,
     ReaderTransitionPageMode,
     ReadingDirection,
     ReadingMode,
@@ -44,8 +43,12 @@ import { useReaderTapZoneContext } from '@/modules/reader/contexts/ReaderTapZone
 import { TapZoneRegionType, TReaderTapZoneContext } from '@/modules/reader/types/TapZoneLayout.types.ts';
 import { ReaderTapZoneService } from '@/modules/reader/services/ReaderTapZoneService.ts';
 import { isContinuousReadingMode } from '@/modules/reader/utils/ReaderSettings.utils.tsx';
-import { getReaderChapterFromCache } from '@/modules/reader/utils/Reader.utils.ts';
-import { Chapters } from '@/modules/chapter/services/Chapters.ts';
+import {
+    getReaderChapterFromCache,
+    getReaderOpenChapterResumeMode,
+    updateReaderStateVisibleChapters,
+} from '@/modules/reader/utils/Reader.utils.ts';
+import { ChapterIdInfo, Chapters } from '@/modules/chapter/services/Chapters.ts';
 import { DirectionOffset, TranslationKey } from '@/Base.types.ts';
 import { useMetadataServerSettings } from '@/modules/settings/services/ServerSettingsMetadata.ts';
 import { TChapterReader } from '@/modules/chapter/Chapter.types.ts';
@@ -166,51 +169,93 @@ export class ReaderControls {
         }
     }
 
-    static useOpenChapter(): (offset: 'previous' | 'next') => void {
+    static useOpenChapter(): (
+        offset: 'previous' | 'next' | ChapterIdInfo['id'],
+        doTransitionCheck?: boolean,
+        scrollIntoView?: boolean,
+    ) => void {
         const { t } = useTranslation();
         const { readingMode, shouldInformAboutMissingChapter, shouldInformAboutScanlatorChange } =
             ReaderService.useSettings();
-        const { currentChapter, previousChapter, nextChapter } = useReaderStateChaptersContext();
+        const { currentChapter, previousChapter, nextChapter, chapters, setReaderStateChapters } =
+            useReaderStateChaptersContext();
 
-        const openPreviousChapter = ReaderService.useNavigateToChapter(previousChapter, ReaderResumeMode.END);
-        const openNextChapter = ReaderService.useNavigateToChapter(nextChapter, ReaderResumeMode.START);
+        const openChapter = ReaderService.useNavigateToChapter();
 
         return useCallback(
-            (offset) => {
-                switch (offset) {
-                    case 'previous':
-                        ReaderControls.checkNextChapterConsistency(
-                            t,
-                            offset,
-                            currentChapter,
-                            previousChapter,
-                            shouldInformAboutMissingChapter,
-                            shouldInformAboutScanlatorChange,
-                        )
-                            .then(openPreviousChapter)
-                            .catch(defaultPromiseErrorHandler('ReaderControls::checkNextChapterConsistency: previous'));
-                        break;
-                    case 'next':
-                        ReaderControls.checkNextChapterConsistency(
-                            t,
-                            offset,
-                            currentChapter,
-                            nextChapter,
-                            shouldInformAboutMissingChapter,
-                            shouldInformAboutScanlatorChange,
-                        )
-                            .then(openNextChapter)
-                            .catch(defaultPromiseErrorHandler('ReaderControls::checkNextChapterConsistency: next'));
-                        break;
-                    default:
-                        throw new Error(`Unexpected "offset" (${offset})`);
+            (offset, doTransitionCheck = true, scrollIntoView = true) => {
+                if (!currentChapter) {
+                    return;
                 }
+
+                const isSpecificChapterMode = typeof offset === 'number';
+                const isPreviousOffset = offset === 'previous';
+
+                const doesPreviousChapterExist = isPreviousOffset && !!previousChapter;
+                const doesNextChapterExist = !isPreviousOffset && !!nextChapter;
+
+                const canOpenNextChapter = isSpecificChapterMode || doesPreviousChapterExist || doesNextChapterExist;
+                if (!canOpenNextChapter) {
+                    return;
+                }
+
+                const doOpenChapter = async () => {
+                    const chapterToOpen = (() => {
+                        if (isSpecificChapterMode) {
+                            return chapters.find((chapter) => chapter.id === offset);
+                        }
+
+                        if (isPreviousOffset) {
+                            return previousChapter;
+                        }
+
+                        return nextChapter;
+                    })();
+
+                    if (!chapterToOpen) {
+                        return;
+                    }
+
+                    const isPreviousChapter = chapterToOpen.sourceOrder < currentChapter.sourceOrder;
+
+                    try {
+                        if (doTransitionCheck) {
+                            await ReaderControls.checkNextChapterConsistency(
+                                t,
+                                isPreviousChapter ? 'previous' : 'next',
+                                currentChapter,
+                                chapterToOpen,
+                                shouldInformAboutMissingChapter,
+                                shouldInformAboutScanlatorChange,
+                            );
+                        }
+
+                        setReaderStateChapters((prevState) =>
+                            updateReaderStateVisibleChapters(
+                                isPreviousChapter,
+                                prevState,
+                                chapterToOpen.sourceOrder,
+                                scrollIntoView,
+                                isPreviousChapter ? false : undefined,
+                                !isPreviousChapter ? false : undefined,
+                            ),
+                        );
+
+                        openChapter(
+                            chapterToOpen,
+                            getReaderOpenChapterResumeMode(isSpecificChapterMode, isPreviousChapter),
+                        );
+                    } catch (error) {
+                        defaultPromiseErrorHandler('ReaderControls#useOpenChapter#doOpenChapter: ');
+                    }
+                };
+
+                doOpenChapter().catch(defaultPromiseErrorHandler('ReaderControls#useOpenChapter'));
             },
             [
                 t,
                 currentChapter?.id,
-                openPreviousChapter,
-                openNextChapter,
+                openChapter,
                 readingMode.value,
                 shouldInformAboutMissingChapter,
                 shouldInformAboutScanlatorChange,
@@ -405,7 +450,15 @@ export class ReaderControls {
         endReached?: boolean,
     ) => void {
         const { currentPageIndex, setCurrentPageIndex } = userReaderStatePagesContext();
-        const { initialChapter, currentChapter, nextChapter, mangaChapters } = useReaderStateChaptersContext();
+        const {
+            chapterForDuplicatesHandling,
+            currentChapter,
+            previousChapter,
+            nextChapter,
+            mangaChapters,
+            visibleChapters,
+            setReaderStateChapters,
+        } = useReaderStateChaptersContext();
         const updateChapter = ReaderService.useUpdateChapter();
         const { shouldSkipDupChapters } = ReaderService.useSettings();
         const {
@@ -413,26 +466,41 @@ export class ReaderControls {
         } = useMetadataServerSettings();
 
         const nextChapters = useMemo(() => {
-            if (!initialChapter || !currentChapter) {
+            if (!chapterForDuplicatesHandling || !currentChapter) {
                 return [];
             }
 
             return Chapters.getNextChapters(currentChapter, mangaChapters, {
                 offset: DirectionOffset.NEXT,
                 skipDupe: shouldSkipDupChapters,
-                skipDupeChapter: initialChapter,
+                skipDupeChapter: chapterForDuplicatesHandling,
             });
-        }, [initialChapter?.id, currentChapter?.id, mangaChapters, shouldSkipDupChapters]);
+        }, [chapterForDuplicatesHandling?.id, currentChapter?.id, mangaChapters, shouldSkipDupChapters]);
 
         return useCallback(
             (pageIndex, debounceChapterUpdate = true, endReached = false) => {
+                if (pageIndex === currentPageIndex) {
+                    return;
+                }
+
                 setCurrentPageIndex(pageIndex);
 
                 if (!currentChapter) {
                     return;
                 }
 
+                const direction = currentPageIndex > pageIndex ? DirectionOffset.PREVIOUS : DirectionOffset.NEXT;
+
                 ReaderService.downloadAhead(currentChapter, nextChapter, nextChapters, pageIndex, downloadAheadLimit);
+                ReaderService.preloadChapter(
+                    pageIndex,
+                    currentChapter.pageCount,
+                    direction === DirectionOffset.NEXT ? nextChapter : previousChapter,
+                    visibleChapters.lastLeadingChapterSourceOrder,
+                    visibleChapters.lastTrailingChapterSourceOrder,
+                    setReaderStateChapters,
+                    direction,
+                );
 
                 const handleCurrentPageIndexChange = () => {
                     const currentChapterUpToDate = getReaderChapterFromCache(currentChapter.id);
@@ -457,7 +525,15 @@ export class ReaderControls {
 
                 handleCurrentPageIndexChange();
             },
-            [currentChapter?.id, nextChapter?.id, nextChapters, currentPageIndex, downloadAheadLimit],
+            [
+                currentChapter?.id,
+                previousChapter?.id,
+                nextChapter?.id,
+                nextChapters,
+                currentPageIndex,
+                downloadAheadLimit,
+                visibleChapters,
+            ],
         );
     }
 

@@ -16,6 +16,7 @@ import {
     ReaderTransitionPageMode,
     ReadingDirection,
     ReadingMode,
+    TReaderScrollbarContext,
 } from '@/modules/reader/types/Reader.types.ts';
 import { applyStyles } from '@/modules/core/utils/ApplyStyles.ts';
 import {
@@ -33,6 +34,7 @@ import { DirectionOffset } from '@/Base.types.ts';
 import { getOptionForDirection } from '@/modules/theme/services/ThemeCreator.ts';
 import { READING_DIRECTION_TO_THEME_DIRECTION } from '@/modules/reader/constants/ReaderSettings.constants.tsx';
 import { coerceIn } from '@/lib/HelperFunctions.ts';
+import { NavbarContextType } from '@/modules/navigation-bar/NavigationBar.types.ts';
 
 type CSSObject = ReturnType<Theme['applyStyles']>;
 
@@ -265,8 +267,9 @@ const getPageDownloadPriority = (
     pageIndex: number,
     totalPages: number,
     shouldLoad: boolean,
+    isPreloadMode: boolean,
 ): number => {
-    if (!shouldLoad) {
+    if (!shouldLoad || isPreloadMode) {
         return Number.MAX_SAFE_INTEGER;
     }
 
@@ -286,12 +289,21 @@ export const createReaderPage = (
     pagesIndex: number,
     isPrimaryPage: boolean,
     isLoaded: boolean,
+    isPreloadMode: boolean,
     onLoad: ComponentProps<typeof ReaderPage>['onLoad'],
     onError: ComponentProps<typeof ReaderPage>['onError'],
     shouldLoad: boolean,
     display: boolean,
     currentPageIndex: number,
     totalPages: number,
+    readingMode: IReaderSettings['readingMode'],
+    customFilter: IReaderSettings['customFilter'],
+    pageScaleMode: IReaderSettings['pageScaleMode'],
+    shouldStretchPage: IReaderSettings['shouldStretchPage'],
+    readerWidth: IReaderSettings['readerWidth'],
+    scrollbarXSize: TReaderScrollbarContext['scrollbarXSize'],
+    scrollbarYSize: TReaderScrollbarContext['scrollbarYSize'],
+    readerNavBarWidth: NavbarContextType['readerNavBarWidth'],
     retryKeyPrefix?: string,
     position?: 'left' | 'right',
     isDoublePage?: boolean,
@@ -307,7 +319,7 @@ export const createReaderPage = (
         src={url}
         alt={alt}
         display={display}
-        priority={getPageDownloadPriority(currentPageIndex, index, totalPages, shouldLoad)}
+        priority={getPageDownloadPriority(currentPageIndex, index, totalPages, shouldLoad, isPreloadMode)}
         position={position}
         onLoad={onLoad}
         onError={onError}
@@ -316,6 +328,14 @@ export const createReaderPage = (
         retryKeyPrefix={retryKeyPrefix}
         marginTop={marginTop}
         isLoaded={isLoaded}
+        readingMode={readingMode}
+        customFilter={customFilter}
+        pageScaleMode={pageScaleMode}
+        shouldStretchPage={shouldStretchPage}
+        readerWidth={readerWidth}
+        scrollbarXSize={scrollbarXSize}
+        scrollbarYSize={scrollbarYSize}
+        readerNavBarWidth={readerNavBarWidth}
     />
 );
 
@@ -505,6 +525,29 @@ export const isSpreadPage = (image: HTMLImageElement): boolean => {
     return aspectRatio < 1;
 };
 
+const MIN_PREVIOUS_NEXT_CHAPTER_IMAGE_LOAD_AMOUNT = 0;
+const MAX_PREVIOUS_NEXT_CHAPTER_IMAGE_LOAD_AMOUNT = 1;
+const getImagePreLoadAmount = (
+    isCurrentChapter: boolean,
+    isPreviousChapter: boolean,
+    isNextChapter: boolean,
+    imagePreLoadAmount: number,
+): number => {
+    if (isCurrentChapter) {
+        return imagePreLoadAmount;
+    }
+
+    if (isPreviousChapter || isNextChapter) {
+        return coerceIn(
+            MAX_PREVIOUS_NEXT_CHAPTER_IMAGE_LOAD_AMOUNT,
+            MIN_PREVIOUS_NEXT_CHAPTER_IMAGE_LOAD_AMOUNT,
+            imagePreLoadAmount,
+        );
+    }
+
+    return 0;
+};
+
 const PREVIOUS_IMAGE_LOAD_AMOUNT = 2;
 export const getPageIndexesToLoad = (
     currentPageIndex: number,
@@ -512,20 +555,34 @@ export const getPageIndexesToLoad = (
     previousCurrentPageIndex: number,
     imagePreLoadAmount: number,
     readingMode: ReadingMode,
+    isCurrentChapter: boolean,
+    isPreviousChapter: boolean,
+    isNextChapter: boolean,
 ): number[] => {
-    const currentPagesIndex = getPage(currentPageIndex, pages).pagesIndex;
+    if (!isCurrentChapter && !isPreviousChapter && !isNextChapter) {
+        return [];
+    }
 
-    const directionInvert = previousCurrentPageIndex <= currentPageIndex ? 1 : -1;
+    const currentPagesIndex = getPage(currentPageIndex, pages).pagesIndex;
+    const finalImagePreLoadAmount = getImagePreLoadAmount(
+        isCurrentChapter,
+        isPreviousChapter,
+        isNextChapter,
+        imagePreLoadAmount,
+    );
+
+    const directionInvert = previousCurrentPageIndex <= currentPageIndex && !isPreviousChapter ? 1 : -1;
     // load at most PREVIOUS_IMAGE_LOAD_AMOUNT of the previous pages to ensure that you do not have to wait too long
     // when going back to the previous pages
     const startPagesIndexTrailingIncluded = Math.max(
         0,
-        currentPagesIndex - Math.min(PREVIOUS_IMAGE_LOAD_AMOUNT, imagePreLoadAmount) * directionInvert,
+        currentPagesIndex - Math.min(PREVIOUS_IMAGE_LOAD_AMOUNT, finalImagePreLoadAmount) * directionInvert,
     );
     // do not load previous pages for continuous pagers to prevent layout shifts due to leading pages getting loaded
     const startPagesIndex = !isContinuousReadingMode(readingMode) ? startPagesIndexTrailingIncluded : currentPageIndex;
-    const endPagesIndex = currentPagesIndex + imagePreLoadAmount * directionInvert;
-    const pagesToRenderLength = Math.abs(endPagesIndex - startPagesIndex) + 1;
+    const endPagesIndex = currentPagesIndex + finalImagePreLoadAmount * directionInvert;
+    // add 1 for the current page in case it's the current chapter, otherwise, only the preload amount should get rendered
+    const pagesToRenderLength = Math.max(1, Math.abs(endPagesIndex - startPagesIndex) + Number(isCurrentChapter));
 
     return Array(pagesToRenderLength)
         .fill(1)

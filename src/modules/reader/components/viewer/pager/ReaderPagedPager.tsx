@@ -6,48 +6,46 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-import { memo } from 'react';
+import { forwardRef, memo } from 'react';
 import { BasePager } from '@/modules/reader/components/viewer/pager/BasePager.tsx';
 import { ReaderPagerProps } from '@/modules/reader/types/Reader.types.ts';
 import { createReaderPage } from '@/modules/reader/utils/ReaderPager.utils.tsx';
-import { withPropsFrom } from '@/modules/core/hoc/withPropsFrom';
 
-const BaseReaderPagedPager = ({
-    onLoad,
-    onError,
-    pageLoadStates,
-    retryFailedPagesKeyPrefix,
-    ...props
-}: ReaderPagerProps) => {
-    const { currentPageIndex, totalPages } = props;
+const BaseReaderPagedPager = forwardRef<HTMLDivElement, ReaderPagerProps>(
+    ({ onLoad, onError, pageLoadStates, retryFailedPagesKeyPrefix, isPreloadMode, ...props }, ref) => {
+        const { currentPageIndex, totalPages } = props;
 
-    return (
-        <BasePager
-            {...props}
-            createPage={(page, pagesIndex, shouldLoad, shouldDisplay) =>
-                createReaderPage(
-                    page,
-                    pagesIndex,
-                    true,
-                    pageLoadStates[page.primary.index].loaded,
-                    onLoad,
-                    onError,
-                    shouldLoad,
-                    shouldDisplay && currentPageIndex === page.primary.index,
-                    currentPageIndex,
-                    totalPages,
-                    pageLoadStates[page.primary.index].error ? retryFailedPagesKeyPrefix : undefined,
-                )
-            }
-            slots={{
-                boxProps: {
-                    sx: {
-                        margin: 'auto',
+        return (
+            <BasePager
+                ref={ref}
+                {...props}
+                createPage={(page, pagesIndex, shouldLoad, shouldDisplay, _setRef, ...baseProps) =>
+                    createReaderPage(
+                        page,
+                        pagesIndex,
+                        true,
+                        pageLoadStates[page.primary.index].loaded,
+                        isPreloadMode,
+                        onLoad,
+                        onError,
+                        shouldLoad,
+                        shouldDisplay && shouldLoad && currentPageIndex === page.primary.index,
+                        currentPageIndex,
+                        totalPages,
+                        ...baseProps,
+                        pageLoadStates[page.primary.index].error ? retryFailedPagesKeyPrefix : undefined,
+                    )
+                }
+                slots={{
+                    boxProps: {
+                        sx: {
+                            margin: 'auto',
+                        },
                     },
-                },
-            }}
-        />
-    );
-};
+                }}
+            />
+        );
+    },
+);
 
-export const ReaderPagedPager = withPropsFrom(memo(BaseReaderPagedPager), [], []);
+export const ReaderPagedPager = memo(BaseReaderPagedPager);

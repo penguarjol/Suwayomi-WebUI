@@ -59,7 +59,7 @@ export const isAutoWebtoonMode = (
 
 export const getPagerForReadingMode = (
     readingMode: ReadingMode,
-): MemoExoticComponent<ForwardRefExoticComponent<Omit<ReaderPagerProps, never> & RefAttributes<HTMLElement>>> => {
+): MemoExoticComponent<ForwardRefExoticComponent<ReaderPagerProps & RefAttributes<HTMLDivElement>>> => {
     switch (readingMode) {
         case ReadingMode.SINGLE_PAGE:
             return ReaderPagedPager;

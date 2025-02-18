@@ -7,24 +7,17 @@
  */
 
 import { useTheme } from '@mui/material/styles';
-import { memo } from 'react';
-import { ReaderService } from '@/modules/reader/services/ReaderService.ts';
+import { forwardRef, memo } from 'react';
 import { BasePager } from '@/modules/reader/components/viewer/pager/BasePager.tsx';
 import { applyStyles } from '@/modules/core/utils/ApplyStyles.ts';
 import { IReaderSettings, ReaderPagerProps, ReadingDirection } from '@/modules/reader/types/Reader.types.ts';
 import { createReaderPage } from '@/modules/reader/utils/ReaderPager.utils.tsx';
-import { withPropsFrom } from '@/modules/core/hoc/withPropsFrom.tsx';
 
-const BaseReaderHorizontalPager = ({
-    onLoad,
-    onError,
-    pageLoadStates,
-    retryFailedPagesKeyPrefix,
-    pageGap,
-    readingDirection,
-    ...props
-}: ReaderPagerProps & Pick<IReaderSettings, 'pageGap' | 'readingDirection'>) => {
-    const { currentPageIndex, totalPages } = props;
+const BaseReaderHorizontalPager = forwardRef<
+    HTMLDivElement,
+    ReaderPagerProps & Pick<IReaderSettings, 'pageGap' | 'readingDirection'>
+>(({ onLoad, onError, pageLoadStates, retryFailedPagesKeyPrefix, isPreloadMode, ...props }, ref) => {
+    const { currentPageIndex, totalPages, pageGap, readingDirection } = props;
 
     const { direction: themeDirection } = useTheme();
 
@@ -32,19 +25,22 @@ const BaseReaderHorizontalPager = ({
 
     return (
         <BasePager
+            ref={ref}
             {...props}
-            createPage={(page, pagesIndex, shouldLoad, _, setRef) =>
+            createPage={(page, pagesIndex, shouldLoad, _, setRef, ...baseProps) =>
                 createReaderPage(
                     page,
                     pagesIndex,
                     true,
                     pageLoadStates[page.primary.index].loaded,
+                    isPreloadMode,
                     onLoad,
                     onError,
                     shouldLoad,
-                    true,
+                    !isPreloadMode,
                     currentPageIndex,
                     totalPages,
+                    ...baseProps,
                     pageLoadStates[page.primary.index].error ? retryFailedPagesKeyPrefix : undefined,
                     undefined,
                     undefined,
@@ -73,10 +69,6 @@ const BaseReaderHorizontalPager = ({
             }}
         />
     );
-};
+});
 
-export const ReaderHorizontalPager = withPropsFrom(
-    memo(BaseReaderHorizontalPager),
-    [ReaderService.useSettingsWithoutDefaultFlag],
-    ['pageGap', 'readingDirection'],
-);
+export const ReaderHorizontalPager = memo(BaseReaderHorizontalPager);

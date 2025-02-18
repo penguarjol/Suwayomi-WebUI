@@ -15,7 +15,6 @@ import { t as translate } from 'i18next';
 import Link from '@mui/material/Link';
 import Typography from '@mui/material/Typography';
 import Chip from '@mui/material/Chip';
-import Tooltip from '@mui/material/Tooltip';
 import LaunchIcon from '@mui/icons-material/Launch';
 import Collapse from '@mui/material/Collapse';
 import Stack from '@mui/material/Stack';
@@ -28,10 +27,11 @@ import { bindPopover, bindTrigger, usePopupState } from 'material-ui-popup-state
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { Vibrant } from 'node-vibrant/browser';
 import { FastAverageColor } from 'fast-average-color';
+import { CustomTooltip } from '@/modules/core/components/CustomTooltip.tsx';
 import { makeToast } from '@/modules/core/utils/Toast.ts';
 import { Mangas } from '@/modules/manga/services/Mangas.ts';
 import { SpinnerImage } from '@/modules/core/components/SpinnerImage.tsx';
-import { CustomIconButton } from '@/modules/core/components/buttons/CustomIconButton.tsx';
+import { CustomButton } from '@/modules/core/components/buttons/CustomButton.tsx';
 import { TrackMangaButton } from '@/modules/manga/components/TrackMangaButton.tsx';
 import { useManageMangaLibraryState } from '@/modules/manga/hooks/useManageMangaLibraryState.tsx';
 import { Metadata as BaseMetadata } from '@/modules/core/components/Metadata.tsx';
@@ -44,6 +44,7 @@ import { MANGA_COVER_ASPECT_RATIO, statusToTranslationKey } from '@/modules/mang
 import { MangaThumbnailInfo, MangaTrackRecordInfo } from '@/modules/manga/Manga.types.ts';
 import { TAppThemeContext, useAppThemeContext } from '@/modules/theme/contexts/AppThemeContext.tsx';
 import { applyStyles } from '@/modules/core/utils/ApplyStyles.ts';
+import { CustomButtonIcon } from '@/modules/core/components/buttons/CustomButtonIcon.tsx';
 
 const DetailsWrapper = styled('div')(({ theme }) => ({
     display: 'flex',
@@ -129,8 +130,8 @@ const OpenSourceButton = ({ url }: { url?: string | null }) => {
     const { t } = useTranslation();
 
     return (
-        <Tooltip title={t('global.button.open_site')}>
-            <CustomIconButton
+        <CustomTooltip title={t('global.button.open_site')} disabled={!url}>
+            <CustomButtonIcon
                 size="medium"
                 disabled={!url}
                 component={Link}
@@ -140,8 +141,8 @@ const OpenSourceButton = ({ url }: { url?: string | null }) => {
                 variant="outlined"
             >
                 <LaunchIcon />
-            </CustomIconButton>
-        </Tooltip>
+            </CustomButtonIcon>
+        </CustomTooltip>
     );
 };
 
@@ -188,7 +189,7 @@ const Thumbnail = ({
         img.onload = () => {
             Promise.all([
                 Vibrant.from(img).getPalette(),
-                new FastAverageColor().getColorAsync(img, { algorithm: 'sqrt' }),
+                new FastAverageColor().getColorAsync(img, { algorithm: 'dominant' }),
             ]).then(([palette, averageColor]) => {
                 if (
                     !palette.Vibrant ||
@@ -391,11 +392,11 @@ export const MangaDetails = ({
                                 <Typography variant="h5" component="h2" sx={{ wordBreak: 'break-word' }}>
                                     {manga.title}
                                 </Typography>
-                                <Tooltip title={t('global.button.copy')}>
+                                <CustomTooltip title={t('global.button.copy')}>
                                     <IconButton onClick={copyTitle} color="inherit">
                                         <ContentCopyIcon fontSize="small" />
                                     </IconButton>
-                                </Tooltip>
+                                </CustomTooltip>
                             </Stack>
                             <Metadata title={t('manga.label.author')} value={getValueOrUnknown(manga.author)} />
                             <Metadata title={t('manga.label.artist')} value={getValueOrUnknown(manga.artist)} />
@@ -404,14 +405,14 @@ export const MangaDetails = ({
                         </MetadataContainer>
                     </ThumbnailMetadataWrapper>
                     <MangaButtonsContainer>
-                        <CustomIconButton
+                        <CustomButton
                             size="medium"
                             onClick={updateLibraryState}
                             variant={manga.inLibrary ? 'contained' : 'outlined'}
                         >
                             {manga.inLibrary ? <FavoriteIcon /> : <FavoriteBorderIcon />}
                             {manga.inLibrary ? t('manga.button.in_library') : t('manga.button.add_to_library')}
-                        </CustomIconButton>
+                        </CustomButton>
                         <TrackMangaButton manga={manga} />
                         <OpenSourceButton url={manga.realUrl} />
                     </MangaButtonsContainer>

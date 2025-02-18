@@ -7,26 +7,23 @@
  */
 
 import Button, { ButtonProps } from '@mui/material/Button';
-import Stack from '@mui/material/Stack';
 import { ForwardedRef, forwardRef } from 'react';
 
-export const CustomIconButton = forwardRef(
+export const CustomButtonIcon = forwardRef(
     <C extends React.ElementType>(
         { children, ...props }: ButtonProps<C, { component?: C }>,
         ref: ForwardedRef<HTMLButtonElement | null>,
     ) => (
-        <Button ref={ref} {...props}>
-            <Stack
-                direction="row"
-                sx={{
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 1,
-                    flexWrap: 'wrap',
-                }}
-            >
-                {children}
-            </Stack>
+        <Button
+            ref={ref}
+            {...props}
+            sx={{
+                minWidth: 'unset',
+                px: '10px',
+                ...props.sx,
+            }}
+        >
+            {children}
         </Button>
     ),
 );

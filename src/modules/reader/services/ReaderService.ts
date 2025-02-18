@@ -18,6 +18,7 @@ import {
     ReaderExitMode,
     ReaderOverlayMode,
     ReaderResumeMode,
+    ReaderStateChapters,
     ReadingDirection,
     ReadingMode,
 } from '@/modules/reader/types/Reader.types.ts';
@@ -44,6 +45,8 @@ import {
     getChapterIdsForDownloadAhead,
     getChapterIdsToDeleteForChapterUpdate,
     getReaderChapterFromCache,
+    isInDownloadAheadRange,
+    updateReaderStateVisibleChapters,
 } from '@/modules/reader/utils/Reader.utils.ts';
 import { defaultPromiseErrorHandler } from '@/lib/DefaultPromiseErrorHandler.ts';
 import { Queue } from '@/lib/Queue.ts';
@@ -75,19 +78,17 @@ export class ReaderService {
         return ReaderService.chapterUpdateQueues.get(id)!;
     }
 
-    static useNavigateToChapter(chapter?: TChapterReader, resumeMode?: ReaderResumeMode): () => void {
+    static useNavigateToChapter(): (chapter: TChapterReader, resumeMode?: ReaderResumeMode) => void {
         const navigate = useNavigate();
-        return useCallback(
-            () =>
-                chapter &&
-                navigate(Chapters.getReaderUrl(chapter), {
-                    replace: true,
-                    state: {
-                        resumeMode,
-                    },
-                }),
-            [chapter],
-        );
+
+        return useCallback((chapter, resumeMode) => {
+            navigate(Chapters.getReaderUrl(chapter), {
+                replace: true,
+                state: {
+                    resumeMode,
+                },
+            });
+        }, []);
     }
 
     static downloadAhead(
@@ -120,25 +121,61 @@ export class ReaderService {
         });
     }
 
+    static preloadChapter(
+        pageIndex: number,
+        pageCount: number,
+        chapter: TChapterReader | undefined | null,
+        lastLeadingChapterSourceOrder: number,
+        lastTrailingChapterSourceOrder: number,
+        setReaderStateChapters: ReaderStateChapters['setReaderStateChapters'],
+        direction: DirectionOffset,
+    ): void {
+        if (!chapter) {
+            return;
+        }
+
+        const isPreviousChapter = direction === DirectionOffset.PREVIOUS;
+        const isNextChapter = direction === DirectionOffset.NEXT;
+
+        const isAlreadyPreloaded =
+            (isPreviousChapter && lastLeadingChapterSourceOrder <= chapter.sourceOrder) ||
+            (isNextChapter && lastTrailingChapterSourceOrder >= chapter.sourceOrder);
+        const shouldPreload = !isAlreadyPreloaded && isInDownloadAheadRange(pageIndex, pageCount, direction);
+        if (!shouldPreload) {
+            return;
+        }
+
+        setReaderStateChapters((state) =>
+            updateReaderStateVisibleChapters(
+                isPreviousChapter,
+                state,
+                chapter.sourceOrder,
+                false,
+                isPreviousChapter ? true : undefined,
+                isNextChapter ? true : undefined,
+            ),
+        );
+    }
+
     static useUpdateChapter(): (patch: UpdateChapterPatchInput) => void {
         const { manga } = useReaderStateMangaContext();
-        const { initialChapter, currentChapter, mangaChapters } = useReaderStateChaptersContext();
+        const { chapterForDuplicatesHandling, currentChapter, mangaChapters } = useReaderStateChaptersContext();
         const { shouldSkipDupChapters } = ReaderService.useSettings();
         const {
             settings: { deleteChaptersWhileReading, deleteChaptersWithBookmark, updateProgressAfterReading },
         } = useMetadataServerSettings();
 
         const previousChapters = useMemo(() => {
-            if (!initialChapter || !currentChapter) {
+            if (!chapterForDuplicatesHandling || !currentChapter) {
                 return [];
             }
 
             return Chapters.getNextChapters(currentChapter, mangaChapters, {
                 offset: DirectionOffset.PREVIOUS,
                 skipDupe: shouldSkipDupChapters,
-                skipDupeChapter: initialChapter,
+                skipDupeChapter: chapterForDuplicatesHandling,
             });
-        }, [initialChapter?.id, currentChapter?.id, mangaChapters, shouldSkipDupChapters]);
+        }, [chapterForDuplicatesHandling?.id, currentChapter?.id, mangaChapters, shouldSkipDupChapters]);
 
         return useCallback(
             (patch) => {
