@@ -14,10 +14,10 @@ import Button from '@mui/material/Button';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
 import { StringParam, useQueryParam } from 'use-query-params';
+import Typography from '@mui/material/Typography';
+import { supabase } from '@/lib/SupabaseClient.ts';
 import { PasswordTextField } from '@/base/components/inputs/PasswordTextField.tsx';
-import { requestManager } from '@/lib/requests/RequestManager.ts';
 import { makeToast } from '@/base/utils/Toast.ts';
-import { getErrorMessage } from '@/lib/HelperFunctions.ts';
 import { AuthManager } from '@/features/authentication/AuthManager.ts';
 import { AppRoutes } from '@/base/AppRoute.constants.ts';
 import { useNavBarContext } from '@/features/navigation-bar/NavbarContext.tsx';
@@ -33,22 +33,54 @@ export const LoginPage = () => {
     const isAuthenticated = AuthManager.useIsAuthenticated();
 
     const [redirect] = useQueryParam(SearchParam.REDIRECT, StringParam);
-    const [loginUser, { loading: isLoading }] = requestManager.useLoginUser();
 
-    const [username, setUsername] = useState('');
+    // Auth State
+    const [isLoading, setIsLoading] = useState(false);
+    const [isSignUp, setIsSignUp] = useState(false);
+    const [email, setEmail] = useState(''); // Supabase uses email, not username
     const [password, setPassword] = useState('');
 
     const doLogin = async () => {
+        setIsLoading(true);
         try {
-            const { data } = await loginUser({ variables: { username, password } });
+            let error;
+            let data;
 
-            if (data) {
-                AuthManager.setTokens(data.login.accessToken, data.login.refreshToken);
-                requestManager.processQueues();
-                navigate(redirect ?? AppRoutes.root.path);
+            if (isSignUp) {
+                // Sign Up
+                const res = await supabase.auth.signUp({
+                    email,
+                    password,
+                });
+                error = res.error;
+                data = res.data;
+                if (!error && data.user) {
+                    makeToast('Account created! You can now log in.', 'success');
+                    setIsSignUp(false); // Switch back to login
+                    setIsLoading(false);
+                    return;
+                }
+            } else {
+                // Sign In
+                const res = await supabase.auth.signInWithPassword({
+                    email,
+                    password,
+                });
+                error = res.error;
+                data = res.data;
+
+                if (data.session) {
+                    // Store the Supabase JWT as the Access Token
+                    AuthManager.setTokens(data.session.access_token, data.session.refresh_token);
+                    navigate(redirect ?? AppRoutes.sources.childRoutes.browse.path('2131019126180322627'));
+                }
             }
-        } catch (e) {
-            makeToast(t('tracking.action.login.label.failure', { name: 'Suwayomi' }), 'error', getErrorMessage(e));
+
+            if (error) throw error;
+        } catch (e: any) {
+            makeToast(e.message || 'Authentication failed', 'error');
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -107,17 +139,21 @@ export const LoginPage = () => {
                 }}
             >
                 <Stack sx={{ maxWidth: 300, gap: 2 }}>
+                    <Typography variant="h5" textAlign="center">
+                        {isSignUp ? 'Create Account' : t('global.button.log_in')}
+                    </Typography>
+
                     <Stack>
                         <TextField
                             autoFocus
                             margin="dense"
-                            id="username"
-                            name="username"
-                            label={t('global.label.username')}
-                            type="text"
+                            id="email"
+                            name="email"
+                            label="Email"
+                            type="email"
                             fullWidth
                             variant="standard"
-                            onChange={(e) => setUsername(e.target.value)}
+                            onChange={(e) => setEmail(e.target.value)}
                         />
                         <PasswordTextField
                             margin="dense"
@@ -126,9 +162,16 @@ export const LoginPage = () => {
                             onChange={(e) => setPassword(e.target.value)}
                         />
                     </Stack>
-                    <Button disabled={isLoading || (!username && !password)} variant="contained" onClick={doLogin}>
-                        {t('global.button.log_in')}
+                    <Button disabled={isLoading || (!email && !password)} variant="contained" onClick={doLogin}>
+                        {isLoading ? 'Processing...' : undefined}
+                        {!isLoading && isSignUp ? 'Sign Up' : undefined}
+                        {!isLoading && !isSignUp ? t('global.button.log_in') : undefined}
                     </Button>
+
+                    <Button variant="text" onClick={() => setIsSignUp(!isSignUp)} disabled={isLoading}>
+                        {isSignUp ? 'Already have an account? Log In' : 'Need an account? Sign Up'}
+                    </Button>
+
                     <Stack sx={{ position: 'absolute', left: 0, bottom: 0 }}>
                         <ServerAddressSetting />
                     </Stack>

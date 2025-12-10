@@ -50,7 +50,13 @@ export function Browse() {
                 onChange={(_, newTab) => setTabSearchParam(newTab, 'replaceIn')}
             >
                 <Tab value={BrowseTab.SOURCES} sx={{ textTransform: 'none' }} label={t('source.title_other')} />
-                <Tab value={BrowseTab.EXTENSIONS} sx={{ textTransform: 'none' }} label={t('extension.title_other')} />
+                {localStorage.getItem('isAdmin') === 'true' && (
+                    <Tab
+                        value={BrowseTab.EXTENSIONS}
+                        sx={{ textTransform: 'none' }}
+                        label={t('extension.title_other')}
+                    />
+                )}
                 <Tab value={BrowseTab.MIGRATE} sx={{ textTransform: 'none' }} label={t('migrate.title')} />
             </TabsMenu>
             <TabPanel index={BrowseTab.SOURCE_DEPRECATED} currentIndex={tabName}>
@@ -60,7 +66,7 @@ export function Browse() {
                 <Sources tabsMenuHeight={tabsMenuHeight} />
             </TabPanel>
             <TabPanel index={BrowseTab.EXTENSIONS} currentIndex={tabName}>
-                <Extensions tabsMenuHeight={tabsMenuHeight} />
+                {localStorage.getItem('isAdmin') === 'true' ? <Extensions tabsMenuHeight={tabsMenuHeight} /> : null}
             </TabPanel>
             <TabPanel index={BrowseTab.MIGRATE} currentIndex={tabName}>
                 <Migration tabsMenuHeight={tabsMenuHeight} />

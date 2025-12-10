@@ -196,7 +196,12 @@ const MainApp = () => {
                         {/* General Routes */}
                         <Route
                             path={AppRoutes.root.match}
-                            element={<Navigate to={AppRoutes.library.path()} replace />}
+                            element={
+                                <Navigate
+                                    to={AppRoutes.sources.childRoutes.browse.path('2131019126180322627')}
+                                    replace
+                                />
+                            }
                         />
                         <Route
                             path={AppRoutes.matchAll.match}

@@ -28,6 +28,7 @@ import {
 import { MaybeMasked, OperationVariables, Reference } from '@apollo/client/core';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { d } from 'koration';
+import { supabase } from '@/lib/SupabaseClient.ts';
 import { IRestClient, RestClient } from '@/lib/requests/client/RestClient.ts';
 import { GraphQLClient } from '@/lib/requests/client/GraphQLClient.ts';
 import { BaseClient } from '@/lib/requests/client/BaseClient.ts';
@@ -344,7 +345,7 @@ import { CHAPTER_META_FIELDS } from '@/lib/graphql/fragments/ChapterFragments.ts
 import { MetadataMigrationSettings } from '@/features/migration/Migration.types.ts';
 import { MangaIdInfo } from '@/features/manga/Manga.types.ts';
 import { updateMetadataList } from '@/features/metadata/services/MetadataApolloCacheHandler.ts';
-import { USER_LOGIN, USER_REFRESH } from '@/lib/graphql/mutations/UserMutation.ts';
+import { USER_LOGIN } from '@/lib/graphql/mutations/UserMutation.ts';
 import { AuthManager } from '@/features/authentication/AuthManager.ts';
 import { useLocalStorage } from '@/base/hooks/useStorage.tsx';
 import { KO_SYNC_LOGIN, KO_SYNC_LOGOUT } from '@/lib/graphql/mutations/KoreaderSyncMutation.ts';
@@ -460,6 +461,7 @@ export const SPECIAL_ED_SOURCES = {
 
 // TODO - extract logic to reduce the size of this file... grew waaaaaaaaaaaaay too big peepoFat
 // TODO - correctly update cache after all mutations instead of refetching queries
+
 export class RequestManager {
     public static readonly API_VERSION = '/api/v1/';
 
@@ -479,6 +481,17 @@ export class RequestManager {
 
         BaseClient.setTokenRefreshCompleteCallback(() => {
             this.processQueues();
+        });
+
+        // Hook into Supabase auth state change to update tokens
+        supabase.auth.onAuthStateChange((event, session) => {
+            if (session?.access_token) {
+                AuthManager.setTokens(session.access_token, session.refresh_token);
+                this.processQueues();
+            } else if (event === 'SIGNED_OUT') {
+                AuthManager.removeTokens();
+                // this.reset(); // Optional: reset state on logout
+            }
         });
     }
 
@@ -3399,14 +3412,35 @@ export class RequestManager {
 
     public refreshUser(
         refreshToken: string,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         options?: MutationOptions<UserRefreshMutation, UserRefreshMutationVariables>,
     ): AbortableApolloMutationResponse<UserRefreshMutation> {
-        return this.doRequest<UserRefreshMutation, UserRefreshMutationVariables>(
-            GQLMethod.MUTATION,
-            USER_REFRESH,
-            { refreshToken: refreshToken ?? undefined },
-            options,
-        );
+        const abortController = new AbortController();
+
+        const responsePromise = (async (): Promise<FetchResult<UserRefreshMutation>> => {
+            // Supabase Refresh Logic
+            const { data, error } = await supabase.auth.refreshSession({ refresh_token: refreshToken });
+
+            if (error || !data.session) {
+                throw new Error(error?.message || 'Failed to refresh session');
+            }
+
+            // Return mock GraphQL response to satisfy BaseClient interface
+            return {
+                data: {
+                    refreshToken: {
+                        __typename: 'RefreshTokenPayload',
+                        accessToken: data.session.access_token,
+                        // Refresh token is handled by onAuthStateChange listener
+                    },
+                },
+            };
+        })();
+
+        return {
+            response: responsePromise,
+            abortRequest: () => abortController.abort(),
+        };
     }
 }
 
