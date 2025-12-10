@@ -13,6 +13,8 @@ import { loadErrorMessages, loadDevMessages } from '@apollo/client/dev';
 import { loadable } from 'react-lazily/loadable';
 import Box from '@mui/material/Box';
 import { AwaitableComponent } from 'awaitable-component';
+import { Purchases, LOG_LEVEL } from '@revenuecat/purchases-capacitor';
+import { Capacitor } from '@capacitor/core';
 import { AppContext } from '@/base/contexts/AppContext.tsx';
 import { DefaultNavBar } from '@/features/navigation-bar/components/DefaultNavBar.tsx';
 import { requestManager } from '@/lib/requests/RequestManager.ts';
@@ -110,8 +112,14 @@ const InitialBackgroundRequests = () => {
 
     useEffect(() => {
         // Fetch extension list on startup to show up-to-date number of available extension updates in the navigation bar
-        // without having to open the extensions page.
+        // without having to show the extensions page
         fetchExtensionList().catch(defaultPromiseErrorHandler('App::InitialBackgroundRequests: extension list'));
+
+        // Initialize RevenueCat if on native platform
+        if (Capacitor.isNativePlatform()) {
+            Purchases.setLogLevel(LOG_LEVEL.DEBUG);
+            Purchases.configure({ apiKey: 'test_HXuqsAqZTJRCrZxfbOHkfjePCVA' });
+        }
     }, []);
 
     return null;
