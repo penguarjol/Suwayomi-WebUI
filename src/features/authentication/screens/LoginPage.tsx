@@ -74,11 +74,14 @@ export const LoginPage = () => {
                     AuthManager.setTokens(data.session.access_token, data.session.refresh_token);
 
                     // Fetch Profile using the session user ID
-                    const { data: profile } = await supabase
+                    const { data: profile, error: profileError } = await supabase
                         .from('profiles')
                         .select('role')
                         .eq('id', data.session.user.id)
                         .single();
+
+                    console.log('[LoginPage] Supabase Profile Fetch:', profile);
+                    if (profileError) console.error('[LoginPage] Profile Fetch Error:', profileError);
 
                     if (profile && profile.role === 'admin') {
                         localStorage.setItem('isAdmin', 'true');
