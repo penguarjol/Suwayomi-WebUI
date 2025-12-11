@@ -39,7 +39,7 @@ jobs:
       - name: Build webUI
         run: |
           cd master
-          yarn ci
+          yarn install
           yarn build
           yarn build-zip
           yarn build-md5
