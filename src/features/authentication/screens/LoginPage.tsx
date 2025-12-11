@@ -72,6 +72,20 @@ export const LoginPage = () => {
                 if (data.session) {
                     // Store the Supabase JWT as the Access Token
                     AuthManager.setTokens(data.session.access_token, data.session.refresh_token);
+
+                    // Fetch Profile using the session user ID
+                    const { data: profile } = await supabase
+                        .from('profiles')
+                        .select('role')
+                        .eq('id', data.session.user.id)
+                        .single();
+
+                    if (profile && profile.role === 'admin') {
+                        localStorage.setItem('isAdmin', 'true');
+                    } else {
+                        localStorage.setItem('isAdmin', 'false');
+                    }
+
                     navigate(redirect ?? AppRoutes.sources.childRoutes.browse.path('2131019126180322627'));
                 }
             }
