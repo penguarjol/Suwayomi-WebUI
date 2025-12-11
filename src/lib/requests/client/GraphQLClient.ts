@@ -210,7 +210,7 @@ export class GraphQLClient extends BaseClient<
     }
 
     public override getBaseUrl(): string {
-        return `${super.getBaseUrl()}/api/graphql`;
+        return `${super.getBaseUrl()}/api/v1/graphql`;
     }
 
     override reset(): void {
