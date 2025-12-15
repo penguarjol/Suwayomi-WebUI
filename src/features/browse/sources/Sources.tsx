@@ -68,31 +68,19 @@ export function Sources({ tabsMenuHeight }: { tabsMenuHeight: number }) {
             if (!allowedExtensions) {
                 return [];
             }
-            // Filter sources by package name (which maps to id in many cases, or we check id)
-            // Source object usually has 'id' and 'name'. We might need to check if ID matches expected pattern or if we can get pkgName.
-            // Actually, Source objects usually don't have pkgName directly exposed easily in all GQL types,
-            // but typically for Suwayomi, the ID might be numeric.
-            // Wait, we filtered EXTENSIONS by pkgName. SOURCES might need a different check.
-            // Let's assume for now we filter by Source Name matching the extension name? No, that's brittle.
-            // Let's look at SourceCard or SourceType to see what fields we have.
-            // For now, I will use a loose match or assume I need to fetch the Source's Extension info.
-            // But wait, the user said "WeebCentral" and "Webtoons".
-            // Use `source.id`? No, that's a long number.
-            // Let's filter by checking if the source NAME is contained in the allowed list (brittle) or if we can Map sources to extensions.
-            // Actually, looking at `SourceCard`, it uses `source`.
-            // Let's just filter by name for now? No, better:
-            // The `allowedExtensions` list contains PkgNames like `eu.kanade.tachiyomi.extension.en.weebcentral`.
-            // We need to know which Source belongs to which Extension.
-            // If `source` object has `iconUrl`, `id`, `name`.
-            // Ideally we filter by `source.name` appearing in the allowed list? No.
 
-            // STOP. I need to know what properties `Source` has.
-            // I will pause the edit to check `Source.types.ts` or similar.
-            // But I can't pause inside a tool call.
+            s = s.filter((src) => {
+                // Determine if we should allow this source
+                // 1. If it has an extension, check if the package name is allowed
+                if (src.extension?.pkgName) {
+                    return allowedExtensions.includes(src.extension.pkgName);
+                }
 
-            // I will assume `source` has a property that links it to the extension or I can infer it.
-            // Actually, usually `source` has `name`.
-            // If I cannot map Source -> Extension PkgName reliably here, I might have a problem.
+                // 2. If it has NO extension (e.g. Local Source), we assume it's restricted unless we decide otherwise.
+                // For now, let's HIDE Local Source for non-admins to be safe/clean.
+                // If you want to allow Local Source, change this to `return true;`
+                return false;
+            });
         }
 
         return SourceService.filter(s, {

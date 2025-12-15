@@ -180,6 +180,7 @@ const getReaderDimensionStyling = (
                 ...applyStyles(shouldStretchPage, {
                     minHeight: fullHeight,
                 }),
+                maxWidth: '100vw', // Fix mobile scrolling
                 maxHeight: fullHeight,
             };
         case ReaderPageScaleMode.SCREEN:
@@ -206,7 +207,9 @@ const getReaderDimensionStyling = (
                 maxHeight: fullHeight,
             };
         case ReaderPageScaleMode.ORIGINAL:
-            return {};
+            return {
+                maxWidth: '100vw', // Fix mobile scrolling
+            };
         default:
             throw new Error(`Unexpected "PageScaleMode" (${pageScaleMode})`);
     }
