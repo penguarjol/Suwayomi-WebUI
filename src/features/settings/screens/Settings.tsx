@@ -23,6 +23,7 @@ import DevicesIcon from '@mui/icons-material/Devices';
 import SyncIcon from '@mui/icons-material/Sync';
 import PaletteIcon from '@mui/icons-material/Palette';
 import HistoryIcon from '@mui/icons-material/History';
+import { supabase } from '@/lib/SupabaseClient.ts';
 import { ListItemLink } from '@/base/components/lists/ListItemLink.tsx';
 import { requestManager } from '@/lib/requests/RequestManager.ts';
 import { makeToast } from '@/base/utils/Toast.ts';
@@ -127,8 +128,9 @@ export function Settings() {
             </ListItemLink>
 
             <ListItemButton
-                onClick={() => {
+                onClick={async () => {
                     // Clear tokens and redirect
+                    await supabase.auth.signOut();
                     localStorage.removeItem('isAdmin'); // Clear admin flag too
                     requestManager.reset(); // Uses AuthManager.removeTokens() internally
                     window.location.href = '/'; // Force reload to clear state

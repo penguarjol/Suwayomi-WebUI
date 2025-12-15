@@ -25,6 +25,19 @@ export const AuthGuard = ({ children }: { children: ReactNode }) => {
             } = await supabase.auth.getSession();
             if (session) {
                 AuthManager.setTokens(session.access_token, session.refresh_token);
+
+                // Fetch Profile and set Admin Role
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('role')
+                    .eq('id', session.user.id)
+                    .single();
+
+                if (profile && profile.role === 'admin') {
+                    localStorage.setItem('isAdmin', 'true');
+                } else {
+                    localStorage.setItem('isAdmin', 'false');
+                }
             }
 
             AuthManager.setAuthInitialized(true);
