@@ -136,6 +136,15 @@ export function Extensions({ tabsMenuHeight }: { tabsMenuHeight: number }) {
 
     const [updatingExtensionIds, setUpdatingExtensionIds] = useState<string[]>([]);
     const [refetchExtensions, setRefetchExtensions] = useState({});
+    const [allowedExtensions, setAllowedExtensions] = useState<string[] | null>(null);
+
+    // Fetch Allowed Extensions for SaaS
+    useEffect(() => {
+        fetch('/api/saas/config')
+            .then((res) => res.json())
+            .then((config) => setAllowedExtensions(config.allowedExtensions))
+            .catch((e) => makeToast('Failed to load filtered source list', 'error', getErrorMessage(e)));
+    }, []);
 
     const isLoading = areServerSettingsLoading || areExtensionsLoading;
     const error = serverSettingsError ?? extensionsError;
@@ -146,10 +155,17 @@ export function Extensions({ tabsMenuHeight }: { tabsMenuHeight: number }) {
     const allExtensions = data?.fetchExtensions?.extensions;
     const allLangs = useMemo(() => getLanguagesFromExtensions(allExtensions ?? []), [allExtensions]);
 
-    const filteredExtensions = useMemo(
-        () => filterExtensions(allExtensions ?? [], { selectedLanguages: shownLangs, showNsfw, query }),
-        [allExtensions, shownLangs, showNsfw, query],
-    );
+    const filteredExtensions = useMemo(() => {
+        let exts = allExtensions ?? [];
+        const isAdmin = localStorage.getItem('isAdmin') === 'true';
+
+        // SaaS Filtering: If not admin and allowed list is loaded, filter extensions
+        if (!isAdmin && allowedExtensions) {
+            exts = exts.filter((ex) => allowedExtensions.includes(ex.pkgName));
+        }
+
+        return filterExtensions(exts, { selectedLanguages: shownLangs, showNsfw, query });
+    }, [allExtensions, shownLangs, showNsfw, query, allowedExtensions]);
     const groupedExtensions = useMemo(() => groupExtensionsByLanguage(filteredExtensions), [filteredExtensions]);
     const groupCounts = useMemo(
         () => groupedExtensions.map((extensionGroup) => extensionGroup[EXTENSIONS].length),
