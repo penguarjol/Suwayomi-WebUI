@@ -160,11 +160,6 @@ export const LoginPage = () => {
                         {isSignUp ? 'Create Account' : t('global.button.log_in')}
                     </Typography>
 
-                    {/* DEBUG: Remove before final production */}
-                    <Typography variant="caption" display="block" textAlign="center" color="error">
-                        Debug: Saved Role = {localStorage.getItem('isAdmin')}
-                    </Typography>
-
                     <Stack>
                         <TextField
                             autoFocus
