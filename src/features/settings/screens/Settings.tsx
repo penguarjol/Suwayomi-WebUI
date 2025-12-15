@@ -125,6 +125,20 @@ export function Settings() {
                 </ListItemIcon>
                 <ListItemText primary={t('settings.server.title.server')} />
             </ListItemLink>
+
+            <ListItemButton
+                onClick={() => {
+                    // Clear tokens and redirect
+                    localStorage.removeItem('isAdmin'); // Clear admin flag too
+                    requestManager.reset(); // Uses AuthManager.removeTokens() internally
+                    window.location.href = '/'; // Force reload to clear state
+                }}
+            >
+                <ListItemIcon>
+                    <DeleteForeverIcon color="error" />
+                </ListItemIcon>
+                <ListItemText primary="Log Out" sx={{ color: 'error.main' }} />
+            </ListItemButton>
         </List>
     );
 }
