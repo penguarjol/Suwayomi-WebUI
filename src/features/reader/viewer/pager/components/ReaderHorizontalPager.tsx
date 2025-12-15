@@ -59,13 +59,13 @@ const BaseReaderHorizontalPager = ({
                         flexWrap: 'nowrap',
                         alignItems: 'center',
                         gap: `${pageGap}px`,
+                        width: '100%', // Uniqified: Ensure full width
+                        justifyContent: 'center', // Uniqified: Always center pages
                         ...applyStyles(themeDirection === 'ltr', {
                             flexDirection: isLtrReadingDirection ? 'row' : 'row-reverse',
-                            justifyContent: isLtrReadingDirection ? 'flex-start' : 'flex-end',
                         }),
                         ...applyStyles(themeDirection === 'rtl', {
                             flexDirection: isLtrReadingDirection ? 'row-reverse' : 'row',
-                            justifyContent: isLtrReadingDirection ? 'flex-end' : 'flex-start',
                         }),
                     },
                 },

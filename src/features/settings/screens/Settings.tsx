@@ -129,11 +129,17 @@ export function Settings() {
 
             <ListItemButton
                 onClick={async () => {
-                    // Clear tokens and redirect
-                    await supabase.auth.signOut();
-                    localStorage.removeItem('isAdmin'); // Clear admin flag too
-                    requestManager.reset(); // Uses AuthManager.removeTokens() internally
-                    window.location.href = '/'; // Force reload to clear state
+                    // Try to sign out from server, but ensure local cleanup happens regardless
+                    try {
+                        await supabase.auth.signOut();
+                    } catch (e) {
+                        console.error('SignOut failed', e);
+                    } finally {
+                        localStorage.removeItem('isAdmin'); // Clear admin flag too
+                        // Uses AuthManager.removeTokens() internally
+                        requestManager.reset();
+                        window.location.reload(); // Force reload to clear state
+                    }
                 }}
             >
                 <ListItemIcon>
