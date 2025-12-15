@@ -159,8 +159,13 @@ export function Extensions({ tabsMenuHeight }: { tabsMenuHeight: number }) {
         let exts = allExtensions ?? [];
         const isAdmin = localStorage.getItem('isAdmin') === 'true';
 
-        // SaaS Filtering: If not admin and allowed list is loaded, filter extensions
-        if (!isAdmin && allowedExtensions) {
+        // SaaS Filtering
+        if (!isAdmin) {
+            // FAIL CLOSED: If we haven't loaded the allowed list yet, show NOTHING.
+            // This prevents "leaking" extensions if the API call fails or is slow.
+            if (!allowedExtensions) {
+                return [];
+            }
             exts = exts.filter((ex) => allowedExtensions.includes(ex.pkgName));
         }
 
