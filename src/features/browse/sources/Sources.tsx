@@ -59,7 +59,7 @@ export function Sources({ tabsMenuHeight }: { tabsMenuHeight: number }) {
 
     const sources = data?.sources.nodes;
     const filteredSources = useMemo(() => {
-        const s = sources ?? [];
+        let s = sources ?? [];
         const isAdmin = localStorage.getItem('isAdmin') === 'true';
 
         // SaaS Filtering: If not admin, restrict visibility
