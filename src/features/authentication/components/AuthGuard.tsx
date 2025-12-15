@@ -13,7 +13,7 @@ import { AuthManager } from '@/features/authentication/AuthManager.ts';
 import { supabase } from '@/lib/SupabaseClient.ts';
 
 export const AuthGuard = ({ children }: { children: ReactNode }) => {
-    const { isAuthRequired } = AuthManager.useSession();
+    const { isInitialized } = AuthManager.useSession();
 
     useEffect(() => {
         const initAuth = async () => {
@@ -47,7 +47,7 @@ export const AuthGuard = ({ children }: { children: ReactNode }) => {
         initAuth();
     }, []);
 
-    if (isAuthRequired === null) {
+    if (!isInitialized) {
         return <SplashScreen />;
     }
 
