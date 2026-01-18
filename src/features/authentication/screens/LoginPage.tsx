@@ -93,6 +93,11 @@ export const LoginPage = () => {
                     // Reset client to clear cache/stale state before redirecting
                     requestManager.reset();
 
+                    // Short delay to allow Apollo Client to re-initialize sockets/cache before we fire the new query
+                    await new Promise<void>((resolve) => {
+                        setTimeout(resolve, 500);
+                    });
+
                     navigate(redirect ?? AppRoutes.sources.childRoutes.browse.path('2131019126180322627'));
                 }
             }
