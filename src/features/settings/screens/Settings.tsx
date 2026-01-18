@@ -135,14 +135,9 @@ export function Settings() {
                     } catch (e) {
                         console.error('SignOut failed', e);
                     } finally {
-                        localStorage.removeItem('isAdmin'); // Clear admin flag too
-
-                        // Manually clear Supabase session from LocalStorage (Fix for 403 zombie state)
-                        Object.keys(localStorage).forEach((key) => {
-                            if (key.startsWith('sb-')) {
-                                localStorage.removeItem(key);
-                            }
-                        });
+                        // Nuclear option: Clear everything to prevent any zombie session state
+                        localStorage.clear();
+                        sessionStorage.clear();
 
                         // Uses AuthManager.removeTokens() internally
                         requestManager.reset();
