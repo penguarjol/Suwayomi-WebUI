@@ -15,6 +15,7 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
 import { StringParam, useQueryParam } from 'use-query-params';
 import Typography from '@mui/material/Typography';
+import { requestManager } from '@/lib/requests/RequestManager.ts';
 import { supabase } from '@/lib/SupabaseClient.ts';
 import { PasswordTextField } from '@/base/components/inputs/PasswordTextField.tsx';
 import { makeToast } from '@/base/utils/Toast.ts';
@@ -88,6 +89,9 @@ export const LoginPage = () => {
                     } else {
                         localStorage.setItem('isAdmin', 'false');
                     }
+
+                    // Reset client to clear cache/stale state before redirecting
+                    requestManager.reset();
 
                     navigate(redirect ?? AppRoutes.sources.childRoutes.browse.path('2131019126180322627'));
                 }
