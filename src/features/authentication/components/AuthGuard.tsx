@@ -28,13 +28,13 @@ export const AuthGuard = ({ children }: { children: ReactNode }) => {
                 const {
                     data: { session },
                 } = await supabase.auth.getSession();
-                
+
                 if (session) {
                     AuthManager.setTokens(session.access_token, session.refresh_token);
 
                     // Sync Admin state from localStorage/Profile
                     const cachedIsAdmin = localStorage.getItem('isAdmin');
-                    
+
                     if (cachedIsAdmin === null) {
                         // Cold start rescue: fetch profile if missing from cache
                         const { data: profile } = await supabase
@@ -42,7 +42,7 @@ export const AuthGuard = ({ children }: { children: ReactNode }) => {
                             .select('role')
                             .eq('id', session.user.id)
                             .single();
-                        
+
                         localStorage.setItem('isAdmin', profile?.role === 'admin' ? 'true' : 'false');
                     }
                 } else {
@@ -66,4 +66,3 @@ export const AuthGuard = ({ children }: { children: ReactNode }) => {
 
     return children;
 };
-

@@ -55,6 +55,7 @@
     "@redux-devtools/extension": "3.3.0",
     "@revenuecat/purchases-capacitor": "^12.3.1",
     "@supabase/supabase-js": "^2.87.0",
+    "@vercel/analytics": "^2.0.1",
     "@vibrant/color": "4.0.0",
     "apollo-upload-client": "18.0.1",
     "awaitable-component": "1.0.0",
