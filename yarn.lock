@@ -3086,6 +3086,18 @@
   resolved "https://registry.yarnpkg.com/@repeaterjs/repeater/-/repeater-3.0.6.tgz#be23df0143ceec3c69f8b6c2517971a5578fdaa2"
   integrity sha512-Javneu5lsuhwNCryN+pXH93VPQ8g0dBX7wItHFgYiwQmzE1sVdg5tWHiOgHywzL2W21XQopa7IwIEnNbmeUJYA==
 
+"@revenuecat/purchases-capacitor@^11.2.17":
+  version "11.3.2"
+  resolved "https://registry.yarnpkg.com/@revenuecat/purchases-capacitor/-/purchases-capacitor-11.3.2.tgz#d629283cfc3da7959aba00f39878cb050619e863"
+  integrity sha512-3T4/lcAwpbPagrT4DuXvJ+8RewzFmHf3fQJQuhVy+uTQk5HGMHNlXcm2A/UdyHtWqU+/VqWbCClPFYGnpnNXAQ==
+  dependencies:
+    "@revenuecat/purchases-typescript-internal-esm" "17.25.0"
+
+"@revenuecat/purchases-typescript-internal-esm@17.25.0":
+  version "17.25.0"
+  resolved "https://registry.yarnpkg.com/@revenuecat/purchases-typescript-internal-esm/-/purchases-typescript-internal-esm-17.25.0.tgz#7c104c8a98fa9121fc80398e5895d7bb22e4f32d"
+  integrity sha512-KC4BjFaQclXqFafG1Enh7t8GSwdg8p905by7UrHq0WSJmLhOR6yXSj6WDv1iwsFSAZxPPwgozNxt+U6IOFTdCA==
+
 "@rolldown/pluginutils@1.0.0-beta.47":
   version "1.0.0-beta.47"
   resolved "https://registry.yarnpkg.com/@rolldown/pluginutils/-/pluginutils-1.0.0-beta.47.tgz#c282c4a8c39f3d6d2f1086aae09a34e6241f7a50"

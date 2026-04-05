@@ -86,6 +86,13 @@ const BaseReader = ({
     const scrollElementRef = useRef<HTMLDivElement | null>(null);
 
     const [areSettingsSet, setAreSettingsSet] = useState(false);
+    const [showPaymentOverlay, setShowPaymentOverlay] = useState(false);
+
+    useEffect(() => {
+        const handlePaymentRequired = () => setShowPaymentOverlay(true);
+        window.addEventListener('paymentRequired', handlePaymentRequired);
+        return () => window.removeEventListener('paymentRequired', handlePaymentRequired);
+    }, []);
 
     const { chapterSourceOrder: paramChapterSourceOrder, mangaId: paramMangaId } = useParams<{
         chapterSourceOrder: string;
@@ -179,6 +186,153 @@ const BaseReader = ({
 
         return () => setOverride({ status: false, value: null });
     }, [scrollElementRef.current]);
+
+    if (showPaymentOverlay) {
+        return (
+            <Box
+                sx={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    zIndex: 9999,
+                    height: '100%',
+                    width: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: 'rgba(10, 10, 15, 0.70)',
+                    backdropFilter: 'blur(20px)',
+                    WebkitBackdropFilter: 'blur(20px)',
+                    animation: 'overlayFade 0.4s ease-out',
+                }}
+            >
+                <style>
+                    {`
+                    @keyframes overlayFade {
+                        from { opacity: 0; backdrop-filter: blur(0px); }
+                        to { opacity: 1; backdrop-filter: blur(20px); }
+                    }
+                    @keyframes glowBorder {
+                        0% { box-shadow: 0 0 20px rgba(139, 92, 246, 0.2); }
+                        50% { box-shadow: 0 0 50px rgba(139, 92, 246, 0.4); }
+                        100% { box-shadow: 0 0 20px rgba(139, 92, 246, 0.2); }
+                    }
+                    @keyframes pulseBtn {
+                        0% { box-shadow: 0 0 0 0 rgba(236, 72, 153, 0.4); }
+                        70% { box-shadow: 0 0 0 15px rgba(236, 72, 153, 0); }
+                        100% { box-shadow: 0 0 0 0 rgba(236, 72, 153, 0); }
+                    }
+                    `}
+                </style>
+                <Box
+                    sx={{
+                        p: 5,
+                        borderRadius: '24px',
+                        background: 'linear-gradient(145deg, rgba(30, 30, 40, 0.8) 0%, rgba(15, 15, 20, 0.95) 100%)',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)',
+                        animation: 'glowBorder 4s infinite alternate',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        maxWidth: '420px',
+                        textAlign: 'center',
+                    }}
+                >
+                    <Box
+                        sx={{
+                            width: 72,
+                            height: 72,
+                            borderRadius: '50%',
+                            background: 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            mb: 3,
+                            boxShadow: '0 10px 25px rgba(236, 72, 153, 0.4)',
+                        }}
+                    >
+                        <span style={{ fontSize: '2.5rem' }}>💎</span>
+                    </Box>
+                    <h1
+                        style={{
+                            fontSize: '2rem',
+                            margin: '0 0 16px 0',
+                            background: 'linear-gradient(to right, #e879f9, #a78bfa)',
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                            fontFamily: 'Inter, system-ui, sans-serif',
+                            fontWeight: '800',
+                        }}
+                    >
+                        Premium Chapter
+                    </h1>
+                    <p
+                        style={{
+                            margin: '0 0 32px 0',
+                            fontSize: '1rem',
+                            color: 'rgba(255, 255, 255, 0.75)',
+                            lineHeight: '1.6',
+                            fontFamily: 'Inter, system-ui, sans-serif',
+                        }}
+                    >
+                        Your token balance is depleted. Unlock this chapter instantly by grabbing a Premium Token pack.
+                    </p>
+                    <Box
+                        component="button"
+                        type="button"
+                        sx={{
+                            padding: '16px 36px',
+                            background: 'linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)',
+                            color: '#fff',
+                            borderRadius: '16px',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontSize: '1.1rem',
+                            fontWeight: '700',
+                            letterSpacing: '0.5px',
+                            boxShadow: '0 10px 20px rgba(236, 72, 153, 0.3)',
+                            animation: 'pulseBtn 2.5s infinite',
+                            transition: 'all 0.25s ease',
+                            fontFamily: 'Inter, system-ui, sans-serif',
+                            '&:hover': {
+                                transform: 'translateY(-3px)',
+                                filter: 'brightness(1.15)',
+                            },
+                        }}
+                        onClick={() => {
+                            // eslint-disable-next-line no-console
+                            console.log('[RevenueCat] Payment Modal Initialized!');
+                        }}
+                    >
+                        Purchase Tokens
+                    </Box>
+                    <Box
+                        component="button"
+                        type="button"
+                        sx={{
+                            marginTop: '20px',
+                            background: 'transparent',
+                            border: 'none',
+                            color: 'rgba(255,255,255,0.4)',
+                            cursor: 'pointer',
+                            fontSize: '0.9rem',
+                            fontWeight: '500',
+                            fontFamily: 'Inter, system-ui, sans-serif',
+                            transition: 'color 0.2s ease',
+                            '&:hover': {
+                                color: '#fff',
+                            },
+                        }}
+                        onClick={() => window.history.back()}
+                    >
+                        Go Back to Library
+                    </Box>
+                </Box>
+            </Box>
+        );
+    }
 
     if (error) {
         return (

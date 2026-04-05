@@ -90,6 +90,11 @@ export class RestClient
                 return this.fetcher(url, { data, httpMethod, config, checkResponseIsJson });
             }
 
+            if (result.status === 402) {
+                window.dispatchEvent(new CustomEvent('paymentRequired'));
+                throw new Error('Payment Required: 402');
+            }
+
             if (result.status !== 200) {
                 throw new Error(`status ${result.status}: ${result.statusText}`);
             }
