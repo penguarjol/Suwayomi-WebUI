@@ -38,18 +38,19 @@ export const SplashScreen = ({
                 variant="h1"
                 sx={{
                     fontWeight: 900,
-                    fontSize: { xs: '4rem', lg: '8rem' },
+                    fontSize: { xs: '3rem', lg: '6rem' },
                     letterSpacing: '-2px',
                     color: 'primary.main',
                     textShadow: `0 0 40px ${theme.palette.primary.main}`,
                     animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    textAlign: 'center',
                     '@keyframes pulse': {
                         '0%, 100%': { opacity: 1, transform: 'scale(1)' },
-                        '50%': { opacity: 0.6, transform: 'scale(1.05)' },
+                        '50%': { opacity: 0.6, transform: 'scale(1.02)' },
                     },
                 }}
             >
-                NOVA
+                NEXUS READS
             </Typography>
             <Stack
                 {...slots?.serverAddressProps}

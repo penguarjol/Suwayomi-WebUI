@@ -160,9 +160,14 @@ export function DefaultNavBar() {
                             sx={{
                                 textOverflow: 'ellipsis',
                                 flexGrow: 1,
+                                fontWeight: 900,
+                                letterSpacing: '-1px',
+                                background: (theme) => `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                                WebkitBackgroundClip: 'text',
+                                WebkitTextFillColor: 'transparent',
                             }}
                         >
-                            {title}
+                            {title === 'Suwayomi' || title === 'library.title' || title === 'Nexus Reads' ? 'NEXUS READS' : title}
                         </Typography>
                         {action}
                     </Stack>

@@ -185,7 +185,7 @@ export const LoginPage = () => {
                     }}
                 >
                     <Typography variant="h4" textAlign="center" sx={{ fontWeight: 800, color: 'primary.main', mb: 2 }}>
-                        {isSignUp ? 'Join Nova' : 'Welcome Back'}
+                        {isSignUp ? 'Join Nexus Reads' : 'Welcome Back'}
                     </Typography>
 
                     <Stack gap={2}>
@@ -238,7 +238,7 @@ export const LoginPage = () => {
                     >
                         {isLoading ? 'Authenticating...' : undefined}
                         {!isLoading && isSignUp ? 'Create Account' : undefined}
-                        {!isLoading && !isSignUp ? 'Sign Into Nova' : undefined}
+                        {!isLoading && !isSignUp ? 'Sign Into Nexus Reads' : undefined}
                     </Button>
 
                     <Button 

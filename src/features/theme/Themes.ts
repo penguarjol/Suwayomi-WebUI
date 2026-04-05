@@ -24,10 +24,10 @@ export const themes = {
                 light: {
                     palette: {
                         primary: {
-                            main: '#ec4899',
+                            main: '#ec4899', // Neon Pink
                         },
                         secondary: {
-                            main: '#8b5cf6',
+                            main: '#8b5cf6', // Violet
                         },
                         background: {
                             paper: '#ffffff',
@@ -38,14 +38,14 @@ export const themes = {
                 dark: {
                     palette: {
                         primary: {
-                            main: '#ec4899',
+                            main: '#ec4899', // Neon Pink
                         },
                         secondary: {
-                            main: '#8b5cf6',
+                            main: '#8b5cf6', // Violet
                         },
                         background: {
-                            paper: '#15101A',
-                            default: '#0E0914',
+                            paper: '#15101A', // Abyss Paper
+                            default: '#0E0914', // Abyss Default
                         },
                     },
                 },
