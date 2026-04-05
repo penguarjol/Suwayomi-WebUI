@@ -162,12 +162,15 @@ export function DefaultNavBar() {
                                 flexGrow: 1,
                                 fontWeight: 900,
                                 letterSpacing: '-1px',
-                                background: (theme) => `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                                background: (theme) =>
+                                    `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
                                 WebkitBackgroundClip: 'text',
                                 WebkitTextFillColor: 'transparent',
                             }}
                         >
-                            {title === 'Suwayomi' || title === 'library.title' || title === 'Nexus Reads' ? 'NEXUS READS' : title}
+                            {title === 'Suwayomi' || title === 'library.title' || title === 'Nexus Reads'
+                                ? 'NEXUS READS'
+                                : title}
                         </Typography>
                         {action}
                     </Stack>

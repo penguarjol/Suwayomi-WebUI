@@ -15,6 +15,7 @@ import Box from '@mui/material/Box';
 import { AwaitableComponent } from 'awaitable-component';
 import { Purchases, LOG_LEVEL } from '@revenuecat/purchases-capacitor';
 import { Capacitor } from '@capacitor/core';
+import { Analytics } from '@vercel/analytics/react';
 import { AppContext } from '@/base/contexts/AppContext.tsx';
 import { DefaultNavBar } from '@/features/navigation-bar/components/DefaultNavBar.tsx';
 import { requestManager } from '@/lib/requests/RequestManager.ts';
@@ -323,5 +324,6 @@ export const App: React.FC = () => (
                 </Routes>
             </Box>
         </AuthGuard>
+        <Analytics />
     </AppContext>
 );

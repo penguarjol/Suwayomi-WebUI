@@ -218,10 +218,10 @@ export const LoginPage = () => {
                             }}
                         />
                     </Stack>
-                    
-                    <Button 
-                        disabled={isLoading || (!email && !password)} 
-                        variant="contained" 
+
+                    <Button
+                        disabled={isLoading || (!email && !password)}
+                        variant="contained"
                         size="large"
                         onClick={doLogin}
                         sx={{
@@ -233,7 +233,7 @@ export const LoginPage = () => {
                             boxShadow: `0 4px 14px 0 ${theme.palette.primary.main}60`,
                             '&:hover': {
                                 boxShadow: `0 6px 20px 0 ${theme.palette.primary.main}80`,
-                            }
+                            },
                         }}
                     >
                         {isLoading ? 'Authenticating...' : undefined}
@@ -241,9 +241,9 @@ export const LoginPage = () => {
                         {!isLoading && !isSignUp ? 'Sign Into Nexus Reads' : undefined}
                     </Button>
 
-                    <Button 
-                        variant="text" 
-                        onClick={() => setIsSignUp(!isSignUp)} 
+                    <Button
+                        variant="text"
+                        onClick={() => setIsSignUp(!isSignUp)}
                         disabled={isLoading}
                         sx={{ textTransform: 'none', opacity: 0.7 }}
                     >
