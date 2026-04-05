@@ -41,6 +41,7 @@ import {
     useReaderChaptersStore,
     useReaderSettingsStore,
     useReaderStore,
+    useReaderOverlayStore,
     useReaderTapZoneStore,
 } from '@/features/reader/stores/ReaderStore.ts';
 
@@ -82,6 +83,8 @@ const BaseReader = ({
         setSettings: state.settings.setSettings,
     }));
     const setShowPreview = useReaderTapZoneStore((state) => state.tapZone.setShowPreview);
+    const isOverlayVisible = useReaderOverlayStore((state) => state.overlay.isVisible);
+    const effectiveNavBarWidth = isOverlayVisible ? readerNavBarWidth : 0;
 
     const scrollElementRef = useRef<HTMLDivElement | null>(null);
 
@@ -387,13 +390,13 @@ const BaseReader = ({
                 position: 'relative',
                 display: 'flex',
                 flexDirection: 'column',
-                minWidth: `calc(100vw - ${readerNavBarWidth}px)`,
-                maxWidth: `calc(100vw - ${readerNavBarWidth}px)`,
-                width: `calc(100vw - ${readerNavBarWidth}px)`,
+                minWidth: `calc(100vw - ${effectiveNavBarWidth}px)`,
+                maxWidth: `calc(100vw - ${effectiveNavBarWidth}px)`,
+                width: `calc(100vw - ${effectiveNavBarWidth}px)`,
                 height: `100vh`,
-                marginLeft: `${readerNavBarWidth}px`,
+                marginLeft: `${effectiveNavBarWidth}px`,
                 transition: (theme) =>
-                    `width 0.${theme.transitions.duration.shortest}s, margin-left 0.${theme.transitions.duration.shortest}s`,
+                    `width 0.${theme.transitions.duration.shortest}s, margin-left 0.${theme.transitions.duration.shortest}s, max-width 0.${theme.transitions.duration.shortest}s`,
                 overflow: 'auto',
                 backgroundColor: READER_BACKGROUND_TO_COLOR[backgroundColor],
             }}

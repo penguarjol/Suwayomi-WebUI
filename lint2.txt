@@ -1,0 +1,6 @@
+
+D:\CodingUtilities\Tachiyomi\Suwayomi-WebUI\src\features\reader\viewer\components\ReaderTransitionPage.tsx
+  85:5  error  'nextChapterScanlator' is defined but never used  @typescript-eslint/no-unused-vars
+
+✖ 1 problem (1 error, 0 warnings)
+

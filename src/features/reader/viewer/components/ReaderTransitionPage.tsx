@@ -6,6 +6,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Stack from '@mui/material/Stack';
 import { useTranslation } from 'react-i18next';
@@ -150,21 +151,26 @@ const BaseReaderTransitionPage = ({
                 }),
             }}
         >
-            <Stack
+            <Box
                 sx={{
-                    gap: 2,
-                    maxWidth: (theme) =>
-                        // spacing = added padding left + right
-                        `calc(100vw - ${scrollbar.ySize}px - ${readerNavBarWidth}px - ${theme.spacing(2)})`,
-                    maxHeight: `calc(100vh - ${scrollbar.xSize}px)`,
-                    width: 'max-content',
-                    p: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 3,
+                    width: '100%',
+                    minWidth: '320px',
+                    p: 4,
+                    borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+                    background: 'linear-gradient(180deg, rgba(20,20,30,0) 0%, rgba(10,10,15,0.6) 100%)',
+                    borderRadius: '16px',
                 }}
             >
                 {isPreviousType && isFirstChapter && (
-                    <Typography variant="h6">{t('reader.transition_page.first_chapter')}</Typography>
+                    <Typography variant="h6" sx={{ color: 'rgba(255,255,255,0.5)' }}>
+                        {t('reader.transition_page.first_chapter')}
+                    </Typography>
                 )}
-                <Stack sx={{ gap: 5 }}>
+                <Stack sx={{ gap: 4, width: '100%', alignItems: 'center', textAlign: 'center' }}>
                     {isPreviousType && !isFirstChapter && (
                         <ChapterInfo
                             title={t('reader.transition_page.previous')}
@@ -174,22 +180,61 @@ const BaseReaderTransitionPage = ({
                         />
                     )}
                     {!!currentChapterName && (
-                        <ChapterInfo
-                            title={t(
-                                isPreviousType ? 'reader.transition_page.current' : 'reader.transition_page.finished',
+                        <Box sx={{ my: 2 }}>
+                            <Typography
+                                variant="overline"
+                                sx={{ letterSpacing: '4px', color: '#ec4899', fontWeight: '800' }}
+                            >
+                                END OF EPISODE
+                            </Typography>
+                            <Typography
+                                variant="h4"
+                                sx={{
+                                    mt: 1,
+                                    color: '#fff',
+                                    fontWeight: '900',
+                                    fontFamily: 'Inter, system-ui, sans-serif',
+                                }}
+                            >
+                                {currentChapterName}
+                            </Typography>
+                            {currentChapterScanlator && (
+                                <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.5)', mt: 1 }}>
+                                    {currentChapterScanlator}
+                                </Typography>
                             )}
-                            name={currentChapterName}
-                            scanlator={currentChapterScanlator}
-                            backgroundColor={backgroundColor}
-                        />
+                        </Box>
                     )}
                     {isNextType && !isLastChapter && (
-                        <ChapterInfo
-                            title={t('reader.transition_page.next')}
-                            name={nextChapterName}
-                            scanlator={nextChapterScanlator}
-                            backgroundColor={backgroundColor}
-                        />
+                        <Box
+                            sx={{
+                                mt: 2,
+                                p: 3,
+                                borderRadius: '16px',
+                                background: 'rgba(255,255,255,0.03)',
+                                border: '1px solid rgba(255,255,255,0.05)',
+                                width: '100%',
+                            }}
+                        >
+                            <Typography
+                                variant="body2"
+                                sx={{
+                                    color: 'rgba(255,255,255,0.4)',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '1px',
+                                }}
+                            >
+                                Up Next
+                            </Typography>
+                            <Typography variant="h6" sx={{ color: '#fff', fontWeight: '700', mt: 0.5 }}>
+                                {nextChapterName}
+                            </Typography>
+                            {nextChapterScanlator && (
+                                <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.4)', mt: 0.5 }}>
+                                    {nextChapterScanlator}
+                                </Typography>
+                            )}
+                        </Box>
                     )}
                 </Stack>
                 {isNextType && isLastChapter && (
@@ -220,7 +265,7 @@ const BaseReaderTransitionPage = ({
                         </Button>
                     </Stack>
                 )}
-            </Stack>
+            </Box>
         </Stack>
     );
 };
