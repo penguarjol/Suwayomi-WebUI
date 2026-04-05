@@ -14,7 +14,10 @@ import '@/index.css';
 import '@/lib/PointerDeviceUtil.ts';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { inject } from '@vercel/analytics';
 import { App } from '@/App';
+
+inject();
 
 const container = document.getElementById('root');
 const root = createRoot(container!);
