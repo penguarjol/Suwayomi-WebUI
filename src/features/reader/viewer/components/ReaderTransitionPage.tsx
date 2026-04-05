@@ -37,6 +37,7 @@ import {
     useReaderSettingsStore,
     useReaderStore,
 } from '@/features/reader/stores/ReaderStore.ts';
+import { ReaderComments } from '@/features/reader/viewer/components/ReaderComments.tsx';
 
 const ChapterInfo = ({
     title,
@@ -76,6 +77,7 @@ const ChapterInfo = ({
 };
 
 const BaseReaderTransitionPage = ({
+    chapterId,
     type,
     currentChapterName,
     currentChapterScanlator,
@@ -87,7 +89,6 @@ const BaseReaderTransitionPage = ({
     handleBack,
 }: Pick<NavbarContextType, 'readerNavBarWidth'> & {
     // gets used in the "source props creators" of the "withPropsFrom" call
-    // eslint-disable-next-line react/no-unused-prop-types
     chapterId: ChapterIdInfo['id'];
     currentChapterName?: ChapterType['name'];
     currentChapterScanlator?: ChapterType['scanlator'];
@@ -266,6 +267,7 @@ const BaseReaderTransitionPage = ({
                     </Stack>
                 )}
             </Box>
+            {isNextType && <ReaderComments chapterId={chapterId} />}
         </Stack>
     );
 };
