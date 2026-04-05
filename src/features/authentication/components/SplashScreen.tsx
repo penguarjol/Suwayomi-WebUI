@@ -8,18 +8,14 @@
 
 import { useTheme } from '@mui/material/styles';
 import Stack, { StackProps } from '@mui/material/Stack';
-import { ComponentProps } from 'react';
-import { SuwayomiLogo } from '@/assets/SuwayomiLogo.tsx';
+import Typography from '@mui/material/Typography';
 import { ServerAddressSetting } from '@/features/settings/components/ServerAddressSetting.tsx';
-
-import { ThemeMode } from '@/features/theme/AppTheme.types.ts';
 
 export const SplashScreen = ({
     slots,
 }: {
     slots?: {
         stackProps?: StackProps;
-        logoProps?: ComponentProps<typeof SuwayomiLogo>;
         serverAddressProps?: StackProps;
     };
 }) => {
@@ -34,26 +30,27 @@ export const SplashScreen = ({
                 minHeight: '100vh',
                 justifyContent: 'center',
                 alignItems: 'center',
-                backgroundColor: 'primary.light',
-                ...theme.applyStyles('dark', {
-                    backgroundColor: 'primary.dark',
-                }),
+                backgroundColor: 'background.default',
                 ...slots?.stackProps?.sx,
             }}
         >
-            <SuwayomiLogo
-                circleRingColor={
-                    theme.palette.mode === ThemeMode.DARK ? theme.palette.primary.light : theme.palette.primary.dark
-                }
-                {...slots?.logoProps}
+            <Typography
+                variant="h1"
                 sx={{
-                    fontSize: 250,
-                    [theme.breakpoints.up('lg')]: {
-                        fontSize: 350,
+                    fontWeight: 900,
+                    fontSize: { xs: '4rem', lg: '8rem' },
+                    letterSpacing: '-2px',
+                    color: 'primary.main',
+                    textShadow: `0 0 40px ${theme.palette.primary.main}`,
+                    animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    '@keyframes pulse': {
+                        '0%, 100%': { opacity: 1, transform: 'scale(1)' },
+                        '50%': { opacity: 0.6, transform: 'scale(1.05)' },
                     },
-                    ...slots?.logoProps?.sx,
                 }}
-            />
+            >
+                NOVA
+            </Typography>
             <Stack
                 {...slots?.serverAddressProps}
                 sx={{

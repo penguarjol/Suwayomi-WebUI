@@ -6,7 +6,6 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
 import TextField from '@mui/material/TextField';
 import Stack from '@mui/material/Stack';
@@ -28,7 +27,6 @@ import { ServerAddressSetting } from '@/features/settings/components/ServerAddre
 
 export const LoginPage = () => {
     const theme = useTheme();
-    const { t } = useTranslation();
     const { setOverride } = useNavBarContext();
     const navigate = useNavigate();
     const isAuthenticated = AuthManager.useIsAuthenticated();
@@ -123,6 +121,10 @@ export const LoginPage = () => {
     return (
         <Stack
             sx={{
+                position: 'relative',
+                width: '100vw',
+                height: '100vh',
+                overflow: 'hidden',
                 [theme.breakpoints.up('lg')]: {
                     flexDirection: 'row',
                 },
@@ -132,11 +134,12 @@ export const LoginPage = () => {
                 slots={{
                     stackProps: {
                         sx: {
-                            position: 'unset',
+                            position: 'relative',
                             minWidth: 'auto',
                             minHeight: '50vh',
                             flexBasis: '60%',
                             p: 4,
+                            background: `linear-gradient(135deg, ${theme.palette.background.default} 0%, rgba(14, 9, 20, 0.8) 100%)`,
                             [theme.breakpoints.up('lg')]: {
                                 minHeight: '0vh',
                                 height: '100vh',
@@ -158,49 +161,98 @@ export const LoginPage = () => {
                     p: 4,
                     justifyContent: 'center',
                     alignItems: 'center',
+                    background: `linear-gradient(to right, rgba(0,0,0,0.6) 0%, ${theme.palette.background.paper} 100%)`,
+                    backdropFilter: 'blur(30px)',
+                    borderLeft: '1px solid rgba(255, 255, 255, 0.05)',
                     [theme.breakpoints.up('lg')]: {
                         minHeight: '0vh',
                         height: '100vh',
                     },
                 }}
             >
-                <Stack sx={{ maxWidth: 300, gap: 2 }}>
-                    <Typography variant="h5" textAlign="center">
-                        {isSignUp ? 'Create Account' : t('global.button.log_in')}
+                <Stack
+                    sx={{
+                        maxWidth: 400,
+                        width: '100%',
+                        gap: 3,
+                        p: 5,
+                        borderRadius: 4,
+                        background: 'rgba(255, 255, 255, 0.03)',
+                        backdropFilter: 'blur(20px)',
+                        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+                        border: '1px solid rgba(255, 255, 255, 0.05)',
+                        zIndex: 2,
+                    }}
+                >
+                    <Typography variant="h4" textAlign="center" sx={{ fontWeight: 800, color: 'primary.main', mb: 2 }}>
+                        {isSignUp ? 'Join Nova' : 'Welcome Back'}
                     </Typography>
 
-                    <Stack>
+                    <Stack gap={2}>
                         <TextField
                             autoFocus
-                            margin="dense"
                             id="email"
                             name="email"
-                            label="Email"
+                            label="Email Address"
                             type="email"
                             fullWidth
-                            variant="standard"
+                            variant="outlined"
+                            autoComplete="username"
                             onChange={(e) => setEmail(e.target.value)}
+                            sx={{
+                                '& .MuiOutlinedInput-root': {
+                                    borderRadius: 2,
+                                },
+                            }}
                         />
                         <PasswordTextField
-                            margin="dense"
                             fullWidth
-                            variant="standard"
+                            label="Password"
+                            variant="outlined"
+                            autoComplete="current-password"
                             onChange={(e) => setPassword(e.target.value)}
+                            sx={{
+                                '& .MuiOutlinedInput-root': {
+                                    borderRadius: 2,
+                                },
+                            }}
                         />
                     </Stack>
-                    <Button disabled={isLoading || (!email && !password)} variant="contained" onClick={doLogin}>
-                        {isLoading ? 'Processing...' : undefined}
-                        {!isLoading && isSignUp ? 'Sign Up' : undefined}
-                        {!isLoading && !isSignUp ? t('global.button.log_in') : undefined}
+                    
+                    <Button 
+                        disabled={isLoading || (!email && !password)} 
+                        variant="contained" 
+                        size="large"
+                        onClick={doLogin}
+                        sx={{
+                            mt: 2,
+                            borderRadius: '50px',
+                            textTransform: 'none',
+                            fontWeight: 700,
+                            fontSize: '1rem',
+                            boxShadow: `0 4px 14px 0 ${theme.palette.primary.main}60`,
+                            '&:hover': {
+                                boxShadow: `0 6px 20px 0 ${theme.palette.primary.main}80`,
+                            }
+                        }}
+                    >
+                        {isLoading ? 'Authenticating...' : undefined}
+                        {!isLoading && isSignUp ? 'Create Account' : undefined}
+                        {!isLoading && !isSignUp ? 'Sign Into Nova' : undefined}
                     </Button>
 
-                    <Button variant="text" onClick={() => setIsSignUp(!isSignUp)} disabled={isLoading}>
-                        {isSignUp ? 'Already have an account? Log In' : 'Need an account? Sign Up'}
+                    <Button 
+                        variant="text" 
+                        onClick={() => setIsSignUp(!isSignUp)} 
+                        disabled={isLoading}
+                        sx={{ textTransform: 'none', opacity: 0.7 }}
+                    >
+                        {isSignUp ? 'Already have an account? Log In' : 'Need access? Sign Up'}
                     </Button>
+                </Stack>
 
-                    <Stack sx={{ position: 'absolute', left: 0, bottom: 0 }}>
-                        <ServerAddressSetting />
-                    </Stack>
+                <Stack sx={{ position: 'absolute', left: 40, bottom: 40, opacity: 0.5 }}>
+                    <ServerAddressSetting />
                 </Stack>
             </Stack>
         </Stack>
