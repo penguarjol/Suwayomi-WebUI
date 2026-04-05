@@ -37,6 +37,7 @@ export function Settings() {
 
     useAppTitle(t('settings.title'));
 
+    const isAdmin = localStorage.getItem('isAdmin') === 'true';
     const [triggerClearServerCache, { loading: isClearingServerCache }] = requestManager.useClearServerCache();
 
     const clearCache = async () => {
@@ -62,70 +63,74 @@ export function Settings() {
                 </ListItemIcon>
                 <ListItemText primary={t('reader.settings.title.reader')} />
             </ListItemLink>
-            <ListItemLink to={AppRoutes.settings.childRoutes.library.path}>
-                <ListItemIcon>
-                    <CollectionsOutlinedBookmarkIcon />
-                </ListItemIcon>
-                <ListItemText primary={t('library.title')} />
-            </ListItemLink>
-            <ListItemLink to={AppRoutes.settings.childRoutes.download.path}>
-                <ListItemIcon>
-                    <GetAppOutlinedIcon />
-                </ListItemIcon>
-                <ListItemText primary={t('download.title.download')} />
-            </ListItemLink>
-            <ListItemLink to={AppRoutes.settings.childRoutes.tracking.path}>
-                <ListItemIcon>
-                    <SyncIcon />
-                </ListItemIcon>
-                <ListItemText primary={t('tracking.title')} />
-            </ListItemLink>
-            <ListItemLink to={AppRoutes.settings.childRoutes.backup.path}>
-                <ListItemIcon>
-                    <BackupIcon />
-                </ListItemIcon>
-                <ListItemText primary={t('settings.backup.title')} />
-            </ListItemLink>
-
-            <ListItemButton disabled={isClearingServerCache} onClick={clearCache}>
-                <ListItemIcon>
-                    <DeleteForeverIcon />
-                </ListItemIcon>
-                <ListItemText
-                    primary={t('settings.clear_cache.label.title')}
-                    secondary={t('settings.clear_cache.label.description')}
-                />
-            </ListItemButton>
-            <ListItemLink to={AppRoutes.settings.childRoutes.browse.path}>
-                <ListItemIcon>
-                    <ExploreOutlinedIcon />
-                </ListItemIcon>
-                <ListItemText primary={t('global.label.browse')} />
-            </ListItemLink>
             <ListItemLink to={AppRoutes.settings.childRoutes.history.path}>
                 <ListItemIcon>
                     <HistoryIcon />
                 </ListItemIcon>
                 <ListItemText primary={t('history.title')} />
             </ListItemLink>
-            <ListItemLink to={AppRoutes.settings.childRoutes.device.path}>
-                <ListItemIcon>
-                    <DevicesIcon />
-                </ListItemIcon>
-                <ListItemText primary={t('settings.device.title.device')} />
-            </ListItemLink>
-            <ListItemLink to={AppRoutes.settings.childRoutes.webui.path}>
-                <ListItemIcon>
-                    <WebIcon />
-                </ListItemIcon>
-                <ListItemText primary={t('settings.webui.title.webui')} />
-            </ListItemLink>
-            <ListItemLink to={AppRoutes.settings.childRoutes.server.path}>
-                <ListItemIcon>
-                    <DnsIcon />
-                </ListItemIcon>
-                <ListItemText primary={t('settings.server.title.server')} />
-            </ListItemLink>
+            {isAdmin && (
+                <>
+                    <ListItemLink to={AppRoutes.settings.childRoutes.library.path}>
+                        <ListItemIcon>
+                            <CollectionsOutlinedBookmarkIcon />
+                        </ListItemIcon>
+                        <ListItemText primary={t('library.title')} />
+                    </ListItemLink>
+                    <ListItemLink to={AppRoutes.settings.childRoutes.download.path}>
+                        <ListItemIcon>
+                            <GetAppOutlinedIcon />
+                        </ListItemIcon>
+                        <ListItemText primary={t('download.title.download')} />
+                    </ListItemLink>
+                    <ListItemLink to={AppRoutes.settings.childRoutes.tracking.path}>
+                        <ListItemIcon>
+                            <SyncIcon />
+                        </ListItemIcon>
+                        <ListItemText primary={t('tracking.title')} />
+                    </ListItemLink>
+                    <ListItemLink to={AppRoutes.settings.childRoutes.backup.path}>
+                        <ListItemIcon>
+                            <BackupIcon />
+                        </ListItemIcon>
+                        <ListItemText primary={t('settings.backup.title')} />
+                    </ListItemLink>
+
+                    <ListItemButton disabled={isClearingServerCache} onClick={clearCache}>
+                        <ListItemIcon>
+                            <DeleteForeverIcon />
+                        </ListItemIcon>
+                        <ListItemText
+                            primary={t('settings.clear_cache.label.title')}
+                            secondary={t('settings.clear_cache.label.description')}
+                        />
+                    </ListItemButton>
+                    <ListItemLink to={AppRoutes.settings.childRoutes.browse.path}>
+                        <ListItemIcon>
+                            <ExploreOutlinedIcon />
+                        </ListItemIcon>
+                        <ListItemText primary={t('global.label.browse')} />
+                    </ListItemLink>
+                    <ListItemLink to={AppRoutes.settings.childRoutes.device.path}>
+                        <ListItemIcon>
+                            <DevicesIcon />
+                        </ListItemIcon>
+                        <ListItemText primary={t('settings.device.title.device')} />
+                    </ListItemLink>
+                    <ListItemLink to={AppRoutes.settings.childRoutes.webui.path}>
+                        <ListItemIcon>
+                            <WebIcon />
+                        </ListItemIcon>
+                        <ListItemText primary={t('settings.webui.title.webui')} />
+                    </ListItemLink>
+                    <ListItemLink to={AppRoutes.settings.childRoutes.server.path}>
+                        <ListItemIcon>
+                            <DnsIcon />
+                        </ListItemIcon>
+                        <ListItemText primary={t('settings.server.title.server')} />
+                    </ListItemLink>
+                </>
+            )}
 
             <ListItemButton
                 onClick={async () => {

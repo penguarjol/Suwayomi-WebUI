@@ -24,20 +24,28 @@ export const themes = {
                 light: {
                     palette: {
                         primary: {
-                            main: '#5b74ef',
+                            main: '#ec4899',
                         },
                         secondary: {
-                            main: '#efd65b',
+                            main: '#8b5cf6',
+                        },
+                        background: {
+                            paper: '#ffffff',
+                            default: '#f8f8fc',
                         },
                     },
                 },
                 dark: {
                     palette: {
                         primary: {
-                            main: '#5b74ef',
+                            main: '#ec4899',
                         },
                         secondary: {
-                            main: '#efd65b',
+                            main: '#8b5cf6',
+                        },
+                        background: {
+                            paper: '#15101A',
+                            default: '#0E0914',
                         },
                     },
                 },
