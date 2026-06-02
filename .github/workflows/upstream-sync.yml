@@ -1,0 +1,91 @@
+name: Upstream Sync
+
+# Merges the latest from the upstream Suwayomi project into THIS fork without
+# ever overwriting our customizations:
+#   - clean merge  -> pushes a sync branch and opens a PR for review + CI
+#   - conflicts    -> opens a tracking issue for a manual merge (our code is
+#                     never touched)
+#   - up to date   -> does nothing
+#
+# Requires (one-time): the fork's Settings > Actions > General must allow
+# Actions and "Allow GitHub Actions to create and approve pull requests".
+
+on:
+  schedule:
+    - cron: '0 5 * * 1' # Mondays 05:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+env:
+  UPSTREAM: https://github.com/Suwayomi/Suwayomi-WebUI.git
+  UPSTREAM_BRANCH: master
+  TARGET_BRANCH: master
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "nexus-sync[bot]"
+          git config user.email "nexus-sync@users.noreply.github.com"
+
+      - name: Fetch upstream
+        run: |
+          git remote add upstream "$UPSTREAM" 2>/dev/null || git remote set-url upstream "$UPSTREAM"
+          git fetch upstream "$UPSTREAM_BRANCH"
+
+      - name: Merge upstream into a sync branch
+        id: merge
+        run: |
+          BRANCH="upstream-sync/$(date +%Y%m%d)"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          BEHIND=$(git rev-list --count "HEAD..upstream/$UPSTREAM_BRANCH")
+          echo "Behind upstream by $BEHIND commit(s)."
+          if [ "$BEHIND" = "0" ]; then
+            echo "status=uptodate" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git checkout -B "$BRANCH" "origin/$TARGET_BRANCH"
+          if git merge --no-edit "upstream/$UPSTREAM_BRANCH"; then
+            echo "status=clean" >> "$GITHUB_OUTPUT"
+          else
+            git merge --abort
+            echo "status=conflict" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Push + open PR (clean merge)
+        if: steps.merge.outputs.status == 'clean'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git push -u origin "${{ steps.merge.outputs.branch }}" --force-with-lease
+          EXISTING=$(gh pr list --head "${{ steps.merge.outputs.branch }}" --state open --json number -q '.[0].number' || true)
+          if [ -z "$EXISTING" ]; then
+            gh pr create --base "$TARGET_BRANCH" --head "${{ steps.merge.outputs.branch }}" \
+              --title "Upstream sync $(date +%Y-%m-%d)" \
+              --body "Automated clean merge of upstream Suwayomi/Suwayomi-WebUI master into our fork. Review, run CI, then merge." \
+              --label upstream-sync || echo "PR creation skipped"
+          fi
+
+      - name: Open issue (conflicts need manual merge)
+        if: steps.merge.outputs.status == 'conflict'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          OPEN=$(gh issue list --state open --search 'in:title "Upstream sync needs manual merge"' --json number -q '.[0].number' || true)
+          if [ -z "$OPEN" ]; then
+            gh issue create --title "Upstream sync needs manual merge ($(date +%Y-%m-%d))" \
+              --body $'Merging upstream into our fork has conflicts (expected, given our customizations).\n\nResolve locally:\n```\ngit fetch upstream\ngit checkout -b upstream-sync origin/master\ngit merge upstream/master\n# resolve conflicts, keeping our Nexus features\n# open a PR into master\n```' \
+              --label upstream-sync || echo "issue creation skipped"
+          fi
