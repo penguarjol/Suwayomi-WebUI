@@ -7,18 +7,26 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import Chip from '@mui/material/Chip';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import TextField from '@mui/material/TextField';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import RocketLaunchIcon from '@mui/icons-material/RocketLaunch';
 import BookmarkAddIcon from '@mui/icons-material/BookmarkAdd';
 import BookmarkAddedIcon from '@mui/icons-material/BookmarkAdded';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import CloseIcon from '@mui/icons-material/Close';
 import { requestManager } from '@/lib/requests/RequestManager.ts';
 import { GET_MANGAS_BASE } from '@/lib/graphql/queries/MangaQuery.ts';
 import { GetMangasBaseQuery, GetMangasBaseQueryVariables } from '@/lib/graphql/generated/graphql.ts';
@@ -30,11 +38,15 @@ import {
     boostCollection,
     followCollection,
     getCollection,
+    getCurrentUserId,
     getMyFollowedCollectionIds,
     getMyLikedCollectionIds,
     likeCollection,
+    removeFromCollection,
+    softDeleteCollection,
     unfollowCollection,
     unlikeCollection,
+    updateCollection,
 } from '@/features/marketplace/Marketplace.ts';
 import { useApprovedSourceIds } from '@/features/library/services/useApprovedSources.ts';
 import { useBillingStore } from '@/features/billing/Billing.ts';
@@ -53,26 +65,68 @@ const BOOST_MESSAGE: Record<string, { text: string; severity: 'success' | 'warni
 
 export function CollectionDetail() {
     const { id = '' } = useParams<{ id: string }>();
+    const navigate = useNavigate();
     const [collection, setCollection] = useState<Collection | null>(null);
     const [items, setItems] = useState<CollectionItem[]>([]);
     const [liked, setLiked] = useState(false);
     const [following, setFollowing] = useState(false);
+    const [isOwner, setIsOwner] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [editOpen, setEditOpen] = useState(false);
+    const [editTitle, setEditTitle] = useState('');
+    const [editDescription, setEditDescription] = useState('');
     const { ready: sourcesReady, isApproved } = useApprovedSourceIds();
 
     useAppTitle(collection?.title ?? 'Collection');
 
     const refresh = async () => {
-        const [{ collection: c, items: i }, likedIds, followedIds] = await Promise.all([
+        const [{ collection: c, items: i }, likedIds, followedIds, uid] = await Promise.all([
             getCollection(id),
             getMyLikedCollectionIds(),
             getMyFollowedCollectionIds(),
+            getCurrentUserId(),
         ]);
         setCollection(c);
         setItems(i);
         setLiked(likedIds.has(id));
         setFollowing(followedIds.has(id));
+        setIsOwner(!!c && !!uid && c.user_id === uid);
         setLoading(false);
+    };
+
+    const openEdit = () => {
+        if (!collection) return;
+        setEditTitle(collection.title);
+        setEditDescription(collection.description ?? '');
+        setEditOpen(true);
+    };
+
+    const saveEdit = async () => {
+        if (!editTitle.trim()) return;
+        try {
+            await updateCollection(id, editTitle, editDescription);
+            setEditOpen(false);
+            refresh();
+        } catch {
+            makeToast('Could not save changes', 'error');
+        }
+    };
+
+    const removeItem = async (mangaId: number) => {
+        await removeFromCollection(id, mangaId).catch(() => {});
+        refresh();
+    };
+
+    const deleteCollection = async () => {
+        // eslint-disable-next-line no-alert
+        if (!window.confirm('Delete this collection? Followers will lose access. This cannot be undone.')) return;
+        try {
+            await softDeleteCollection(id);
+            makeToast('Collection deleted', 'success');
+            navigate(AppRoutes.marketplace.path);
+        } catch {
+            makeToast('Could not delete', 'error');
+        }
     };
 
     const toggleFollow = async () => {
@@ -170,6 +224,27 @@ export function CollectionDetail() {
                 >
                     Boost to Featured
                 </Button>
+                {isOwner && (
+                    <>
+                        <Button
+                            variant="outlined"
+                            startIcon={<EditIcon />}
+                            onClick={openEdit}
+                            sx={{ borderRadius: '50px', textTransform: 'none', fontWeight: 700 }}
+                        >
+                            Edit
+                        </Button>
+                        <Button
+                            variant="outlined"
+                            color="error"
+                            startIcon={<DeleteIcon />}
+                            onClick={deleteCollection}
+                            sx={{ borderRadius: '50px', textTransform: 'none', fontWeight: 700 }}
+                        >
+                            Delete
+                        </Button>
+                    </>
+                )}
             </Stack>
 
             <Box
@@ -180,45 +255,99 @@ export function CollectionDetail() {
                 }}
             >
                 {mangas.map((manga) => (
-                    <Box
-                        key={manga.id}
-                        component={Link}
-                        to={AppRoutes.manga.path(manga.id)}
-                        sx={{ textDecoration: 'none', color: 'inherit' }}
-                    >
+                    <Box key={manga.id} sx={{ position: 'relative' }}>
                         <Box
-                            component="img"
-                            src={Mangas.getThumbnailUrl(manga)}
-                            alt={manga.title}
-                            loading="lazy"
-                            sx={{
-                                width: '100%',
-                                aspectRatio: '2 / 3',
-                                objectFit: 'cover',
-                                borderRadius: 2,
-                                backgroundColor: 'action.hover',
-                            }}
-                        />
-                        <Typography
-                            variant="caption"
-                            sx={{
-                                mt: 0.5,
-                                display: '-webkit-box',
-                                WebkitLineClamp: 2,
-                                WebkitBoxOrient: 'vertical',
-                                overflow: 'hidden',
-                            }}
+                            component={Link}
+                            to={AppRoutes.manga.path(manga.id)}
+                            sx={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
                         >
-                            {manga.title}
-                        </Typography>
+                            <Box
+                                component="img"
+                                src={Mangas.getThumbnailUrl(manga)}
+                                alt={manga.title}
+                                loading="lazy"
+                                sx={{
+                                    width: '100%',
+                                    aspectRatio: '2 / 3',
+                                    objectFit: 'cover',
+                                    borderRadius: 2,
+                                    backgroundColor: 'action.hover',
+                                }}
+                            />
+                            <Typography
+                                variant="caption"
+                                sx={{
+                                    mt: 0.5,
+                                    display: '-webkit-box',
+                                    WebkitLineClamp: 2,
+                                    WebkitBoxOrient: 'vertical',
+                                    overflow: 'hidden',
+                                }}
+                            >
+                                {manga.title}
+                            </Typography>
+                        </Box>
+                        {isOwner && (
+                            <IconButton
+                                size="small"
+                                aria-label="remove from collection"
+                                onClick={() => removeItem(manga.id)}
+                                sx={{
+                                    position: 'absolute',
+                                    top: 4,
+                                    right: 4,
+                                    backgroundColor: 'rgba(0,0,0,0.6)',
+                                    color: '#fff',
+                                    '&:hover': { backgroundColor: 'rgba(0,0,0,0.8)' },
+                                }}
+                            >
+                                <CloseIcon fontSize="small" />
+                            </IconButton>
+                        )}
                     </Box>
                 ))}
                 {!mangas.length && (
                     <Typography color="text.secondary" sx={{ gridColumn: '1 / -1', textAlign: 'center', py: 4 }}>
-                        No titles in this collection yet.
+                        No titles yet. Add titles from your Library (the &quot;Add to collection&quot; button).
                     </Typography>
                 )}
             </Box>
+
+            <Dialog open={editOpen} onClose={() => setEditOpen(false)} fullWidth maxWidth="sm">
+                <DialogTitle>Edit collection</DialogTitle>
+                <DialogContent>
+                    <Stack sx={{ gap: 2, pt: 1 }}>
+                        <TextField
+                            label="Title"
+                            value={editTitle}
+                            onChange={(e) => setEditTitle(e.target.value)}
+                            fullWidth
+                            autoFocus
+                        />
+                        <TextField
+                            label="Description"
+                            value={editDescription}
+                            onChange={(e) => setEditDescription(e.target.value)}
+                            fullWidth
+                            multiline
+                            minRows={2}
+                        />
+                    </Stack>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setEditOpen(false)} sx={{ textTransform: 'none' }}>
+                        Cancel
+                    </Button>
+                    <Button
+                        variant="contained"
+                        disabled={!editTitle.trim()}
+                        onClick={saveEdit}
+                        sx={{ textTransform: 'none' }}
+                    >
+                        Save
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 }

@@ -44,6 +44,69 @@ const railScrollSx = {
     WebkitOverflowScrolling: 'touch' as const,
 };
 
+// Editorially curated popular titles (market research, 2026). Shown even on a
+// brand-new instance so Discover is never empty; each opens a catalog search so
+// it resolves against whatever sources are enabled (no bundled cover art).
+const CURATED_POPULAR = [
+    'Solo Leveling',
+    'One Piece',
+    'Jujutsu Kaisen',
+    'Chainsaw Man',
+    'The Beginning After the End',
+    "Omniscient Reader's Viewpoint",
+    'Tower of God',
+    'Solo Max-Level Newbie',
+    'Return of the Mount Hua Sect',
+    'Nano Machine',
+    'Lookism',
+    'Eleceed',
+    'Sakamoto Days',
+    'Kagurabachi',
+    'Blue Lock',
+    'Oshi no Ko',
+    'Damn Reincarnation',
+    'The Greatest Estate Developer',
+];
+
+const CuratedPicks = () => (
+    <Box sx={{ mb: 3 }}>
+        <Stack sx={{ flexDirection: 'row', alignItems: 'center', gap: 1, mb: 1, px: 0.5 }}>
+            <WhatshotIcon color="primary" fontSize="small" />
+            <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
+                Popular right now
+            </Typography>
+        </Stack>
+        <Stack sx={railScrollSx}>
+            {CURATED_POPULAR.map((title, i) => (
+                <Box
+                    key={title}
+                    component={Link}
+                    to={AppRoutes.sources.childRoutes.searchAll.path(title)}
+                    sx={{ textDecoration: 'none', color: 'inherit', flex: '0 0 auto', width: 120 }}
+                >
+                    <Stack
+                        sx={{
+                            width: 120,
+                            aspectRatio: '2 / 3',
+                            borderRadius: 2,
+                            p: 1.5,
+                            justifyContent: 'flex-end',
+                            color: '#fff',
+                            boxShadow: '0 4px 14px rgba(0,0,0,0.35)',
+                            background: (theme) =>
+                                `linear-gradient(${140 + i * 12}deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                        }}
+                    >
+                        <Typography variant="subtitle2" sx={{ fontWeight: 800, lineHeight: 1.15 }}>
+                            {title}
+                        </Typography>
+                    </Stack>
+                </Box>
+            ))}
+        </Stack>
+    </Box>
+);
+
 const OriginalsRail = ({ title, load }: { title: string; load: () => Promise<OriginalWork[]> }) => {
     const [works, setWorks] = useState<OriginalWork[]>([]);
     const [loaded, setLoaded] = useState(false);
@@ -165,6 +228,8 @@ export function Home() {
             <Typography variant="h5" sx={{ fontWeight: 900, mb: 2, px: 0.5 }}>
                 Discover
             </Typography>
+
+            <CuratedPicks />
 
             <Stack sx={{ flexDirection: 'row', alignItems: 'center', gap: 1, mb: 1, px: 0.5, flexWrap: 'wrap' }}>
                 <WhatshotIcon color="primary" fontSize="small" />

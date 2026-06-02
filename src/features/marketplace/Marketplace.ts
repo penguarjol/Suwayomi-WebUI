@@ -36,6 +36,7 @@ export async function getCollections(): Promise<{ featured: Collection[]; recent
         .from('collections')
         .select('*')
         .eq('is_public', true)
+        .is('deleted_at', null)
         .order('created_at', { ascending: false })
         .limit(100);
     const all = (data ?? []) as Collection[];
@@ -74,13 +75,32 @@ export async function getMyCollections(): Promise<Collection[]> {
         .from('collections')
         .select('*')
         .eq('user_id', uid)
+        .is('deleted_at', null)
         .order('created_at', { ascending: false });
     return (data ?? []) as Collection[];
 }
 
+export async function getCurrentUserId(): Promise<string | null> {
+    const { data } = await supabase.auth.getUser();
+    return data.user?.id ?? null;
+}
+
+export async function updateCollection(id: string, title: string, description: string): Promise<void> {
+    const { error } = await supabase
+        .from('collections')
+        .update({ title: title.trim(), description: description.trim() })
+        .eq('id', id);
+    if (error) throw error;
+}
+
+export async function softDeleteCollection(id: string): Promise<void> {
+    const { error } = await supabase.from('collections').update({ deleted_at: new Date().toISOString() }).eq('id', id);
+    if (error) throw error;
+}
+
 export async function getCollection(id: string): Promise<{ collection: Collection | null; items: CollectionItem[] }> {
     const [{ data: collection }, { data: items }] = await Promise.all([
-        supabase.from('collections').select('*').eq('id', id).maybeSingle(),
+        supabase.from('collections').select('*').eq('id', id).is('deleted_at', null).maybeSingle(),
         supabase.from('collection_items').select('*').eq('collection_id', id).order('position', { ascending: true }),
     ]);
     return { collection: (collection as Collection) ?? null, items: (items ?? []) as CollectionItem[] };
@@ -175,7 +195,7 @@ export async function getFollowedCollections(): Promise<Collection[]> {
         .order('created_at', { ascending: false });
     const ids = (follows ?? []).map((row) => String(row.collection_id));
     if (!ids.length) return [];
-    const { data } = await supabase.from('collections').select('*').in('id', ids);
+    const { data } = await supabase.from('collections').select('*').in('id', ids).is('deleted_at', null);
     const order = new Map(ids.map((id, i) => [id, i]));
     return ((data ?? []) as Collection[]).sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
 }

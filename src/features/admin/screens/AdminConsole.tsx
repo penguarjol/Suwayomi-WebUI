@@ -7,7 +7,6 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { Navigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Tab from '@mui/material/Tab';
@@ -33,7 +32,6 @@ import {
 } from '@/features/campaigns/Campaigns.ts';
 import { useAppTitle } from '@/features/navigation-bar/hooks/useAppTitle.ts';
 import { LoadingPlaceholder } from '@/base/components/feedback/LoadingPlaceholder.tsx';
-import { AppRoutes } from '@/base/AppRoute.constants.ts';
 import { makeToast } from '@/base/utils/Toast.ts';
 import { getErrorMessage } from '@/lib/HelperFunctions.ts';
 
@@ -758,9 +756,51 @@ export function AdminConsole() {
     const isAdmin = useBillingStore((state) => state.isAdmin);
     const loaded = useBillingStore((state) => state.loaded);
     const [tab, setTab] = useState(0);
+    const [rechecking, setRechecking] = useState(false);
 
     if (!loaded) return <LoadingPlaceholder />;
-    if (!isAdmin) return <Navigate to={AppRoutes.root.path} replace />;
+
+    // Don't silently bounce non-admins (that looked like "the console is missing").
+    // Explain exactly how to gain access and let them re-check after fixing it.
+    if (!isAdmin) {
+        const recheck = async () => {
+            setRechecking(true);
+            await useBillingStore.getState().loadProfile();
+            setRechecking(false);
+        };
+        return (
+            <Box sx={{ p: { xs: 2, sm: 3 }, maxWidth: 640, mx: 'auto' }}>
+                <Typography variant="h5" sx={{ fontWeight: 900, mb: 1 }}>
+                    Admin access required
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                    Your account is signed in but its role is not <strong>admin</strong>, so the command console is
+                    locked. Make your account an admin in Supabase, then re-check:
+                </Typography>
+                <Box
+                    component="pre"
+                    sx={{
+                        p: 2,
+                        mb: 2,
+                        borderRadius: 2,
+                        overflowX: 'auto',
+                        background: 'rgba(255,255,255,0.05)',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        fontSize: 13,
+                    }}
+                >
+                    {"update public.profiles\n  set role = 'admin'\n  where email = 'YOUR_EMAIL_HERE';"}
+                </Box>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                    Run it in the Supabase SQL editor (or psql), then click Re-check (or reload). Once you are an admin,
+                    the shield icon appears in the top bar and the Admin item shows in the menu.
+                </Typography>
+                <Button variant="contained" onClick={recheck} disabled={rechecking} sx={{ textTransform: 'none' }}>
+                    {rechecking ? 'Checking…' : 'Re-check access'}
+                </Button>
+            </Box>
+        );
+    }
 
     return (
         <Box sx={{ p: { xs: 2, sm: 3 }, maxWidth: 900, mx: 'auto' }}>
