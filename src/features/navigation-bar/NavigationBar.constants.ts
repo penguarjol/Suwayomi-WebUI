@@ -27,6 +27,8 @@ import RedeemIcon from '@mui/icons-material/Redeem';
 import RedeemOutlinedIcon from '@mui/icons-material/RedeemOutlined';
 import StorefrontIcon from '@mui/icons-material/Storefront';
 import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined';
+import AutoStoriesIcon from '@mui/icons-material/AutoStories';
+import AutoStoriesOutlinedIcon from '@mui/icons-material/AutoStoriesOutlined';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import AdminPanelSettingsOutlinedIcon from '@mui/icons-material/AdminPanelSettingsOutlined';
 import { useTranslation } from 'react-i18next';
@@ -100,6 +102,14 @@ const NAVIGATION_BAR_BASE_ITEMS = [
 ] as const satisfies RestrictedNavBarItem<'both'>[];
 
 const NAVIGATION_BAR_DESKTOP_ITEMS = [
+    {
+        path: AppRoutes.originals.path,
+        title: 'global.label.originals',
+        SelectedIconComponent: AutoStoriesIcon,
+        IconComponent: AutoStoriesOutlinedIcon,
+        show: 'desktop',
+        moreGroup: NavBarItemMoreGroup.GENERAL,
+    },
     {
         path: AppRoutes.marketplace.path,
         title: 'global.label.marketplace',

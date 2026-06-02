@@ -226,6 +226,26 @@ export const AppRoutes = {
         match: 'collection/:id',
         path: (id: string) => `/collection/${id}`,
     },
+    originals: {
+        match: 'originals',
+        path: '/originals',
+    },
+    originalWork: {
+        match: 'originals/work/:id',
+        path: (id: string) => `/originals/work/${id}`,
+    },
+    originalReader: {
+        match: 'originals/read/:chapterId',
+        path: (chapterId: string) => `/originals/read/${chapterId}`,
+    },
+    studio: {
+        match: 'studio',
+        path: '/studio',
+    },
+    studioWork: {
+        match: 'studio/work/:id',
+        path: (id: string) => `/studio/work/${id}`,
+    },
 } as const satisfies TAppRoutes;
 
 type ExtractChildRouteStringPaths<T> = T extends { childRoutes: infer U } ? ExtractStringPaths<U[keyof U]> : never;

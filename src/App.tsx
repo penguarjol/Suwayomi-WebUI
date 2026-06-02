@@ -54,6 +54,11 @@ const { CollectionDetail } = loadable(
     () => import('@/features/marketplace/screens/CollectionDetail.tsx'),
     lazyLoadFallback,
 );
+const { Originals } = loadable(() => import('@/features/originals/screens/Originals.tsx'), lazyLoadFallback);
+const { OriginalWork } = loadable(() => import('@/features/originals/screens/OriginalWork.tsx'), lazyLoadFallback);
+const { OriginalReader } = loadable(() => import('@/features/originals/screens/OriginalReader.tsx'), lazyLoadFallback);
+const { CreatorStudio } = loadable(() => import('@/features/originals/screens/CreatorStudio.tsx'), lazyLoadFallback);
+const { WorkEditor } = loadable(() => import('@/features/originals/screens/WorkEditor.tsx'), lazyLoadFallback);
 const { Manga } = loadable(() => import('@/features/manga/screens/Manga.tsx'), lazyLoadFallback);
 const { SearchAll } = loadable(() => import('@/features/global-search/screens/SearchAll.tsx'), lazyLoadFallback);
 const { Settings } = loadable(() => import('@/features/settings/screens/Settings.tsx'), lazyLoadFallback);
@@ -298,6 +303,11 @@ const MainApp = () => {
                         <Route path={AppRoutes.earn.match} element={<EarnCoins />} />
                         <Route path={AppRoutes.marketplace.match} element={<Marketplace />} />
                         <Route path={AppRoutes.collection.match} element={<CollectionDetail />} />
+                        <Route path={AppRoutes.originals.match} element={<Originals />} />
+                        <Route path={AppRoutes.originalWork.match} element={<OriginalWork />} />
+                        <Route path={AppRoutes.originalReader.match} element={<OriginalReader />} />
+                        <Route path={AppRoutes.studio.match} element={<CreatorStudio />} />
+                        <Route path={AppRoutes.studioWork.match} element={<WorkEditor />} />
                         <Route path={AppRoutes.updates.match} element={<Updates />} />
                         {!hideHistory && <Route path={AppRoutes.history.match} element={<History />} />}
                         <Route path={AppRoutes.browse.match} element={<Browse />} />
