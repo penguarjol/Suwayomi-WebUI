@@ -14,6 +14,7 @@ import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
 import Avatar from '@mui/material/Avatar';
 import { supabase } from '@/lib/SupabaseClient.ts';
+import { makeToast } from '@/base/utils/Toast.ts';
 
 // Type for comment with basic profile relation if available
 interface Profile {
@@ -107,7 +108,7 @@ const ReaderCommentsBase = ({ chapterId }: { chapterId: number | string }) => {
             setNewComment('');
             fetchComments();
         } else {
-            alert('Failed to post comment.');
+            makeToast('Failed to post comment.', 'error');
         }
     };
 

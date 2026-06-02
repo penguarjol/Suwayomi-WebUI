@@ -25,16 +25,24 @@ export const AuthGuard = ({ children }: { children: ReactNode }) => {
                 // Enforce authentication for Supabase integration
                 AuthManager.setAuthRequired(true);
 
+                // Bound the session lookup so a slow/offline network resolves to
+                // the login screen instead of an indefinite splash (ADR-0004).
+                const sessionResult = await Promise.race([
+                    supabase.auth.getSession(),
+                    new Promise<{ data: { session: null } }>((resolve) => {
+                        setTimeout(() => resolve({ data: { session: null } }), 8000);
+                    }),
+                ]);
                 const {
                     data: { session },
-                } = await supabase.auth.getSession();
-                
+                } = sessionResult;
+
                 if (session) {
                     AuthManager.setTokens(session.access_token, session.refresh_token);
 
                     // Sync Admin state from localStorage/Profile
                     const cachedIsAdmin = localStorage.getItem('isAdmin');
-                    
+
                     if (cachedIsAdmin === null) {
                         // Cold start rescue: fetch profile if missing from cache
                         const { data: profile } = await supabase
@@ -42,7 +50,7 @@ export const AuthGuard = ({ children }: { children: ReactNode }) => {
                             .select('role')
                             .eq('id', session.user.id)
                             .single();
-                        
+
                         localStorage.setItem('isAdmin', profile?.role === 'admin' ? 'true' : 'false');
                     }
                 } else {
@@ -50,6 +58,7 @@ export const AuthGuard = ({ children }: { children: ReactNode }) => {
                     AuthManager.removeTokens();
                 }
             } catch (e) {
+                // eslint-disable-next-line no-console
                 console.error('[AuthGuard] Initialization error:', e);
             } finally {
                 AuthManager.setAuthInitialized(true);
@@ -66,4 +75,3 @@ export const AuthGuard = ({ children }: { children: ReactNode }) => {
 
     return children;
 };
-

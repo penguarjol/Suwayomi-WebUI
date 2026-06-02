@@ -1,7 +1,7 @@
 {
-  "name": "Nova",
-  "short_name": "Nova",
-  "start_url": ".",
+  "name": "Nexus Reads",
+  "short_name": "Nexus Reads",
+  "start_url": "/",
   "icons": [
     {
       "src": "./web-app-manifest-192x192.png",
@@ -21,7 +21,7 @@
       "purpose": "maskable"
     }
   ],
-  "theme_color": "#3181C0",
-  "background_color": "#3181C0",
+  "theme_color": "#ec4899",
+  "background_color": "#0E0914",
   "display": "standalone"
 }

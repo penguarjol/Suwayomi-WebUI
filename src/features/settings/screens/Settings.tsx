@@ -138,6 +138,7 @@ export function Settings() {
                     try {
                         await supabase.auth.signOut();
                     } catch (e) {
+                        // eslint-disable-next-line no-console
                         console.error('SignOut failed', e);
                     } finally {
                         // Nuclear option: Clear everything to prevent any zombie session state

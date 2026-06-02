@@ -79,8 +79,10 @@ export const LoginPage = () => {
                         .eq('id', data.session.user.id)
                         .single();
 
-                    console.log('[LoginPage] Supabase Profile Fetch:', profile);
-                    if (profileError) console.error('[LoginPage] Profile Fetch Error:', profileError);
+                    if (profileError) {
+                        // eslint-disable-next-line no-console
+                        console.error('[LoginPage] Profile fetch error:', profileError);
+                    }
 
                     if (profile && profile.role === 'admin') {
                         localStorage.setItem('isAdmin', 'true');

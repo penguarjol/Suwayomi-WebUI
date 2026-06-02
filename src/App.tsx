@@ -117,8 +117,8 @@ const InitialBackgroundRequests = () => {
 
         // Initialize RevenueCat if on native platform
         if (Capacitor.isNativePlatform()) {
-            Purchases.setLogLevel(LOG_LEVEL.DEBUG);
-            Purchases.configure({ apiKey: 'test_HXuqsAqZTJRCrZxfbOHkfjePCVA' });
+            Purchases.setLogLevel({ level: LOG_LEVEL.DEBUG });
+            Purchases.configure({ apiKey: import.meta.env.VITE_REVENUECAT_API_KEY ?? '' });
         }
     }, []);
 
@@ -202,14 +202,12 @@ const MainApp = () => {
 
                     <Route element={<PrivateRoutes />}>
                         {/* General Routes */}
+                        {/* Home = Library: a robust landing with a defined empty state.
+                            Avoids the prior hardcoded-source redirect that black-screened
+                            when that source was missing/restricted (see ADR-0004). */}
                         <Route
                             path={AppRoutes.root.match}
-                            element={
-                                <Navigate
-                                    to={AppRoutes.sources.childRoutes.browse.path('2131019126180322627')}
-                                    replace
-                                />
-                            }
+                            element={<Navigate to={AppRoutes.library.path()} replace />}
                         />
                         <Route
                             path={AppRoutes.matchAll.match}
