@@ -10,7 +10,7 @@
     "dev": "yarn setup && vite",
     "preview": "yarn setup && vite preview",
     "build": "yarn setup && vite build",
-    "test": "node -e \"console.log('imagine')\"",
+    "test": "vitest run",
     "build-md5": "find build -type f | sort | xargs md5sum | awk '{ print $1 }' | tr -d '\n' | md5sum| awk '{ print $1 }' > buildZip/md5sum ",
     "build-zip": "cd build && rev=$(git rev-list HEAD --count) && echo r$rev > revision && zip -9 -r ../buildZip/Suwayomi-WebUI-r$rev *",
     "lint": "eslint src --ext .ts,.tsx,.js,.jsx --max-warnings=0 --cache",
@@ -134,6 +134,7 @@
     "vite-plugin-node-polyfills": "0.24.0",
     "vite-plugin-pwa": "1.1.0",
     "vite-tsconfig-paths": "5.1.4",
+    "vitest": "^2",
     "workbox-window": "7.4.0",
     "yargs": "18.0.0"
   }

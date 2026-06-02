@@ -14,6 +14,7 @@ import { ComponentProps, useCallback, useEffect, useMemo, useState } from 'react
 import { useTranslation } from 'react-i18next';
 import { requestManager } from '@/lib/requests/RequestManager.ts';
 import { useBillingStore } from '@/features/billing/Billing.ts';
+import { applyUserProgress } from '@/features/library/services/UserProgress.ts';
 import { ResumeFab } from '@/features/manga/components/ResumeFAB.tsx';
 import {
     filterAndSortChapters,
@@ -145,13 +146,23 @@ export const ChapterList = ({
     const visibleChapterIds = useMemo(() => Chapters.getIds(visibleChapters), [visibleChapters]);
     const missingChapterCount = useMemo(() => Chapters.getMissingCount(visibleChapters), [visibleChapters]);
 
-    // Resolve Fast Pass lock state for this manga's chapters (Supabase, per-user).
+    // Resolve Fast Pass lock state + per-user reading progress for this manga's
+    // chapters (Supabase). applyUserProgress overlays per-user isRead/lastPageRead
+    // onto the Apollo cache so the list + reader reflect THIS user (ADR-0005).
     const allChapterIds = useMemo(() => Chapters.getIds(chapters), [chapters]);
     useEffect(() => {
         if (allChapterIds.length) {
             useBillingStore.getState().loadLocksForChapters(allChapterIds);
+            applyUserProgress(allChapterIds).catch(defaultPromiseErrorHandler('ChapterList::applyUserProgress'));
         }
     }, [allChapterIds]);
+
+    // Per-user "continue from" chapter (first unread by reading order), so the
+    // Resume FAB reflects this user rather than the shared engine state.
+    const userFirstUnreadChapter = useMemo(() => {
+        const ascending = [...chapters].sort((a, b) => a.sourceOrder - b.sourceOrder);
+        return ascending.find((chapter) => !chapter.isRead) ?? null;
+    }, [chapters]);
 
     const noChaptersFound = chapters.length === 0;
     const noChaptersMatchingFilter = !noChaptersFound && visibleChapters.length === 0;
@@ -267,7 +278,7 @@ export const ChapterList = ({
                 selectedChapters={selectedItemIds
                     .map((id) => chapters.find((chapter) => chapter.id === id))
                     .filter((chapter) => chapter != null)}
-                firstUnreadChapter={manga.firstUnreadChapter}
+                firstUnreadChapter={userFirstUnreadChapter ?? manga.firstUnreadChapter}
                 onFABMenuClose={clearSelection}
             />
         </>

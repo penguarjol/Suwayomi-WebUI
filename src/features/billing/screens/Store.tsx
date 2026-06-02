@@ -6,7 +6,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { StringParam, useQueryParam } from 'use-query-params';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
@@ -83,6 +84,19 @@ export function Store() {
     const tokens = useBillingStore((state) => state.tokens);
     const isPremium = useBillingStore((state) => state.isPremium);
     const [busy, setBusy] = useState(false);
+    const [purchase, setPurchase] = useQueryParam('purchase', StringParam);
+
+    // Handle the return from Stripe web checkout (success/cancel redirect).
+    useEffect(() => {
+        if (purchase === 'success') {
+            makeToast('Purchase complete! Your Coins will appear in a moment.', 'success');
+            useBillingStore.getState().loadProfile();
+            setPurchase(undefined);
+        } else if (purchase === 'cancel') {
+            makeToast('Checkout canceled.', 'info');
+            setPurchase(undefined);
+        }
+    }, [purchase, setPurchase]);
 
     const buy = async (productId: string) => {
         setBusy(true);

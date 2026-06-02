@@ -39,6 +39,7 @@ import {
     updateReaderStateVisibleChapters,
 } from '@/features/reader/Reader.utils.ts';
 import { defaultPromiseErrorHandler } from '@/lib/DefaultPromiseErrorHandler.ts';
+import { writeUserProgress } from '@/features/library/services/UserProgress.ts';
 import { Queue } from '@/lib/Queue.ts';
 import { AppRoutes } from '@/base/AppRoute.constants.ts';
 import { getErrorMessage } from '@/lib/HelperFunctions.ts';
@@ -223,6 +224,16 @@ export class ReaderService {
                 };
 
                 ReaderService.getOrCreateChapterUpdateQueue(currentChapter.id).enqueue(`${currentChapter.id}`, update);
+
+                // Mirror progress to the per-user store (Supabase + RLS) so each
+                // user's reading state is isolated from the shared engine (ADR-0005).
+                writeUserProgress(
+                    manga.id,
+                    currentChapter.id,
+                    currentChapter.sourceOrder,
+                    patch.lastPageRead ?? currentChapter.lastPageRead,
+                    patch.isRead ?? currentChapter.isRead,
+                ).catch(defaultPromiseErrorHandler('ReaderService::writeUserProgress'));
             },
             [deleteChaptersWhileReading, deleteChaptersWithBookmark, updateProgressAfterReading],
         );

@@ -46,6 +46,32 @@ export const DEFAULT_SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     { id: 'premium_annual', label: 'Annual', priceUsd: 49.99, period: 'year' },
 ];
 
+/**
+ * Pure: given the gated schedules (already filtered to release_date in the
+ * future), the chapters this user has unlocked, and their entitlement, return
+ * which chapters are locked and their cost. Premium/admin lock nothing.
+ */
+export function computeLockedChapters(
+    schedules: { chapter_id: string | number; token_cost: number | null }[],
+    unlockedChapterIds: (string | number)[],
+    opts: { isPremium: boolean; isAdmin: boolean },
+): { lockedChapterIds: number[]; chapterCosts: Record<number, number> } {
+    if (opts.isPremium || opts.isAdmin) return { lockedChapterIds: [], chapterCosts: {} };
+
+    const unlocked = new Set(unlockedChapterIds.map(String));
+    const lockedChapterIds: number[] = [];
+    const chapterCosts: Record<number, number> = {};
+    for (const schedule of schedules) {
+        const idStr = String(schedule.chapter_id);
+        if (!unlocked.has(idStr)) {
+            const numId = Number(idStr);
+            lockedChapterIds.push(numId);
+            chapterCosts[numId] = Number(schedule.token_cost ?? 5);
+        }
+    }
+    return { lockedChapterIds, chapterCosts };
+}
+
 export interface PaywallChapter {
     id: number;
     name: string;
@@ -115,18 +141,12 @@ export const useBillingStore = create<BillingStore>((set, get) => ({
                 supabase.from('chapter_unlocks').select('chapter_id').in('chapter_id', idStrings),
             ]);
 
-            const unlockedIds = new Set((unlocks ?? []).map((row) => String(row.chapter_id)));
-            const costs: Record<number, number> = {};
-            const locked: number[] = [];
-            for (const row of schedules ?? []) {
-                const idStr = String(row.chapter_id);
-                if (!unlockedIds.has(idStr)) {
-                    const numId = Number(idStr);
-                    locked.push(numId);
-                    costs[numId] = Number(row.token_cost ?? 5);
-                }
-            }
-            set({ lockedChapterIds: locked, chapterCosts: costs });
+            const { lockedChapterIds, chapterCosts } = computeLockedChapters(
+                schedules ?? [],
+                (unlocks ?? []).map((row) => row.chapter_id),
+                { isPremium, isAdmin },
+            );
+            set({ lockedChapterIds, chapterCosts });
         } catch {
             set({ lockedChapterIds: [], chapterCosts: {} });
         }

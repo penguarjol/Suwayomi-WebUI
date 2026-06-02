@@ -9,6 +9,7 @@
   "include": [
     "vite.config.ts",
     "gql_codegen.ts",
-    "capacitor.config.ts"
+    "capacitor.config.ts",
+    "vitest.config.ts"
   ]
 }

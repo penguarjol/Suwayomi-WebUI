@@ -43,6 +43,7 @@ const { DownloadQueue } = loadable(() => import('@/features/downloads/screens/Do
 // `Library` screen is intentionally no longer routed (see ADR-0005).
 const { MyLibrary } = loadable(() => import('@/features/library/screens/MyLibrary.tsx'), lazyLoadFallback);
 const { Store } = loadable(() => import('@/features/billing/screens/Store.tsx'), lazyLoadFallback);
+const { AdminConsole } = loadable(() => import('@/features/admin/screens/AdminConsole.tsx'), lazyLoadFallback);
 const { Manga } = loadable(() => import('@/features/manga/screens/Manga.tsx'), lazyLoadFallback);
 const { SearchAll } = loadable(() => import('@/features/global-search/screens/SearchAll.tsx'), lazyLoadFallback);
 const { Settings } = loadable(() => import('@/features/settings/screens/Settings.tsx'), lazyLoadFallback);
@@ -282,6 +283,7 @@ const MainApp = () => {
                         </Route>
                         <Route path={AppRoutes.library.match} element={<MyLibrary />} />
                         <Route path={AppRoutes.store.match} element={<Store />} />
+                        <Route path={AppRoutes.admin.match} element={<AdminConsole />} />
                         <Route path={AppRoutes.updates.match} element={<Updates />} />
                         {!hideHistory && <Route path={AppRoutes.history.match} element={<History />} />}
                         <Route path={AppRoutes.browse.match} element={<Browse />} />
