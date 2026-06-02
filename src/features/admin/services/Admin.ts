@@ -83,6 +83,29 @@ export const Admin = {
         return Number(data);
     },
 
+    async refund(email: string, amount: number, reason: string): Promise<number> {
+        const { data, error } = await supabase.rpc('admin_refund', {
+            p_email: email,
+            p_amount: amount,
+            p_reason: reason || 'refund',
+        });
+        if (error) throw error;
+        return Number(data);
+    },
+
+    /** Refund the actual card charge via Stripe (Gatekeeper, admin-gated). */
+    async stripeRefund(paymentIntent: string): Promise<{ ok: boolean; error?: string }> {
+        const { data } = await supabase.auth.getSession();
+        const token = data.session?.access_token;
+        const res = await fetch('/api/saas/admin/stripe-refund', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+            body: JSON.stringify({ paymentIntent }),
+        });
+        if (res.ok) return { ok: true };
+        return { ok: false, error: res.status === 501 ? 'not_configured' : `status_${res.status}` };
+    },
+
     async getTopManga(limit = 20): Promise<{ manga_id: number; readers: number; chapters_read: number }[]> {
         const { data, error } = await supabase.rpc('admin_top_manga', { p_limit: limit });
         if (error) throw error;

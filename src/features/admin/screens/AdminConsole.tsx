@@ -17,11 +17,20 @@ import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { requestManager } from '@/lib/requests/RequestManager.ts';
 import { DEFAULT_SUBSCRIPTION_PLANS, DEFAULT_TOKEN_PACKS, useBillingStore } from '@/features/billing/Billing.ts';
 import { Admin, ChapterSchedule, GlobalSource } from '@/features/admin/services/Admin.ts';
 import { FeedbackItem, getFeedback, setFeedbackStatus } from '@/features/feedback/Feedback.ts';
+import {
+    Campaign,
+    createCampaign,
+    deleteCampaign,
+    listAllCampaigns,
+    setCampaignActive,
+} from '@/features/campaigns/Campaigns.ts';
 import { useAppTitle } from '@/features/navigation-bar/hooks/useAppTitle.ts';
 import { LoadingPlaceholder } from '@/base/components/feedback/LoadingPlaceholder.tsx';
 import { AppRoutes } from '@/base/AppRoute.constants.ts';
@@ -501,11 +510,218 @@ const FeedbackInbox = () => {
     );
 };
 
+const Refunds = () => {
+    const [email, setEmail] = useState('');
+    const [amount, setAmount] = useState('');
+    const [reason, setReason] = useState('refund');
+    const [paymentIntent, setPaymentIntent] = useState('');
+    const [busy, setBusy] = useState(false);
+
+    const refund = async () => {
+        if (!email.trim() || !Number(amount)) {
+            makeToast('Enter a user email and amount', 'warning');
+            return;
+        }
+        setBusy(true);
+        try {
+            const balance = await Admin.refund(email.trim(), Number(amount), reason.trim());
+            if (paymentIntent.trim()) {
+                const result = await Admin.stripeRefund(paymentIntent.trim());
+                if (!result.ok) {
+                    makeToast(
+                        result.error === 'not_configured'
+                            ? 'Coins reversed. Stripe not configured — refund the card in Stripe.'
+                            : 'Coins reversed, but the Stripe refund failed.',
+                        'warning',
+                    );
+                    return;
+                }
+            }
+            makeToast(`Refunded. New balance: ${balance} Coins`, 'success');
+        } catch (e) {
+            makeToast('Refund failed', 'error', getErrorMessage(e));
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    return (
+        <Stack sx={{ gap: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+                Reverse Coins from a user (chargeback or support refund). Optionally enter the Stripe payment-intent id
+                to also refund the card. Every refund is recorded in the token ledger.
+            </Typography>
+            <Stack sx={{ flexDirection: 'row', gap: 1.5, flexWrap: 'wrap', alignItems: 'center' }}>
+                <TextField size="small" label="User email" value={email} onChange={(e) => setEmail(e.target.value)} />
+                <TextField
+                    size="small"
+                    label="Coins to reverse"
+                    type="number"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    sx={{ width: 150 }}
+                />
+                <TextField size="small" label="Reason" value={reason} onChange={(e) => setReason(e.target.value)} />
+            </Stack>
+            <Stack sx={{ flexDirection: 'row', gap: 1.5, flexWrap: 'wrap', alignItems: 'center' }}>
+                <TextField
+                    size="small"
+                    label="Stripe payment intent (optional)"
+                    value={paymentIntent}
+                    onChange={(e) => setPaymentIntent(e.target.value)}
+                    sx={{ minWidth: 280 }}
+                />
+                <Button
+                    color="warning"
+                    variant="contained"
+                    disabled={busy}
+                    onClick={refund}
+                    sx={{ textTransform: 'none' }}
+                >
+                    Refund
+                </Button>
+            </Stack>
+        </Stack>
+    );
+};
+
+const CampaignManager = () => {
+    const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+    const [title, setTitle] = useState('');
+    const [description, setDescription] = useState('');
+    const [rewardType, setRewardType] = useState<'coins' | 'premium_days'>('coins');
+    const [rewardAmount, setRewardAmount] = useState('25');
+    const [cooldown, setCooldown] = useState('0');
+    const [busy, setBusy] = useState(false);
+
+    const refresh = () =>
+        listAllCampaigns()
+            .then(setCampaigns)
+            .catch(() => setCampaigns([]));
+    useEffect(() => {
+        refresh();
+    }, []);
+
+    const create = async () => {
+        if (!title.trim()) return;
+        setBusy(true);
+        try {
+            await createCampaign({
+                title: title.trim(),
+                description: description.trim(),
+                reward_type: rewardType,
+                reward_amount: Number(rewardAmount) || 0,
+                cooldown_hours: Number(cooldown) || 0,
+            });
+            setTitle('');
+            setDescription('');
+            refresh();
+        } catch (e) {
+            makeToast('Could not create campaign', 'error', getErrorMessage(e));
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const toggle = async (campaign: Campaign) => {
+        await setCampaignActive(campaign.id, !campaign.active).catch(() => {});
+        refresh();
+    };
+    const remove = async (id: string) => {
+        await deleteCampaign(id).catch(() => {});
+        refresh();
+    };
+
+    return (
+        <Stack sx={{ gap: 3 }}>
+            <Typography variant="body2" color="text.secondary">
+                Run reward campaigns to drive engagement: one-time bonuses (cooldown 0) or repeatable ones (e.g. a daily
+                check-in with cooldown 24). Rewards are Coins or Premium days.
+            </Typography>
+            <Stack sx={{ gap: 1.5, flexWrap: 'wrap' }}>
+                <Stack sx={{ flexDirection: 'row', gap: 1.5, flexWrap: 'wrap' }}>
+                    <TextField size="small" label="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
+                    <TextField
+                        size="small"
+                        label="Description"
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        sx={{ flexGrow: 1, minWidth: 180 }}
+                    />
+                </Stack>
+                <Stack sx={{ flexDirection: 'row', gap: 1.5, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <ToggleButtonGroup
+                        exclusive
+                        size="small"
+                        value={rewardType}
+                        onChange={(_, value) => value && setRewardType(value)}
+                    >
+                        <ToggleButton value="coins" sx={{ textTransform: 'none' }}>
+                            Coins
+                        </ToggleButton>
+                        <ToggleButton value="premium_days" sx={{ textTransform: 'none' }}>
+                            Premium days
+                        </ToggleButton>
+                    </ToggleButtonGroup>
+                    <TextField
+                        size="small"
+                        label="Amount"
+                        type="number"
+                        value={rewardAmount}
+                        onChange={(e) => setRewardAmount(e.target.value)}
+                        sx={{ width: 110 }}
+                    />
+                    <TextField
+                        size="small"
+                        label="Cooldown (h)"
+                        type="number"
+                        value={cooldown}
+                        onChange={(e) => setCooldown(e.target.value)}
+                        sx={{ width: 130 }}
+                    />
+                    <Button variant="contained" disabled={busy} onClick={create} sx={{ textTransform: 'none' }}>
+                        Create
+                    </Button>
+                </Stack>
+            </Stack>
+            <Stack sx={{ gap: 1 }}>
+                {campaigns.map((campaign) => (
+                    <Stack
+                        key={campaign.id}
+                        sx={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            gap: 1,
+                            p: 1.25,
+                            borderRadius: 1.5,
+                            border: '1px solid rgba(255,255,255,0.06)',
+                        }}
+                    >
+                        <Stack sx={{ flexGrow: 1 }}>
+                            <Typography sx={{ fontWeight: 700 }}>{campaign.title}</Typography>
+                            <Typography variant="caption" color="text.secondary">
+                                {`${campaign.reward_amount} ${campaign.reward_type === 'coins' ? 'Coins' : 'Premium days'} · ${campaign.cooldown_hours === 0 ? 'one-time' : `every ${campaign.cooldown_hours}h`}`}
+                            </Typography>
+                        </Stack>
+                        <Switch checked={campaign.active} onChange={() => toggle(campaign)} />
+                        <IconButton size="small" aria-label="delete campaign" onClick={() => remove(campaign.id)}>
+                            <DeleteIcon fontSize="small" />
+                        </IconButton>
+                    </Stack>
+                ))}
+                {!campaigns.length && <Typography color="text.secondary">No campaigns yet.</Typography>}
+            </Stack>
+        </Stack>
+    );
+};
+
 const TABS = [
     { label: 'Sources', render: () => <SourceManager /> },
     { label: 'Fast Pass', render: () => <FastPassScheduler /> },
     { label: 'Pricing', render: () => <PricingEditor /> },
     { label: 'Grant Coins', render: () => <GrantCoins /> },
+    { label: 'Refunds', render: () => <Refunds /> },
+    { label: 'Campaigns', render: () => <CampaignManager /> },
     { label: 'Analytics', render: () => <Analytics /> },
     { label: 'Feedback', render: () => <FeedbackInbox /> },
 ];

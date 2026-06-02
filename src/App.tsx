@@ -47,6 +47,7 @@ const { MyLibrary } = loadable(() => import('@/features/library/screens/MyLibrar
 const { Store } = loadable(() => import('@/features/billing/screens/Store.tsx'), lazyLoadFallback);
 const { AdminConsole } = loadable(() => import('@/features/admin/screens/AdminConsole.tsx'), lazyLoadFallback);
 const { SocialFeed } = loadable(() => import('@/features/social/screens/SocialFeed.tsx'), lazyLoadFallback);
+const { EarnCoins } = loadable(() => import('@/features/campaigns/screens/EarnCoins.tsx'), lazyLoadFallback);
 const { Manga } = loadable(() => import('@/features/manga/screens/Manga.tsx'), lazyLoadFallback);
 const { SearchAll } = loadable(() => import('@/features/global-search/screens/SearchAll.tsx'), lazyLoadFallback);
 const { Settings } = loadable(() => import('@/features/settings/screens/Settings.tsx'), lazyLoadFallback);
@@ -288,6 +289,7 @@ const MainApp = () => {
                         <Route path={AppRoutes.store.match} element={<Store />} />
                         <Route path={AppRoutes.admin.match} element={<AdminConsole />} />
                         <Route path={AppRoutes.social.match} element={<SocialFeed />} />
+                        <Route path={AppRoutes.earn.match} element={<EarnCoins />} />
                         <Route path={AppRoutes.updates.match} element={<Updates />} />
                         {!hideHistory && <Route path={AppRoutes.history.match} element={<History />} />}
                         <Route path={AppRoutes.browse.match} element={<Browse />} />

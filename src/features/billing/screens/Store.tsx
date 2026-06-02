@@ -15,6 +15,9 @@ import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
+import RedeemIcon from '@mui/icons-material/Redeem';
+import { Link } from 'react-router-dom';
+import { AppRoutes } from '@/base/AppRoute.constants.ts';
 import {
     DEFAULT_TOKEN_PACKS,
     DEFAULT_SUBSCRIPTION_PLANS,
@@ -193,6 +196,18 @@ export function Store() {
                         onBuy={() => buy(pack.id)}
                     />
                 ))}
+            </Box>
+
+            <Box sx={{ textAlign: 'center', mt: 3 }}>
+                <Button
+                    component={Link}
+                    to={AppRoutes.earn.path}
+                    variant="outlined"
+                    startIcon={<RedeemIcon />}
+                    sx={{ borderRadius: '50px', textTransform: 'none', fontWeight: 700 }}
+                >
+                    Earn free Coins
+                </Button>
             </Box>
 
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 3, textAlign: 'center' }}>
