@@ -33,10 +33,13 @@ import { SearchParam } from '@/base/Base.types.ts';
 import { defaultPromiseErrorHandler } from '@/lib/DefaultPromiseErrorHandler.ts';
 import { ReactRouter } from '@/lib/react-router/ReactRouter.ts';
 import { AuthManager } from '@/features/authentication/AuthManager.ts';
+import { useUserLibraryStore } from '@/features/library/services/UserLibrary.ts';
 
 const { Browse } = loadable(() => import('@/features/browse/screens/Browse.tsx'), lazyLoadFallback);
 const { DownloadQueue } = loadable(() => import('@/features/downloads/screens/DownloadQueue.tsx'), lazyLoadFallback);
-const { Library } = loadable(() => import('@/features/library/screens/Library.tsx'), lazyLoadFallback);
+// Per-user, Supabase-backed library (multi-tenancy). The engine's shared
+// `Library` screen is intentionally no longer routed (see ADR-0005).
+const { MyLibrary } = loadable(() => import('@/features/library/screens/MyLibrary.tsx'), lazyLoadFallback);
 const { Manga } = loadable(() => import('@/features/manga/screens/Manga.tsx'), lazyLoadFallback);
 const { SearchAll } = loadable(() => import('@/features/global-search/screens/SearchAll.tsx'), lazyLoadFallback);
 const { Settings } = loadable(() => import('@/features/settings/screens/Settings.tsx'), lazyLoadFallback);
@@ -114,6 +117,9 @@ const InitialBackgroundRequests = () => {
         // Fetch extension list on startup to show up-to-date number of available extension updates in the navigation bar
         // without having to show the extensions page
         fetchExtensionList().catch(defaultPromiseErrorHandler('App::InitialBackgroundRequests: extension list'));
+
+        // Load the per-user library (Supabase + RLS) once on startup.
+        useUserLibraryStore.getState().load().catch(defaultPromiseErrorHandler('App::loadUserLibrary'));
 
         // Initialize RevenueCat if on native platform
         if (Capacitor.isNativePlatform()) {
@@ -270,7 +276,7 @@ const MainApp = () => {
                             <Route path={AppRoutes.manga.childRoutes.reader.match} element={null} />
                             <Route index element={<Manga />} />
                         </Route>
-                        <Route path={AppRoutes.library.match} element={<Library />} />
+                        <Route path={AppRoutes.library.match} element={<MyLibrary />} />
                         <Route path={AppRoutes.updates.match} element={<Updates />} />
                         {!hideHistory && <Route path={AppRoutes.history.match} element={<History />} />}
                         <Route path={AppRoutes.browse.match} element={<Browse />} />

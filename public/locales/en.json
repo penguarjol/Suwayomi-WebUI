@@ -618,7 +618,8 @@
     "info": {
       "label": {
         "added_to_library": "Added manga to library!",
-        "removed_from_library": "Removed manga from library!"
+        "removed_from_library": "Removed manga from library!",
+        "add_to_library_hint": "Browse a source and tap the heart to start your collection."
       }
     },
     "option": {

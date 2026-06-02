@@ -227,7 +227,7 @@ export const MangaDetails = ({
         }
     }, [manga.source]);
 
-    const { updateLibraryState } = useManageMangaLibraryState(manga);
+    const { updateLibraryState, isInLibrary } = useManageMangaLibraryState(manga);
 
     const copyTitle = async () => {
         try {
@@ -279,10 +279,10 @@ export const MangaDetails = ({
                     <CustomButton
                         size="medium"
                         onClick={updateLibraryState}
-                        variant={manga.inLibrary ? 'contained' : 'outlined'}
+                        variant={isInLibrary ? 'contained' : 'outlined'}
                     >
-                        {manga.inLibrary ? <FavoriteIcon /> : <FavoriteBorderIcon />}
-                        {manga.inLibrary ? t('manga.button.in_library') : t('manga.button.add_to_library')}
+                        {isInLibrary ? <FavoriteIcon /> : <FavoriteBorderIcon />}
+                        {isInLibrary ? t('manga.button.in_library') : t('manga.button.add_to_library')}
                     </CustomButton>
                     <TrackMangaButton manga={manga} />
                     <OpenSourceButton url={manga.realUrl} />
