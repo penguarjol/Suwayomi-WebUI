@@ -67,6 +67,35 @@ export async function applyUserProgress(chapterIds: number[]): Promise<void> {
     }
 }
 
+/**
+ * Manga ids the user has read most recently (for the "Continue Reading" rail),
+ * de-duplicated and ordered most-recent-first.
+ */
+export async function getInProgressMangaIds(limit = 12): Promise<number[]> {
+    try {
+        const { data, error } = await supabase
+            .from('user_chapter_progress')
+            .select('manga_id, updated_at')
+            .order('updated_at', { ascending: false })
+            .limit(60);
+        if (error) throw error;
+
+        const seen = new Set<number>();
+        const ids: number[] = [];
+        for (const row of data ?? []) {
+            const id = Number(row.manga_id);
+            if (!seen.has(id)) {
+                seen.add(id);
+                ids.push(id);
+            }
+            if (ids.length >= limit) break;
+        }
+        return ids;
+    } catch {
+        return [];
+    }
+}
+
 /** Persist this user's progress for a chapter and overlay it immediately. */
 export async function writeUserProgress(
     mangaId: number,

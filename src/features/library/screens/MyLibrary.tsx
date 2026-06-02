@@ -22,6 +22,7 @@ import { GET_MANGAS_BASE } from '@/lib/graphql/queries/MangaQuery.ts';
 import { GetMangasBaseQuery, GetMangasBaseQueryVariables } from '@/lib/graphql/generated/graphql.ts';
 import { Mangas } from '@/features/manga/services/Mangas.ts';
 import { useUserLibraryStore } from '@/features/library/services/UserLibrary.ts';
+import { ContinueReading } from '@/features/library/components/ContinueReading.tsx';
 import { useManageMangaLibraryState } from '@/features/manga/hooks/useManageMangaLibraryState.tsx';
 import { AppRoutes } from '@/base/AppRoute.constants.ts';
 import { useAppTitle } from '@/features/navigation-bar/hooks/useAppTitle.ts';
@@ -147,6 +148,7 @@ export function MyLibrary() {
 
     return (
         <Box sx={{ p: { xs: 1.5, sm: 2 } }}>
+            <ContinueReading />
             <Stack sx={{ flexDirection: 'row', alignItems: 'baseline', gap: 1, mb: 2, px: 0.5 }}>
                 <Typography variant="h6" sx={{ fontWeight: 800 }}>
                     {t('library.title')}
