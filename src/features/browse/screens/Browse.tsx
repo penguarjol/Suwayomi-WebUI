@@ -6,69 +6,15 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-import { useCallback, useRef, useState } from 'react';
-import Tab from '@mui/material/Tab';
 import { useTranslation } from 'react-i18next';
-import { StringParam, useQueryParam } from 'use-query-params';
 import { Sources } from '@/features/browse/sources/Sources.tsx';
-import { Extensions } from '@/features/browse/extensions/Extensions.tsx';
-import { TabPanel } from '@/base/components/tabs/TabPanel.tsx';
-import { TabsWrapper } from '@/base/components/tabs/TabsWrapper.tsx';
-import { TabsMenu } from '@/base/components/tabs/TabsMenu.tsx';
-import { useResizeObserver } from '@/base/hooks/useResizeObserver.tsx';
 import { useAppTitle } from '@/features/navigation-bar/hooks/useAppTitle.ts';
-import { BrowseTab } from '@/features/browse/Browse.types.ts';
-import { GROUPED_VIRTUOSO_Z_INDEX } from '@/lib/virtuoso/Virtuoso.constants.ts';
-import { SearchParam } from '@/base/Base.types.ts';
-import { useBillingStore } from '@/features/billing/Billing.ts';
 
+// Browse is sources-only. Extension management lives in the Admin Console
+// (Admin → Extensions); it is intentionally not exposed here.
 export function Browse() {
     const { t } = useTranslation();
     useAppTitle(t('global.label.browse'));
 
-    const tabsMenuRef = useRef<HTMLDivElement | null>(null);
-    const [tabsMenuHeight, setTabsMenuHeight] = useState(0);
-    useResizeObserver(
-        tabsMenuRef,
-        useCallback(() => setTabsMenuHeight(tabsMenuRef.current!.offsetHeight), [tabsMenuRef.current]),
-    );
-
-    const [tabSearchParam, setTabSearchParam] = useQueryParam(SearchParam.TAB, StringParam, {});
-    const tabName = (tabSearchParam as BrowseTab) ?? BrowseTab.SOURCES;
-
-    if (!tabSearchParam) {
-        setTabSearchParam(tabName, 'replaceIn');
-    }
-
-    const isAdmin = useBillingStore((state) => state.isAdmin);
-
-    return (
-        <TabsWrapper>
-            <TabsMenu
-                ref={tabsMenuRef}
-                sx={{ zIndex: GROUPED_VIRTUOSO_Z_INDEX }}
-                variant="fullWidth"
-                value={tabName}
-                onChange={(_, newTab) => setTabSearchParam(newTab, 'replaceIn')}
-            >
-                <Tab value={BrowseTab.SOURCES} sx={{ textTransform: 'none' }} label={t('source.title_other')} />
-                {isAdmin && (
-                    <Tab
-                        value={BrowseTab.EXTENSIONS}
-                        sx={{ textTransform: 'none' }}
-                        label={t('extension.title_other')}
-                    />
-                )}
-            </TabsMenu>
-            <TabPanel index={BrowseTab.SOURCE_DEPRECATED} currentIndex={tabName}>
-                <Sources tabsMenuHeight={tabsMenuHeight} />
-            </TabPanel>
-            <TabPanel index={BrowseTab.SOURCES} currentIndex={tabName}>
-                <Sources tabsMenuHeight={tabsMenuHeight} />
-            </TabPanel>
-            <TabPanel index={BrowseTab.EXTENSIONS} currentIndex={tabName}>
-                {isAdmin ? <Extensions tabsMenuHeight={tabsMenuHeight} /> : null}
-            </TabPanel>
-        </TabsWrapper>
-    );
+    return <Sources tabsMenuHeight={0} />;
 }

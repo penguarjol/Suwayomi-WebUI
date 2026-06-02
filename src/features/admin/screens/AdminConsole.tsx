@@ -7,6 +7,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Tab from '@mui/material/Tab';
@@ -16,12 +17,24 @@ import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
+import Avatar from '@mui/material/Avatar';
+import Pagination from '@mui/material/Pagination';
+import Chip from '@mui/material/Chip';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { requestManager } from '@/lib/requests/RequestManager.ts';
 import { DEFAULT_SUBSCRIPTION_PLANS, DEFAULT_TOKEN_PACKS, useBillingStore } from '@/features/billing/Billing.ts';
-import { Admin, ChapterSchedule, GlobalSource } from '@/features/admin/services/Admin.ts';
+import {
+    Admin,
+    AdminActivity,
+    AdminLedgerEntry,
+    AdminStats,
+    AdminUser,
+    ChapterSchedule,
+    GlobalSource,
+} from '@/features/admin/services/Admin.ts';
+import { Extensions } from '@/features/browse/extensions/Extensions.tsx';
 import { FeedbackItem, getFeedback, setFeedbackStatus } from '@/features/feedback/Feedback.ts';
 import {
     Campaign,
@@ -32,15 +45,21 @@ import {
 } from '@/features/campaigns/Campaigns.ts';
 import { useAppTitle } from '@/features/navigation-bar/hooks/useAppTitle.ts';
 import { LoadingPlaceholder } from '@/base/components/feedback/LoadingPlaceholder.tsx';
+import { AppRoutes } from '@/base/AppRoute.constants.ts';
 import { makeToast } from '@/base/utils/Toast.ts';
 import { getErrorMessage } from '@/lib/HelperFunctions.ts';
 
 type SourceState = { enabled: boolean; hidden: boolean; name: string | null };
 
+type SourceFilter = 'all' | 'visible' | 'admin' | 'off';
+const SOURCE_PAGE_SIZE = 20;
+
 const SourceManager = () => {
     const { data, loading } = requestManager.useGetSourceList();
     const [state, setState] = useState<Record<string, SourceState>>({});
     const [query, setQuery] = useState('');
+    const [filter, setFilter] = useState<SourceFilter>('all');
+    const [page, setPage] = useState(1);
 
     useEffect(() => {
         Admin.getGlobalSources()
@@ -54,13 +73,35 @@ const SourceManager = () => {
             .catch((e) => makeToast('Failed to load source settings', 'error', getErrorMessage(e)));
     }, []);
 
+    const matchesFilter = (s: SourceState) => {
+        switch (filter) {
+            case 'visible':
+                return s.enabled && !s.hidden;
+            case 'admin':
+                return s.hidden;
+            case 'off':
+                return !s.enabled && !s.hidden;
+            default:
+                return true;
+        }
+    };
+
     const sources = useMemo(() => {
         const nodes = data?.sources.nodes ?? [];
         const q = query.trim().toLowerCase();
         return [...nodes]
             .filter((s) => !q || s.displayName.toLowerCase().includes(q) || (s.lang ?? '').toLowerCase().includes(q))
+            .filter((s) => matchesFilter(state[s.id] ?? { enabled: false, hidden: false, name: s.displayName }))
             .sort((a, b) => a.displayName.localeCompare(b.displayName));
-    }, [data?.sources.nodes, query]);
+    }, [data?.sources.nodes, query, filter, state]);
+
+    useEffect(() => {
+        setPage(1);
+    }, [query, filter]);
+
+    const pageCount = Math.max(1, Math.ceil(sources.length / SOURCE_PAGE_SIZE));
+    const currentPage = Math.min(page, pageCount);
+    const visible = sources.slice((currentPage - 1) * SOURCE_PAGE_SIZE, currentPage * SOURCE_PAGE_SIZE);
 
     const update = async (id: string, name: string, patch: Partial<SourceState>) => {
         const current = state[id] ?? { enabled: false, hidden: false, name };
@@ -79,18 +120,43 @@ const SourceManager = () => {
     return (
         <Stack sx={{ gap: 2 }}>
             <Typography variant="body2" color="text.secondary">
-                Enable a source to make it visible to all users. Admin-only keeps it usable by admins but hidden from
-                everyone else. Disabled sources are off for everyone.
+                These are the sources from your installed extensions. Enable a source to make it visible to all users.
+                Admin-only keeps it usable by admins but hidden from everyone else. Disabled sources are off for
+                everyone. To add or remove sources, use the Extensions tab.
             </Typography>
-            <TextField
-                size="small"
-                label="Search sources"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                sx={{ maxWidth: 320 }}
-            />
+            <Stack sx={{ flexDirection: 'row', gap: 1.5, flexWrap: 'wrap', alignItems: 'center' }}>
+                <TextField
+                    size="small"
+                    label="Search sources"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    sx={{ minWidth: 240, flex: 1 }}
+                />
+                <ToggleButtonGroup
+                    size="small"
+                    exclusive
+                    value={filter}
+                    onChange={(_, value) => value && setFilter(value)}
+                >
+                    <ToggleButton value="all" sx={{ textTransform: 'none' }}>
+                        All
+                    </ToggleButton>
+                    <ToggleButton value="visible" sx={{ textTransform: 'none' }}>
+                        Visible
+                    </ToggleButton>
+                    <ToggleButton value="admin" sx={{ textTransform: 'none' }}>
+                        Admin-only
+                    </ToggleButton>
+                    <ToggleButton value="off" sx={{ textTransform: 'none' }}>
+                        Off
+                    </ToggleButton>
+                </ToggleButtonGroup>
+            </Stack>
+            <Typography variant="caption" color="text.secondary">
+                {sources.length} source{sources.length === 1 ? '' : 's'}
+            </Typography>
             <Stack sx={{ gap: 1 }}>
-                {sources.map((source) => {
+                {visible.map((source) => {
                     const s = state[source.id] ?? { enabled: false, hidden: false, name: source.displayName };
                     return (
                         <Stack
@@ -106,11 +172,24 @@ const SourceManager = () => {
                                 flexWrap: 'wrap',
                             }}
                         >
-                            <Stack>
-                                <Typography sx={{ fontWeight: 600 }}>{source.displayName}</Typography>
-                                <Typography variant="caption" color="text.secondary">
-                                    {source.lang?.toUpperCase()} · {source.id}
-                                </Typography>
+                            <Stack sx={{ flexDirection: 'row', alignItems: 'center', gap: 1.5, minWidth: 0 }}>
+                                <Avatar
+                                    src={requestManager.getValidImgUrlFor(source.iconUrl)}
+                                    alt={source.displayName}
+                                    variant="rounded"
+                                    sx={{ width: 36, height: 36, bgcolor: 'action.hover' }}
+                                >
+                                    {source.displayName.charAt(0)}
+                                </Avatar>
+                                <Stack sx={{ minWidth: 0 }}>
+                                    <Typography sx={{ fontWeight: 600 }} noWrap>
+                                        {source.displayName}
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                        {source.lang?.toUpperCase()} · {source.id}
+                                        {source.isNsfw ? ' · 18+' : ''}
+                                    </Typography>
+                                </Stack>
                             </Stack>
                             <Stack sx={{ flexDirection: 'row', gap: 2, alignItems: 'center' }}>
                                 <Stack sx={{ alignItems: 'center' }}>
@@ -137,9 +216,21 @@ const SourceManager = () => {
                     );
                 })}
                 {!sources.length && (
-                    <Typography color="text.secondary">No sources found. Install extensions first.</Typography>
+                    <Typography color="text.secondary">
+                        No sources match. Install extensions first (Extensions tab) or adjust the filter.
+                    </Typography>
                 )}
             </Stack>
+            {pageCount > 1 && (
+                <Stack sx={{ alignItems: 'center', mt: 1 }}>
+                    <Pagination
+                        count={pageCount}
+                        page={currentPage}
+                        onChange={(_, value) => setPage(value)}
+                        size="small"
+                    />
+                </Stack>
+            )}
         </Stack>
     );
 };
@@ -740,8 +831,253 @@ const CampaignManager = () => {
     );
 };
 
+const StatChip = ({ label, value }: { label: string; value: number }) => (
+    <Stack
+        sx={{
+            px: 2,
+            py: 1,
+            borderRadius: 2,
+            border: '1px solid rgba(255,255,255,0.08)',
+            minWidth: 96,
+            alignItems: 'flex-start',
+        }}
+    >
+        <Typography variant="h6" sx={{ fontWeight: 800, lineHeight: 1.1 }}>
+            {value}
+        </Typography>
+        <Typography variant="caption" color="text.secondary">
+            {label}
+        </Typography>
+    </Stack>
+);
+
+const UsersPanel = () => {
+    const [stats, setStats] = useState<AdminStats | null>(null);
+    const [users, setUsers] = useState<AdminUser[]>([]);
+    const [query, setQuery] = useState('');
+    const [page, setPage] = useState(0);
+    const [loading, setLoading] = useState(true);
+    const PAGE = 25;
+
+    useEffect(() => {
+        Admin.getStats()
+            .then(setStats)
+            .catch(() => {});
+    }, []);
+
+    useEffect(() => {
+        setLoading(true);
+        Admin.listUsers(query, PAGE, page * PAGE)
+            .then(setUsers)
+            .catch((e) => makeToast('Failed to load users', 'error', getErrorMessage(e)))
+            .finally(() => setLoading(false));
+    }, [query, page]);
+
+    return (
+        <Stack sx={{ gap: 2 }}>
+            <Stack sx={{ flexDirection: 'row', gap: 1, flexWrap: 'wrap' }}>
+                {stats && (
+                    <>
+                        <StatChip label="Users" value={stats.total_users} />
+                        <StatChip label="Premium" value={stats.premium_users} />
+                        <StatChip label="Active 24h" value={stats.active_24h} />
+                        <StatChip label="Active 7d" value={stats.active_7d} />
+                        <StatChip label="Chapters read" value={stats.total_reads} />
+                        <StatChip label="Library items" value={stats.library_items} />
+                    </>
+                )}
+            </Stack>
+            <TextField
+                size="small"
+                label="Search by email"
+                value={query}
+                onChange={(e) => {
+                    setPage(0);
+                    setQuery(e.target.value);
+                }}
+                sx={{ maxWidth: 320 }}
+            />
+            {loading ? (
+                <LoadingPlaceholder />
+            ) : (
+                <Stack sx={{ gap: 1 }}>
+                    {users.map((u) => (
+                        <Stack
+                            key={u.user_id}
+                            sx={{ p: 1.5, borderRadius: 2, border: '1px solid rgba(255,255,255,0.06)', gap: 0.5 }}
+                        >
+                            <Stack sx={{ flexDirection: 'row', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                                <Typography sx={{ fontWeight: 700 }}>{u.email}</Typography>
+                                <Chip
+                                    size="small"
+                                    label={u.role}
+                                    color={u.role === 'admin' ? 'secondary' : 'default'}
+                                />
+                                {u.is_premium && <Chip size="small" color="primary" label="Premium" />}
+                            </Stack>
+                            <Typography variant="caption" color="text.secondary">
+                                {u.tokens} coins · {u.library_count} in library · {u.chapters_read} read · last active{' '}
+                                {u.last_active ? new Date(u.last_active).toLocaleString() : 'never'}
+                            </Typography>
+                        </Stack>
+                    ))}
+                    {!users.length && <Typography color="text.secondary">No users found.</Typography>}
+                </Stack>
+            )}
+            <Stack sx={{ flexDirection: 'row', justifyContent: 'center', gap: 2, alignItems: 'center' }}>
+                <Button size="small" disabled={page === 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>
+                    Prev
+                </Button>
+                <Typography variant="caption">Page {page + 1}</Typography>
+                <Button size="small" disabled={users.length < PAGE} onClick={() => setPage((p) => p + 1)}>
+                    Next
+                </Button>
+            </Stack>
+        </Stack>
+    );
+};
+
+const ActivityPanel = () => {
+    const [rows, setRows] = useState<AdminActivity[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        Admin.getRecentActivity(80)
+            .then(setRows)
+            .catch((e) => makeToast('Failed to load activity', 'error', getErrorMessage(e)))
+            .finally(() => setLoading(false));
+    }, []);
+
+    if (loading) return <LoadingPlaceholder />;
+
+    return (
+        <Stack sx={{ gap: 1 }}>
+            <Typography variant="body2" color="text.secondary">
+                Most recent reading activity across all users — what people are reading right now.
+            </Typography>
+            {rows.map((r) => (
+                <Stack
+                    key={`${r.user_id}-${r.manga_id}-${r.updated_at}`}
+                    sx={{
+                        flexDirection: 'row',
+                        justifyContent: 'space-between',
+                        p: 1.25,
+                        borderRadius: 2,
+                        border: '1px solid rgba(255,255,255,0.06)',
+                        gap: 1,
+                        flexWrap: 'wrap',
+                    }}
+                >
+                    <Stack sx={{ minWidth: 0 }}>
+                        <Typography sx={{ fontWeight: 600 }} noWrap>
+                            {r.email}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                            <Link to={AppRoutes.manga.path(r.manga_id)} style={{ color: 'inherit' }}>
+                                manga #{r.manga_id}
+                            </Link>
+                            {r.chapter_index != null ? ` · ch ${r.chapter_index}` : ''}
+                            {r.is_read ? ' · read' : ''}
+                        </Typography>
+                    </Stack>
+                    <Typography variant="caption" color="text.secondary">
+                        {new Date(r.updated_at).toLocaleString()}
+                    </Typography>
+                </Stack>
+            ))}
+            {!rows.length && <Typography color="text.secondary">No reading activity yet.</Typography>}
+        </Stack>
+    );
+};
+
+const AuditPanel = () => {
+    const [rows, setRows] = useState<AdminLedgerEntry[]>([]);
+    const [query, setQuery] = useState('');
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        setLoading(true);
+        Admin.getLedgerWithEmail(150, query)
+            .then(setRows)
+            .catch((e) => makeToast('Failed to load ledger', 'error', getErrorMessage(e)))
+            .finally(() => setLoading(false));
+    }, [query]);
+
+    return (
+        <Stack sx={{ gap: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+                Append-only coin ledger — every credit and debit, for full money traceability.
+            </Typography>
+            <TextField
+                size="small"
+                label="Filter by email"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                sx={{ maxWidth: 320 }}
+            />
+            {loading ? (
+                <LoadingPlaceholder />
+            ) : (
+                <Stack sx={{ gap: 1 }}>
+                    {rows.map((r) => (
+                        <Stack
+                            key={r.id}
+                            sx={{
+                                flexDirection: 'row',
+                                justifyContent: 'space-between',
+                                p: 1.25,
+                                borderRadius: 2,
+                                border: '1px solid rgba(255,255,255,0.06)',
+                                gap: 1,
+                                flexWrap: 'wrap',
+                            }}
+                        >
+                            <Stack sx={{ minWidth: 0 }}>
+                                <Typography sx={{ fontWeight: 600 }} noWrap>
+                                    {r.email}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                    {r.reason}
+                                </Typography>
+                            </Stack>
+                            <Stack sx={{ alignItems: 'flex-end' }}>
+                                <Typography
+                                    sx={{ fontWeight: 800, color: r.delta >= 0 ? 'success.main' : 'error.main' }}
+                                >
+                                    {r.delta >= 0 ? '+' : ''}
+                                    {r.delta}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                    {new Date(r.created_at).toLocaleString()}
+                                </Typography>
+                            </Stack>
+                        </Stack>
+                    ))}
+                    {!rows.length && <Typography color="text.secondary">No ledger entries.</Typography>}
+                </Stack>
+            )}
+        </Stack>
+    );
+};
+
+const ExtensionManager = () => (
+    <Stack sx={{ gap: 1 }}>
+        <Typography variant="body2" color="text.secondary">
+            Install or remove source extensions. Installed sources then appear under the Sources tab, where you choose
+            who can see them. This is the same catalog the standalone Extensions tab used to show.
+        </Typography>
+        <Box sx={{ minHeight: '60vh', mx: -1 }}>
+            <Extensions tabsMenuHeight={0} />
+        </Box>
+    </Stack>
+);
+
 const TABS = [
+    { label: 'Users', render: () => <UsersPanel /> },
+    { label: 'Activity', render: () => <ActivityPanel /> },
+    { label: 'Audit', render: () => <AuditPanel /> },
     { label: 'Sources', render: () => <SourceManager /> },
+    { label: 'Extensions', render: () => <ExtensionManager /> },
     { label: 'Fast Pass', render: () => <FastPassScheduler /> },
     { label: 'Pricing', render: () => <PricingEditor /> },
     { label: 'Grant Coins', render: () => <GrantCoins /> },
@@ -755,8 +1091,21 @@ export function AdminConsole() {
     useAppTitle('Admin Console');
     const isAdmin = useBillingStore((state) => state.isAdmin);
     const loaded = useBillingStore((state) => state.loaded);
-    const [tab, setTab] = useState(0);
+    const [searchParams, setSearchParams] = useSearchParams();
+    const initialTab = (() => {
+        const requested = (searchParams.get('tab') ?? '').toLowerCase();
+        const index = TABS.findIndex((t) => t.label.toLowerCase() === requested);
+        return index >= 0 ? index : 0;
+    })();
+    const [tab, setTab] = useState(initialTab);
     const [rechecking, setRechecking] = useState(false);
+
+    const selectTab = (value: number) => {
+        setTab(value);
+        const next = new URLSearchParams(searchParams);
+        next.set('tab', TABS[value].label);
+        setSearchParams(next, { replace: true });
+    };
 
     if (!loaded) return <LoadingPlaceholder />;
 
@@ -809,7 +1158,7 @@ export function AdminConsole() {
             <Typography variant="h5" sx={{ fontWeight: 900, mb: 2 }}>
                 Admin Console
             </Typography>
-            <Tabs value={tab} onChange={(_, value) => setTab(value)} variant="scrollable" sx={{ mb: 3 }}>
+            <Tabs value={tab} onChange={(_, value) => selectTab(value)} variant="scrollable" sx={{ mb: 3 }}>
                 {TABS.map((t) => (
                     <Tab key={t.label} label={t.label} sx={{ textTransform: 'none' }} />
                 ))}

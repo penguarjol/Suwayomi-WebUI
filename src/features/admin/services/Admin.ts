@@ -30,6 +30,48 @@ export interface ChapterSchedule {
     token_cost: number;
 }
 
+export interface AdminStats {
+    total_users: number;
+    premium_users: number;
+    admin_users: number;
+    active_24h: number;
+    active_7d: number;
+    total_reads: number;
+    library_items: number;
+}
+
+export interface AdminUser {
+    user_id: string;
+    email: string;
+    role: string;
+    tokens: number;
+    is_premium: boolean;
+    created_at: string | null;
+    last_sign_in_at: string | null;
+    library_count: number;
+    chapters_read: number;
+    last_active: string | null;
+}
+
+export interface AdminActivity {
+    user_id: string;
+    email: string;
+    manga_id: number;
+    chapter_index: number | null;
+    is_read: boolean;
+    updated_at: string;
+}
+
+export interface AdminLedgerEntry {
+    id: string;
+    user_id: string;
+    email: string;
+    delta: number;
+    balance_after: number | null;
+    reason: string;
+    created_at: string;
+}
+
 export const Admin = {
     async getGlobalSources(): Promise<GlobalSource[]> {
         const { data, error } = await supabase.from('global_sources').select('source_id, name, enabled, hidden');
@@ -126,6 +168,38 @@ export const Admin = {
             .limit(limit);
         if (error) throw error;
         return (data ?? []) as { user_id: string; delta: number; reason: string; created_at: string }[];
+    },
+
+    async getStats(): Promise<AdminStats | null> {
+        const { data, error } = await supabase.rpc('admin_stats');
+        if (error) throw error;
+        const row = Array.isArray(data) ? data[0] : data;
+        return (row as AdminStats) ?? null;
+    },
+
+    async listUsers(search = '', limit = 50, offset = 0): Promise<AdminUser[]> {
+        const { data, error } = await supabase.rpc('admin_list_users', {
+            p_search: search || null,
+            p_limit: limit,
+            p_offset: offset,
+        });
+        if (error) throw error;
+        return (data ?? []) as AdminUser[];
+    },
+
+    async getRecentActivity(limit = 50): Promise<AdminActivity[]> {
+        const { data, error } = await supabase.rpc('admin_recent_activity', { p_limit: limit });
+        if (error) throw error;
+        return (data ?? []) as AdminActivity[];
+    },
+
+    async getLedgerWithEmail(limit = 100, search = ''): Promise<AdminLedgerEntry[]> {
+        const { data, error } = await supabase.rpc('admin_recent_ledger', {
+            p_limit: limit,
+            p_search: search || null,
+        });
+        if (error) throw error;
+        return (data ?? []) as AdminLedgerEntry[];
     },
 
     async getPricing(): Promise<{

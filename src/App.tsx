@@ -288,10 +288,7 @@ const MainApp = () => {
                             <Route path={AppRoutes.sources.childRoutes.searchAll.match} element={<SearchAll />} />
                         </Route>
                         <Route path={AppRoutes.extension.match}>
-                            <Route
-                                index
-                                element={<Navigate to={AppRoutes.browse.path(BrowseTab.EXTENSIONS)} replace />}
-                            />
+                            <Route index element={<Navigate to={`${AppRoutes.admin.path}?tab=Extensions`} replace />} />
                             <Route path={AppRoutes.extension.childRoutes.info.match} element={<ExtensionInfo />} />
                         </Route>
                         <Route path={AppRoutes.downloads.match} element={<DownloadQueue />} />

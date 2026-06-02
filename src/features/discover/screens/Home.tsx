@@ -6,7 +6,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
@@ -22,6 +22,9 @@ import AutoStoriesIcon from '@mui/icons-material/AutoStories';
 import ForumIcon from '@mui/icons-material/Forum';
 import ExploreIcon from '@mui/icons-material/Explore';
 import { MangaRail } from '@/features/library/components/MangaRail.tsx';
+import { requestManager } from '@/lib/requests/RequestManager.ts';
+import { Mangas } from '@/features/manga/services/Mangas.ts';
+import { useApprovedSourceIds } from '@/features/library/services/useApprovedSources.ts';
 import {
     TrendingWindow,
     getPopularReadingIds,
@@ -68,12 +71,84 @@ const CURATED_POPULAR = [
     'The Greatest Estate Developer',
 ];
 
+// Real, source-backed "popular" shelf. On a fresh instance the user-activity
+// rankings are empty, so we hydrate Discover from the source's own popular
+// listing (real covers + titles). Self-hides if the source has nothing.
+const SourcePopularRail = ({ sourceId }: { sourceId: string }) => {
+    const [, pages] = requestManager.useGetSourcePopularMangas(sourceId, 1);
+    const page = pages?.[0];
+    const mangas = (page?.data?.fetchSourceManga?.mangas ?? []).slice(0, 16);
+    if (!mangas.length) return null;
+
+    return (
+        <Box sx={{ mb: 3 }}>
+            <Stack sx={{ flexDirection: 'row', alignItems: 'center', gap: 1, mb: 1, px: 0.5 }}>
+                <WhatshotIcon color="primary" fontSize="small" />
+                <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
+                    Popular right now
+                </Typography>
+            </Stack>
+            <Stack sx={railScrollSx}>
+                {mangas.map((manga) => (
+                    <Box
+                        key={manga.id}
+                        component={Link}
+                        to={AppRoutes.manga.path(manga.id)}
+                        sx={{ textDecoration: 'none', color: 'inherit', flex: '0 0 auto', width: 120 }}
+                    >
+                        <Box
+                            component="img"
+                            src={Mangas.getThumbnailUrl(manga)}
+                            alt={manga.title}
+                            loading="lazy"
+                            sx={{
+                                width: 120,
+                                aspectRatio: '2 / 3',
+                                objectFit: 'cover',
+                                borderRadius: 2,
+                                backgroundColor: 'action.hover',
+                                boxShadow: '0 4px 14px rgba(0,0,0,0.35)',
+                            }}
+                        />
+                        <Typography
+                            variant="caption"
+                            sx={{
+                                mt: 0.5,
+                                display: '-webkit-box',
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical',
+                                overflow: 'hidden',
+                                fontWeight: 600,
+                            }}
+                        >
+                            {manga.title}
+                        </Typography>
+                    </Box>
+                ))}
+            </Stack>
+        </Box>
+    );
+};
+
+const SeededPopularRail = () => {
+    const { data } = requestManager.useGetSourceList();
+    const { ready, isApproved } = useApprovedSourceIds();
+    const sourceId = useMemo(() => {
+        const nodes = data?.sources?.nodes ?? [];
+        const candidate = nodes.find((s) => !s.isNsfw && s.id !== '0' && isApproved(s.id));
+        return candidate?.id ?? null;
+    }, [data?.sources?.nodes, isApproved]);
+
+    if (!ready || !sourceId) return null;
+    return <SourcePopularRail sourceId={sourceId} />;
+};
+
 const CuratedPicks = () => (
     <Box sx={{ mb: 3 }}>
         <Stack sx={{ flexDirection: 'row', alignItems: 'center', gap: 1, mb: 1, px: 0.5 }}>
-            <WhatshotIcon color="primary" fontSize="small" />
+            <AutoAwesomeIcon color="primary" fontSize="small" />
             <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
-                Popular right now
+                Editor&apos;s picks
             </Typography>
         </Stack>
         <Stack sx={railScrollSx}>
@@ -162,6 +237,13 @@ const OriginalsRail = ({ title, load }: { title: string; load: () => Promise<Ori
     );
 };
 
+const STARTER_TOPICS = [
+    'What are you reading this week?',
+    'Best completed series to binge?',
+    'Underrated manhwa that deserve more love',
+    'Recommend me something based on my last read',
+];
+
 const CommunityHighlights = () => {
     const [threads, setThreads] = useState<Thread[]>([]);
     const [loaded, setLoaded] = useState(false);
@@ -209,11 +291,29 @@ const CommunityHighlights = () => {
                         </Typography>
                     </Box>
                 ))}
-                {!threads.length && (
-                    <Typography color="text.secondary" variant="body2" sx={{ px: 0.5 }}>
-                        Be the first to start a discussion in the community.
-                    </Typography>
-                )}
+                {!threads.length &&
+                    STARTER_TOPICS.map((topic) => (
+                        <Box
+                            key={topic}
+                            component={Link}
+                            to={AppRoutes.social.path}
+                            sx={{
+                                textDecoration: 'none',
+                                color: 'inherit',
+                                p: 1.5,
+                                borderRadius: 2,
+                                border: '1px dashed rgba(255,255,255,0.12)',
+                                display: 'block',
+                            }}
+                        >
+                            <Typography sx={{ fontWeight: 700 }} noWrap>
+                                {topic}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                                Suggested topic · be the first to post
+                            </Typography>
+                        </Box>
+                    ))}
             </Stack>
         </Box>
     );
@@ -229,7 +329,7 @@ export function Home() {
                 Discover
             </Typography>
 
-            <CuratedPicks />
+            <SeededPopularRail />
 
             <Stack sx={{ flexDirection: 'row', alignItems: 'center', gap: 1, mb: 1, px: 0.5, flexWrap: 'wrap' }}>
                 <WhatshotIcon color="primary" fontSize="small" />
@@ -270,6 +370,8 @@ export function Home() {
                 icon={<AutoAwesomeIcon color="primary" fontSize="small" />}
                 loadIds={() => getRecommendedMangaIds(14)}
             />
+
+            <CuratedPicks />
 
             <OriginalsRail title="From creators you follow" load={getFollowedCreatorWorks} />
             <OriginalsRail title="New Originals" load={listPublishedWorks} />

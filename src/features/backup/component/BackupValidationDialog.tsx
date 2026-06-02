@@ -17,7 +17,6 @@ import ListItem from '@mui/material/ListItem';
 import { Link } from 'react-router-dom';
 import Stack from '@mui/material/Stack';
 import { AwaitableComponentProps } from 'awaitable-component';
-import { BrowseTab } from '@/features/browse/Browse.types.ts';
 import { AppRoutes } from '@/base/AppRoute.constants.ts';
 import { ValidateBackupResult } from '@/lib/graphql/generated/graphql.ts';
 
@@ -71,7 +70,7 @@ export const BackupValidationDialog = ({
                         <Button
                             onClick={onDismiss}
                             component={Link}
-                            to={AppRoutes.browse.path(BrowseTab.EXTENSIONS)}
+                            to={`${AppRoutes.admin.path}?tab=Extensions`}
                             autoFocus={!!validationResult?.missingSources.length}
                             variant={validationResult?.missingSources.length ? 'contained' : 'text'}
                         >
