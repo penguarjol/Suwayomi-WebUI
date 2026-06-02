@@ -18,6 +18,7 @@ import { GetMangasBaseQuery, GetMangasBaseQueryVariables } from '@/lib/graphql/g
 import { Mangas } from '@/features/manga/services/Mangas.ts';
 import { AppRoutes } from '@/base/AppRoute.constants.ts';
 import { getInProgressMangaIds } from '@/features/library/services/UserProgress.ts';
+import { useApprovedSourceIds } from '@/features/library/services/useApprovedSources.ts';
 
 /**
  * "Continue Reading" rail — the series the user has read most recently. Links
@@ -40,13 +41,16 @@ export const ContinueReading = () => {
         { filter: { id: { in: ids } } },
         { skip: ids.length === 0 },
     );
+    const { ready: sourcesReady, isApproved } = useApprovedSourceIds();
 
     const mangas = useMemo(() => {
         const nodes = data?.mangas.nodes ?? [];
-        return [...nodes].sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
-    }, [data?.mangas.nodes, ids]);
+        return [...nodes]
+            .filter((manga) => isApproved(manga.sourceId))
+            .sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
+    }, [data?.mangas.nodes, ids, isApproved]);
 
-    if (!loaded || mangas.length === 0) return null;
+    if (!loaded || !sourcesReady || mangas.length === 0) return null;
 
     return (
         <Box sx={{ mb: 3 }}>

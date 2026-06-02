@@ -21,6 +21,7 @@ import { NavigationBarUtil } from '@/features/navigation-bar/NavigationBar.util.
 import { useMetadataServerSettings } from '@/features/settings/services/ServerSettingsMetadata.ts';
 import { NavbarItem, NavBarItemMoreGroup } from '@/features/navigation-bar/NavigationBar.types.ts';
 import { useAppTitle } from '@/features/navigation-bar/hooks/useAppTitle.ts';
+import { useBillingStore } from '@/features/billing/Billing.ts';
 
 export const More = () => {
     const { t } = useTranslation();
@@ -31,6 +32,7 @@ export const More = () => {
     const {
         settings: { hideHistory },
     } = useMetadataServerSettings();
+    const isAdmin = useBillingStore((state) => state.isAdmin);
 
     const hiddenNavBarItems = NavigationBarUtil.filterItems(NAVIGATION_BAR_ITEMS, {
         hideHistory,
@@ -38,6 +40,7 @@ export const More = () => {
         hideBoth: true,
         hideDesktop: !isMobileWidth,
         hideMobile: isMobileWidth,
+        hideAdmin: !isAdmin,
     });
 
     const hiddenNavBarItemsByMoreGroup = Object.groupBy(hiddenNavBarItems, (item) => item.moreGroup);

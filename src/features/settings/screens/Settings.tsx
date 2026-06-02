@@ -31,13 +31,16 @@ import { AppRoutes } from '@/base/AppRoute.constants.ts';
 import { getErrorMessage } from '@/lib/HelperFunctions.ts';
 import { useAppTitle } from '@/features/navigation-bar/hooks/useAppTitle.ts';
 import { ImageCache } from '@/lib/service-worker/ImageCache.ts';
+import { useBillingStore } from '@/features/billing/Billing.ts';
 
 export function Settings() {
     const { t } = useTranslation();
 
     useAppTitle(t('settings.title'));
 
-    const isAdmin = localStorage.getItem('isAdmin') === 'true';
+    // Server/library/download/backup/extension settings are engine-operator
+    // (fork) concerns — only admins should see them in the hosted product.
+    const isAdmin = useBillingStore((state) => state.isAdmin);
     const [triggerClearServerCache, { loading: isClearingServerCache }] = requestManager.useClearServerCache();
 
     const clearCache = async () => {

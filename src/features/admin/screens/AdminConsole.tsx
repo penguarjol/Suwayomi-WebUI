@@ -386,12 +386,16 @@ interface EditablePack {
 
 const PricingEditor = () => {
     const [packs, setPacks] = useState<EditablePack[]>(DEFAULT_TOKEN_PACKS.map((p) => ({ ...p })));
+    const [gatedCount, setGatedCount] = useState(3);
+    const [unlockCost, setUnlockCost] = useState(5);
     const [busy, setBusy] = useState(false);
 
     useEffect(() => {
         Admin.getPricing()
             .then((cfg) => {
                 if (cfg?.tokenPacks?.length) setPacks(cfg.tokenPacks as EditablePack[]);
+                if (Number.isFinite(cfg?.gatedCount)) setGatedCount(Number(cfg?.gatedCount));
+                if (Number.isFinite(cfg?.unlockCost)) setUnlockCost(Number(cfg?.unlockCost));
             })
             .catch(() => {});
     }, []);
@@ -402,7 +406,7 @@ const PricingEditor = () => {
     const save = async () => {
         setBusy(true);
         try {
-            await Admin.setPricing({ tokenPacks: packs, plans: DEFAULT_SUBSCRIPTION_PLANS });
+            await Admin.setPricing({ tokenPacks: packs, plans: DEFAULT_SUBSCRIPTION_PLANS, gatedCount, unlockCost });
             makeToast('Pricing saved', 'success');
         } catch (e) {
             makeToast('Could not save pricing', 'error', getErrorMessage(e));
@@ -414,8 +418,31 @@ const PricingEditor = () => {
     return (
         <Stack sx={{ gap: 2 }}>
             <Typography variant="body2" color="text.secondary">
-                Configure Coin pack pricing shown in the Store. (Coins are credited via the payment webhook; keep the
-                Gatekeeper catalog in sync for charge amounts.)
+                Fast Pass policy: how many of the newest chapters of every series are gated for free users, and the Coin
+                cost to unlock one. Higher counts earn more but research shows aggressive gating erodes trust — 3–5 is
+                the sweet spot.
+            </Typography>
+            <Stack sx={{ flexDirection: 'row', gap: 1.5, alignItems: 'center', flexWrap: 'wrap' }}>
+                <TextField
+                    size="small"
+                    label="Gated chapters (newest)"
+                    type="number"
+                    value={gatedCount}
+                    onChange={(e) => setGatedCount(Math.max(0, Number(e.target.value)))}
+                    sx={{ width: 180 }}
+                />
+                <TextField
+                    size="small"
+                    label="Unlock cost (Coins)"
+                    type="number"
+                    value={unlockCost}
+                    onChange={(e) => setUnlockCost(Math.max(1, Number(e.target.value)))}
+                    sx={{ width: 160 }}
+                />
+            </Stack>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                Coin pack pricing shown in the Store. (Coins are credited via the payment webhook; keep the Gatekeeper
+                catalog in sync for charge amounts.)
             </Typography>
             {packs.map((pack) => (
                 <Stack key={pack.id} sx={{ flexDirection: 'row', gap: 1.5, alignItems: 'center', flexWrap: 'wrap' }}>

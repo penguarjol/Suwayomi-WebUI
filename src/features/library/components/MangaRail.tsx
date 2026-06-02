@@ -16,6 +16,7 @@ import { GET_MANGAS_BASE } from '@/lib/graphql/queries/MangaQuery.ts';
 import { GetMangasBaseQuery, GetMangasBaseQueryVariables } from '@/lib/graphql/generated/graphql.ts';
 import { Mangas } from '@/features/manga/services/Mangas.ts';
 import { AppRoutes } from '@/base/AppRoute.constants.ts';
+import { useApprovedSourceIds } from '@/features/library/services/useApprovedSources.ts';
 
 /** A horizontal "shelf" of manga covers, hydrated from a list of ids. Self-hides when empty. */
 export const MangaRail = ({
@@ -49,13 +50,17 @@ export const MangaRail = ({
         { filter: { id: { in: ids } } },
         { skip: ids.length === 0 },
     );
+    const { ready: sourcesReady, isApproved } = useApprovedSourceIds();
 
     const mangas = useMemo(() => {
         const nodes = data?.mangas.nodes ?? [];
-        return [...nodes].sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
-    }, [data?.mangas.nodes, ids]);
+        return [...nodes]
+            .filter((manga) => isApproved(manga.sourceId))
+            .sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
+    }, [data?.mangas.nodes, ids, isApproved]);
 
-    if (!loaded || mangas.length === 0) return null;
+    // Hide the rail until sources load, so unfiltered (possibly NSFW) titles never flash.
+    if (!loaded || !sourcesReady || mangas.length === 0) return null;
 
     return (
         <Box sx={{ mb: 3 }}>

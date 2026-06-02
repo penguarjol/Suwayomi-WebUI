@@ -450,6 +450,8 @@
       "copied_clipboard": "Copied to clipboard",
       "community": "Community",
       "get_coins": "Get Coins",
+      "earn_coins": "Earn Coins",
+      "admin": "Admin",
       "dark": "Dark",
       "default": "Default",
       "desktop": "Desktop",
@@ -572,6 +574,14 @@
     "value": "{{value}}{{unit}}"
   },
   "history": {
+    "action": {
+      "clear": {
+        "title": "Clear reading history",
+        "description": "Removes your reading progress and the Continue Reading rail",
+        "confirm": "This permanently clears your reading history and Continue Reading list. This cannot be undone.",
+        "success": "Reading history cleared"
+      }
+    },
     "error": {
       "label": {
         "no_history_available": "You have not read any series yet."

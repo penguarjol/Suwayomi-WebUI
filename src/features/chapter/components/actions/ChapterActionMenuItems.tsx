@@ -42,6 +42,7 @@ import {
 } from '@/features/chapter/Chapter.types.ts';
 import { IconWebView } from '@/assets/icons/IconWebView.tsx';
 import { IconBrowser } from '@/assets/icons/IconBrowser.tsx';
+import { ensurePremium } from '@/features/billing/Billing.ts';
 
 type BaseProps = { onClose: () => void; selectable?: boolean };
 
@@ -205,7 +206,13 @@ export const ChapterActionMenuItems = ({
                 <MenuItem
                     Icon={Download}
                     disabled={isMenuItemDisabled(!downloadableChapters.length)}
-                    onClick={() => performAction('download', downloadableChapters)}
+                    onClick={() => {
+                        if (!ensurePremium('Offline downloads')) {
+                            onClose();
+                            return;
+                        }
+                        performAction('download', downloadableChapters);
+                    }}
                     title={getMenuItemTitle('download', downloadableChapters.length)}
                 />
             )}

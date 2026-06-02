@@ -36,6 +36,7 @@ import { AuthManager } from '@/features/authentication/AuthManager.ts';
 import { useUserLibraryStore } from '@/features/library/services/UserLibrary.ts';
 import { useBillingStore } from '@/features/billing/Billing.ts';
 import { PaywallDialog } from '@/features/billing/components/PaywallDialog.tsx';
+import { PremiumUpsellDialog } from '@/features/billing/components/PremiumUpsellDialog.tsx';
 import { LegalGate, LegalFooter } from '@/features/legal/Legal.tsx';
 import { FeedbackFab } from '@/features/feedback/components/FeedbackFab.tsx';
 
@@ -330,6 +331,7 @@ export const App: React.FC = () => (
 
             <ReactRouterSetter />
             <PaywallDialog />
+            <PremiumUpsellDialog />
             <LegalGate />
 
             <CssBaseline enableColorScheme />

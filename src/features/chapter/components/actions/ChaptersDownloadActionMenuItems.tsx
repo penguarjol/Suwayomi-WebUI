@@ -29,6 +29,7 @@ import { makeToast } from '@/base/utils/Toast.ts';
 import { CHAPTER_ACTION_TO_TRANSLATION } from '@/features/chapter/Chapter.constants.ts';
 import { getErrorMessage } from '@/lib/HelperFunctions.ts';
 import { TranslationKey } from '@/base/Base.types.ts';
+import { ensurePremium } from '@/features/billing/Billing.ts';
 
 const DOWNLOAD_OPTIONS: {
     title: TranslationKey;
@@ -138,6 +139,10 @@ export const ChaptersDownloadActionMenuItems = ({
     } = useMetadataServerSettings();
 
     const handleSelect = (size?: number, onlyUnread: boolean = true, downloadAhead: boolean = false) => {
+        if (!ensurePremium('Offline downloads')) {
+            closeMenu?.();
+            return;
+        }
         handleDownload(mangaIds, onlyUnread, size, downloadAhead).catch((e) =>
             makeToast(
                 t(CHAPTER_ACTION_TO_TRANSLATION.download.error, {

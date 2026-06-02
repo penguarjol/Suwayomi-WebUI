@@ -46,27 +46,53 @@ export const DEFAULT_SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     { id: 'premium_annual', label: 'Annual', priceUsd: 49.99, period: 'year' },
 ];
 
+export const DEFAULT_GATED_COUNT = 3;
+export const DEFAULT_UNLOCK_COST = 5;
+
+export interface LockChapter {
+    id: number;
+    chapterNumber: number;
+}
+
 /**
- * Pure: given the gated schedules (already filtered to release_date in the
- * future), the chapters this user has unlocked, and their entitlement, return
- * which chapters are locked and their cost. Premium/admin lock nothing.
+ * Pure Fast Pass lock policy. A chapter is locked for a free user when it is
+ * either (a) explicitly scheduled with a future free-release date, or (b) among
+ * the newest `gatedCount` chapters of the series (early-access "Fast Pass") —
+ * but only when the series has more than `gatedCount` chapters, so there is
+ * always free content to hook readers. Premium/admin lock nothing. Already
+ * unlocked chapters are excluded. Cost is the schedule override else the global
+ * unlock price (never client-trusted; the RPC re-derives it server-side).
  */
 export function computeLockedChapters(
-    schedules: { chapter_id: string | number; token_cost: number | null }[],
+    chapters: LockChapter[],
+    futureSchedules: { chapter_id: string | number; token_cost: number | null }[],
     unlockedChapterIds: (string | number)[],
-    opts: { isPremium: boolean; isAdmin: boolean },
+    opts: { isPremium: boolean; isAdmin: boolean; gatedCount: number; unlockCost: number },
 ): { lockedChapterIds: number[]; chapterCosts: Record<number, number> } {
     if (opts.isPremium || opts.isAdmin) return { lockedChapterIds: [], chapterCosts: {} };
 
     const unlocked = new Set(unlockedChapterIds.map(String));
+    const scheduleCost = new Map<string, number>();
+    for (const schedule of futureSchedules) {
+        scheduleCost.set(String(schedule.chapter_id), Number(schedule.token_cost ?? opts.unlockCost));
+    }
+
+    const recency = new Set<number>();
+    if (opts.gatedCount > 0 && chapters.length > opts.gatedCount) {
+        [...chapters]
+            .sort((a, b) => b.chapterNumber - a.chapterNumber)
+            .slice(0, opts.gatedCount)
+            .forEach((chapter) => recency.add(chapter.id));
+    }
+
     const lockedChapterIds: number[] = [];
     const chapterCosts: Record<number, number> = {};
-    for (const schedule of schedules) {
-        const idStr = String(schedule.chapter_id);
-        if (!unlocked.has(idStr)) {
-            const numId = Number(idStr);
-            lockedChapterIds.push(numId);
-            chapterCosts[numId] = Number(schedule.token_cost ?? 5);
+    for (const chapter of chapters) {
+        const idStr = String(chapter.id);
+        const scheduled = scheduleCost.has(idStr);
+        if ((scheduled || recency.has(chapter.id)) && !unlocked.has(idStr)) {
+            lockedChapterIds.push(chapter.id);
+            chapterCosts[chapter.id] = scheduled ? scheduleCost.get(idStr)! : opts.unlockCost;
         }
     }
     return { lockedChapterIds, chapterCosts };
@@ -100,15 +126,21 @@ interface BillingStore {
     acceptedTerms: boolean;
     loaded: boolean;
     busy: boolean;
+    gatedCount: number;
+    unlockCost: number;
     lockedChapterIds: number[];
     chapterCosts: Record<number, number>;
     paywall: { open: boolean; chapter?: PaywallChapter };
+    premiumUpsell: { open: boolean; feature?: string };
 
     loadProfile: () => Promise<void>;
+    loadConfig: () => Promise<void>;
     acceptTerms: () => Promise<void>;
-    loadLocksForChapters: (chapterIds: number[]) => Promise<void>;
+    loadLocksForChapters: (chapters: LockChapter[]) => Promise<void>;
     openPaywall: (chapter?: PaywallChapter) => void;
     closePaywall: () => void;
+    openPremiumUpsell: (feature?: string) => void;
+    closePremiumUpsell: () => void;
     unlock: (chapterId: number) => Promise<UnlockStatus>;
 }
 
@@ -119,11 +151,15 @@ export const useBillingStore = create<BillingStore>((set, get) => ({
     acceptedTerms: true,
     loaded: false,
     busy: false,
+    gatedCount: DEFAULT_GATED_COUNT,
+    unlockCost: DEFAULT_UNLOCK_COST,
     lockedChapterIds: [],
     chapterCosts: {},
     paywall: { open: false },
+    premiumUpsell: { open: false },
 
     loadProfile: async () => {
+        get().loadConfig();
         try {
             // Core columns only — these always exist. Keeping this query minimal
             // ensures admin/balance never break if a newer column (e.g.
@@ -150,6 +186,19 @@ export const useBillingStore = create<BillingStore>((set, get) => ({
         }
     },
 
+    loadConfig: async () => {
+        try {
+            const { data } = await supabase.from('app_config').select('value').eq('key', 'pricing').maybeSingle();
+            const value = data?.value as { gatedCount?: number; unlockCost?: number } | null;
+            set({
+                gatedCount: Number.isFinite(value?.gatedCount) ? Number(value?.gatedCount) : DEFAULT_GATED_COUNT,
+                unlockCost: Number.isFinite(value?.unlockCost) ? Number(value?.unlockCost) : DEFAULT_UNLOCK_COST,
+            });
+        } catch {
+            // keep defaults
+        }
+    },
+
     acceptTerms: async () => {
         set({ acceptedTerms: true }); // optimistic
         try {
@@ -165,14 +214,14 @@ export const useBillingStore = create<BillingStore>((set, get) => ({
         }
     },
 
-    loadLocksForChapters: async (chapterIds) => {
-        const { isPremium, isAdmin } = get();
-        if (isPremium || isAdmin || chapterIds.length === 0) {
+    loadLocksForChapters: async (chapters) => {
+        const { isPremium, isAdmin, gatedCount, unlockCost } = get();
+        if (isPremium || isAdmin || chapters.length === 0) {
             set({ lockedChapterIds: [], chapterCosts: {} });
             return;
         }
         try {
-            const idStrings = chapterIds.map(String);
+            const idStrings = chapters.map((chapter) => String(chapter.id));
             const nowIso = new Date().toISOString();
             const [{ data: schedules }, { data: unlocks }] = await Promise.all([
                 supabase
@@ -184,9 +233,10 @@ export const useBillingStore = create<BillingStore>((set, get) => ({
             ]);
 
             const { lockedChapterIds, chapterCosts } = computeLockedChapters(
+                chapters,
                 schedules ?? [],
                 (unlocks ?? []).map((row) => row.chapter_id),
-                { isPremium, isAdmin },
+                { isPremium, isAdmin, gatedCount, unlockCost },
             );
             set({ lockedChapterIds, chapterCosts });
         } catch {
@@ -196,6 +246,9 @@ export const useBillingStore = create<BillingStore>((set, get) => ({
 
     openPaywall: (chapter) => set({ paywall: { open: true, chapter } }),
     closePaywall: () => set({ paywall: { open: false, chapter: undefined } }),
+
+    openPremiumUpsell: (feature) => set({ premiumUpsell: { open: true, feature } }),
+    closePremiumUpsell: () => set({ premiumUpsell: { open: false, feature: undefined } }),
 
     unlock: async (chapterId) => {
         set({ busy: true });
@@ -215,6 +268,26 @@ export const useBillingStore = create<BillingStore>((set, get) => ({
         }
     },
 }));
+
+/**
+ * Gate a premium-only action. Returns true if the user is entitled (premium or
+ * admin); otherwise opens the upsell dialog and returns false. Call from an
+ * event handler and bail when it returns false.
+ */
+export function ensurePremium(feature: string): boolean {
+    const { isPremium, isAdmin, openPremiumUpsell } = useBillingStore.getState();
+    if (isPremium || isAdmin) return true;
+    openPremiumUpsell(feature);
+    return false;
+}
+
+/** Claim the once-a-month Premium Coin bonus. Returns the RPC status string. */
+export async function claimPremiumBonus(): Promise<string> {
+    const { data, error } = await supabase.rpc('claim_premium_bonus');
+    if (error) return 'error';
+    if (data === 'claimed') await useBillingStore.getState().loadProfile();
+    return (data ?? 'error') as string;
+}
 
 /** Build a Stripe (or other) web-checkout URL via the Gatekeeper, or null. */
 export async function startCheckout(productId: string): Promise<{ url?: string; error?: string }> {

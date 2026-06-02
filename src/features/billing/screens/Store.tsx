@@ -23,6 +23,7 @@ import {
     DEFAULT_SUBSCRIPTION_PLANS,
     getPublicTokenPacks,
     startCheckout,
+    claimPremiumBonus,
     useBillingStore,
     TokenPack,
     SubscriptionPlan,
@@ -120,6 +121,14 @@ export function Store() {
         }
     };
 
+    const claimBonus = async () => {
+        const status = await claimPremiumBonus();
+        if (status === 'claimed') makeToast('Monthly Coin bonus claimed!', 'success');
+        else if (status === 'too_soon') makeToast('You already claimed this month — check back later.', 'info');
+        else if (status === 'not_premium') makeToast('Premium required for the monthly bonus.', 'warning');
+        else makeToast('Could not claim the bonus right now.', 'error');
+    };
+
     const [packs, setPacks] = useState<TokenPack[]>(DEFAULT_TOKEN_PACKS);
     const plans: SubscriptionPlan[] = DEFAULT_SUBSCRIPTION_PLANS;
 
@@ -174,6 +183,17 @@ export function Store() {
                             {isPremium ? 'Active' : `${fmt(plan.priceUsd)} / ${plan.period}`}
                         </Button>
                     ))}
+                    {isPremium && (
+                        <Button
+                            variant="outlined"
+                            startIcon={<RedeemIcon />}
+                            onClick={claimBonus}
+                            disabled={busy}
+                            sx={{ borderRadius: '50px', textTransform: 'none', fontWeight: 700 }}
+                        >
+                            Claim monthly bonus
+                        </Button>
+                    )}
                 </Stack>
             </Stack>
 

@@ -128,13 +128,26 @@ export const Admin = {
         return (data ?? []) as { user_id: string; delta: number; reason: string; created_at: string }[];
     },
 
-    async getPricing(): Promise<{ tokenPacks?: unknown[]; plans?: unknown[] } | null> {
+    async getPricing(): Promise<{
+        tokenPacks?: unknown[];
+        plans?: unknown[];
+        gatedCount?: number;
+        unlockCost?: number;
+    } | null> {
         const { data, error } = await supabase.from('app_config').select('value').eq('key', 'pricing').maybeSingle();
         if (error) throw error;
-        return (data?.value as { tokenPacks?: unknown[]; plans?: unknown[] }) ?? null;
+        return (
+            (data?.value as { tokenPacks?: unknown[]; plans?: unknown[]; gatedCount?: number; unlockCost?: number }) ??
+            null
+        );
     },
 
-    async setPricing(value: { tokenPacks: unknown[]; plans: unknown[] }): Promise<void> {
+    async setPricing(value: {
+        tokenPacks: unknown[];
+        plans: unknown[];
+        gatedCount: number;
+        unlockCost: number;
+    }): Promise<void> {
         const { error } = await supabase
             .from('app_config')
             .upsert({ key: 'pricing', value, updated_at: new Date().toISOString() }, { onConflict: 'key' });

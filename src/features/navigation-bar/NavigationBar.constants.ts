@@ -23,6 +23,10 @@ import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import MonetizationOnOutlinedIcon from '@mui/icons-material/MonetizationOnOutlined';
 import ForumIcon from '@mui/icons-material/Forum';
 import ForumOutlinedIcon from '@mui/icons-material/ForumOutlined';
+import RedeemIcon from '@mui/icons-material/Redeem';
+import RedeemOutlinedIcon from '@mui/icons-material/RedeemOutlined';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+import AdminPanelSettingsOutlinedIcon from '@mui/icons-material/AdminPanelSettingsOutlined';
 import { useTranslation } from 'react-i18next';
 import { NavbarItem, NavBarItemMoreGroup } from '@/features/navigation-bar/NavigationBar.types.ts';
 import { AppRoutes } from '@/base/AppRoute.constants.ts';
@@ -57,6 +61,14 @@ const NAVIGATION_BAR_BASE_ITEMS = [
         moreGroup: NavBarItemMoreGroup.GENERAL,
     },
     {
+        path: AppRoutes.social.path,
+        title: 'global.label.community',
+        SelectedIconComponent: ForumIcon,
+        IconComponent: ForumOutlinedIcon,
+        show: 'both',
+        moreGroup: NavBarItemMoreGroup.GENERAL,
+    },
+    {
         path: AppRoutes.browse.path() as RestrictedNavBarItem<'both'>['path'],
         title: 'global.label.browse',
         SelectedIconComponent: ExploreIcon,
@@ -87,18 +99,18 @@ const NAVIGATION_BAR_BASE_ITEMS = [
 
 const NAVIGATION_BAR_DESKTOP_ITEMS = [
     {
-        path: AppRoutes.social.path,
-        title: 'global.label.community',
-        SelectedIconComponent: ForumIcon,
-        IconComponent: ForumOutlinedIcon,
-        show: 'desktop',
-        moreGroup: NavBarItemMoreGroup.GENERAL,
-    },
-    {
         path: AppRoutes.store.path,
         title: 'global.label.get_coins',
         SelectedIconComponent: MonetizationOnIcon,
         IconComponent: MonetizationOnOutlinedIcon,
+        show: 'desktop',
+        moreGroup: NavBarItemMoreGroup.GENERAL,
+    },
+    {
+        path: AppRoutes.earn.path,
+        title: 'global.label.earn_coins',
+        SelectedIconComponent: RedeemIcon,
+        IconComponent: RedeemOutlinedIcon,
         show: 'desktop',
         moreGroup: NavBarItemMoreGroup.GENERAL,
     },
@@ -138,6 +150,15 @@ const NAVIGATION_BAR_DESKTOP_ITEMS = [
         IconComponent: SettingsIcon,
         show: 'desktop',
         moreGroup: NavBarItemMoreGroup.SETTING_INFO,
+    },
+    {
+        path: AppRoutes.admin.path,
+        title: 'global.label.admin',
+        SelectedIconComponent: AdminPanelSettingsIcon,
+        IconComponent: AdminPanelSettingsOutlinedIcon,
+        show: 'desktop',
+        moreGroup: NavBarItemMoreGroup.GENERAL,
+        requiresAdmin: true,
     },
     {
         path: AppRoutes.about.path,

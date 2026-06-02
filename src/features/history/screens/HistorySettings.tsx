@@ -9,8 +9,11 @@
 import { useTranslation } from 'react-i18next';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
+import ListItemButton from '@mui/material/ListItemButton';
 import ListItemText from '@mui/material/ListItemText';
 import Switch from '@mui/material/Switch';
+import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
+import ListItemIcon from '@mui/material/ListItemIcon';
 import {
     createUpdateMetadataServerSettings,
     useMetadataServerSettings,
@@ -22,6 +25,8 @@ import { makeToast } from '@/base/utils/Toast.ts';
 import { getErrorMessage } from '@/lib/HelperFunctions.ts';
 import { MetadataHistorySettings } from '@/features/history/History.types.ts';
 import { useAppTitle } from '@/features/navigation-bar/hooks/useAppTitle.ts';
+import { clearUserHistory } from '@/features/library/services/UserProgress.ts';
+import { Confirmation } from '@/base/AppAwaitableComponent.ts';
 
 export const HistorySettings = () => {
     const { t } = useTranslation();
@@ -50,6 +55,23 @@ export const HistorySettings = () => {
         );
     }
 
+    const clearHistory = async () => {
+        try {
+            await Confirmation.show({
+                title: t('history.action.clear.title'),
+                message: t('history.action.clear.confirm'),
+                actions: { confirm: { title: t('global.button.ok') } },
+            });
+        } catch {
+            return; // dismissed
+        }
+        const ok = await clearUserHistory();
+        makeToast(
+            ok ? t('history.action.clear.success') : t('global.error.label.failed_to_save_changes'),
+            ok ? 'success' : 'error',
+        );
+    };
+
     return (
         <List sx={{ pt: 0 }}>
             <ListItem>
@@ -60,6 +82,16 @@ export const HistorySettings = () => {
                     onChange={() => updateMetadataServerSettings('hideHistory', !hideHistory)}
                 />
             </ListItem>
+            <ListItemButton onClick={clearHistory}>
+                <ListItemIcon>
+                    <DeleteSweepIcon color="error" />
+                </ListItemIcon>
+                <ListItemText
+                    primary={t('history.action.clear.title')}
+                    secondary={t('history.action.clear.description')}
+                    primaryTypographyProps={{ color: 'error' }}
+                />
+            </ListItemButton>
         </List>
     );
 };

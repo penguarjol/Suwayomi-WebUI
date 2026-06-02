@@ -150,12 +150,16 @@ export const ChapterList = ({
     // chapters (Supabase). applyUserProgress overlays per-user isRead/lastPageRead
     // onto the Apollo cache so the list + reader reflect THIS user (ADR-0005).
     const allChapterIds = useMemo(() => Chapters.getIds(chapters), [chapters]);
+    const lockChapters = useMemo(
+        () => chapters.map((chapter) => ({ id: chapter.id, chapterNumber: chapter.chapterNumber })),
+        [chapters],
+    );
     useEffect(() => {
         if (allChapterIds.length) {
-            useBillingStore.getState().loadLocksForChapters(allChapterIds);
+            useBillingStore.getState().loadLocksForChapters(lockChapters);
             applyUserProgress(allChapterIds).catch(defaultPromiseErrorHandler('ChapterList::applyUserProgress'));
         }
-    }, [allChapterIds]);
+    }, [allChapterIds, lockChapters]);
 
     // Per-user "continue from" chapter (first unread by reading order), so the
     // Resume FAB reflects this user rather than the shared engine state.

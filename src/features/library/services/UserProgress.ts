@@ -96,6 +96,24 @@ export async function getInProgressMangaIds(limit = 12): Promise<number[]> {
     }
 }
 
+/**
+ * Clear this user's entire reading history (per-user progress). Empties the
+ * History screen and the Continue Reading rail. RLS limits the delete to the
+ * caller's own rows.
+ */
+export async function clearUserHistory(): Promise<boolean> {
+    try {
+        const { data: userData } = await supabase.auth.getUser();
+        const uid = userData.user?.id;
+        if (!uid) return false;
+        const { error } = await supabase.from('user_chapter_progress').delete().eq('user_id', uid);
+        if (error) throw error;
+        return true;
+    } catch {
+        return false;
+    }
+}
+
 /** Persist this user's progress for a chapter and overlay it immediately. */
 export async function writeUserProgress(
     mangaId: number,

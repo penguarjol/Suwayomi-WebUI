@@ -28,6 +28,7 @@ import { useMetadataServerSettings } from '@/features/settings/services/ServerSe
 import { NAVIGATION_BAR_ITEMS } from '@/features/navigation-bar/NavigationBar.constants.ts';
 import { NavigationBarUtil } from '@/features/navigation-bar/NavigationBar.util.ts';
 import { TokenBalanceChip } from '@/features/billing/components/TokenBalanceChip.tsx';
+import { useBillingStore } from '@/features/billing/Billing.ts';
 
 export function DefaultNavBar() {
     const { title, action, override, isCollapsed, setIsCollapsed, setAppBarHeight, navBarWidth, setNavBarWidth } =
@@ -58,6 +59,7 @@ export function DefaultNavBar() {
     });
     const actualNavBarWidth = isMobileWidth || isCollapsed ? 0 : navBarWidth;
 
+    const isAdmin = useBillingStore((state) => state.isAdmin);
     const visibleNavBarItems = useMemo(
         () =>
             NavigationBarUtil.filterItems(NAVIGATION_BAR_ITEMS, {
@@ -65,8 +67,9 @@ export function DefaultNavBar() {
                 hideBoth: false,
                 hideDesktop: isMobileWidth,
                 hideMobile: !isMobileWidth,
+                hideAdmin: !isAdmin,
             }),
-        [isMobileWidth, hideHistory],
+        [isMobileWidth, hideHistory, isAdmin],
     );
     const NavBarComponent = useMemo(() => (isMobileWidth ? MobileBottomBar : DesktopSideBar), [isMobileWidth]);
 

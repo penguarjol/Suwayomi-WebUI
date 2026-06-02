@@ -15,6 +15,7 @@ import Stack from '@mui/material/Stack';
 import Avatar from '@mui/material/Avatar';
 import { supabase } from '@/lib/SupabaseClient.ts';
 import { makeToast } from '@/base/utils/Toast.ts';
+import { censorProfanity, hasProfanity } from '@/features/social/Social.ts';
 
 // Type for comment with basic profile relation if available
 interface Profile {
@@ -94,6 +95,10 @@ const ReaderCommentsBase = ({ chapterId }: { chapterId: number | string }) => {
 
     const handlePostComment = async () => {
         if (!newComment.trim() || !currentUserId) return;
+        if (hasProfanity(newComment)) {
+            makeToast('Please keep comments respectful.', 'warning');
+            return;
+        }
 
         setSubmitting(true);
         const { error } = await supabase.from('comments').insert({
@@ -114,6 +119,14 @@ const ReaderCommentsBase = ({ chapterId }: { chapterId: number | string }) => {
 
     return (
         <Box
+            // Isolate the comment area from the reader's tap-zone page navigation
+            // and page-turn hotkeys (otherwise tapping/typing here turns the page,
+            // especially on mobile — see ReaderViewer onClick + ReaderHotkeys).
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchEnd={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
             sx={{
                 width: '100%',
                 maxWidth: '800px',
@@ -228,7 +241,7 @@ const ReaderCommentsBase = ({ chapterId }: { chapterId: number | string }) => {
                                             whiteSpace: 'pre-wrap',
                                         }}
                                     >
-                                        {comment.content}
+                                        {censorProfanity(comment.content)}
                                     </Typography>
                                     <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
                                         <Typography
