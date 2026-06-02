@@ -33,6 +33,7 @@ import {
     useUserCategories,
 } from '@/features/library/components/LibraryCategories.tsx';
 import { getMangaIdsInCategory, UserCategory } from '@/features/library/services/UserCategories.ts';
+import { AddToCollectionButton } from '@/features/marketplace/components/AddToCollectionButton.tsx';
 import { useManageMangaLibraryState } from '@/features/manga/hooks/useManageMangaLibraryState.tsx';
 import { AppRoutes } from '@/base/AppRoute.constants.ts';
 import { useAppTitle } from '@/features/navigation-bar/hooks/useAppTitle.ts';
@@ -98,6 +99,9 @@ const MyLibraryCard = ({ manga, categories }: { manga: LibraryManga; categories:
                 <FavoriteIcon fontSize="small" />
             </IconButton>
             {categories.length > 0 && <AssignCategoriesButton mangaId={manga.id} categories={categories} />}
+            <Box sx={{ position: 'absolute', bottom: 6, left: 6 }}>
+                <AddToCollectionButton mangaId={manga.id} mangaTitle={manga.title} />
+            </Box>
         </Box>
     );
 };

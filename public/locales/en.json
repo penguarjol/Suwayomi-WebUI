@@ -451,6 +451,7 @@
       "community": "Community",
       "get_coins": "Get Coins",
       "earn_coins": "Earn Coins",
+      "marketplace": "Marketplace",
       "admin": "Admin",
       "dark": "Dark",
       "default": "Default",
@@ -1178,6 +1179,10 @@
         },
         "mode": "Theme mode",
         "pure_black_mode": "Pure black dark mode",
+        "premium": {
+          "title": "Custom themes & colors",
+          "description": "Personalize the app with custom themes, accent colors and pure-black mode — a Nexus Premium feature."
+        },
         "select": {
           "fonts": {
             "error": "Could not load theme fonts",

@@ -38,6 +38,7 @@ import {
     useReaderStore,
 } from '@/features/reader/stores/ReaderStore.ts';
 import { ReaderComments } from '@/features/reader/viewer/components/ReaderComments.tsx';
+import { AdSlot } from '@/features/ads/AdSlot.tsx';
 
 const ChapterInfo = ({
     title,
@@ -267,6 +268,15 @@ const BaseReaderTransitionPage = ({
                     </Stack>
                 )}
             </Box>
+            {isNextType && (
+                <Box
+                    sx={{ width: '100%', maxWidth: '800px', mx: 'auto' }}
+                    onClick={(e) => e.stopPropagation()}
+                    onPointerDown={(e) => e.stopPropagation()}
+                >
+                    <AdSlot slotId={import.meta.env.VITE_ADSENSE_SLOT_INTERCHAPTER as string | undefined} />
+                </Box>
+            )}
             {isNextType && <ReaderComments chapterId={chapterId} />}
         </Stack>
     );

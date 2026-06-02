@@ -218,6 +218,14 @@ export const AppRoutes = {
         match: 'earn',
         path: '/earn',
     },
+    marketplace: {
+        match: 'marketplace',
+        path: '/marketplace',
+    },
+    collection: {
+        match: 'collection/:id',
+        path: (id: string) => `/collection/${id}`,
+    },
 } as const satisfies TAppRoutes;
 
 type ExtractChildRouteStringPaths<T> = T extends { childRoutes: infer U } ? ExtractStringPaths<U[keyof U]> : never;

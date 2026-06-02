@@ -12,8 +12,11 @@ import ListItem from '@mui/material/ListItem';
 import ListItemText from '@mui/material/ListItemText';
 import MenuItem from '@mui/material/MenuItem';
 import ListSubheader from '@mui/material/ListSubheader';
+import ListItemButton from '@mui/material/ListItemButton';
+import ListItemIcon from '@mui/material/ListItemIcon';
 import Switch from '@mui/material/Switch';
 import Link from '@mui/material/Link';
+import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
 import { useColorScheme } from '@mui/material/styles';
 import { useAppThemeContext } from '@/features/theme/AppThemeContext.tsx';
 import { Select } from '@/base/components/inputs/Select.tsx';
@@ -36,10 +39,12 @@ import { AppStorage } from '@/lib/storage/AppStorage.ts';
 import { useAppTitle } from '@/features/navigation-bar/hooks/useAppTitle.ts';
 import { MANGA_GRID_WIDTH, SERVER_SETTINGS_METADATA_DEFAULT } from '@/features/settings/Settings.constants.ts';
 import { MUI_THEME_MODE_KEY } from '@/lib/mui/MUI.constants.ts';
+import { ensurePremium, useBillingStore } from '@/features/billing/Billing.ts';
 
 export const Appearance = () => {
     const { t, i18n } = useTranslation();
     const { themeMode, setThemeMode, shouldUsePureBlackMode, setShouldUsePureBlackMode } = useAppThemeContext();
+    const isEntitled = useBillingStore((state) => state.isPremium || state.isAdmin);
     const { mode, setMode } = useColorScheme();
     const actualThemeMode = (mode ?? themeMode) as ThemeMode;
 
@@ -101,15 +106,29 @@ export const Appearance = () => {
                     </MenuItem>
                 </Select>
             </ListItem>
-            <ThemeList />
-            {isDarkMode && (
-                <ListItem>
-                    <ListItemText primary={t('settings.appearance.theme.pure_black_mode')} />
-                    <Switch
-                        checked={shouldUsePureBlackMode}
-                        onChange={(_, enabled) => setShouldUsePureBlackMode(enabled)}
+            {isEntitled ? (
+                <>
+                    <ThemeList />
+                    {isDarkMode && (
+                        <ListItem>
+                            <ListItemText primary={t('settings.appearance.theme.pure_black_mode')} />
+                            <Switch
+                                checked={shouldUsePureBlackMode}
+                                onChange={(_, enabled) => setShouldUsePureBlackMode(enabled)}
+                            />
+                        </ListItem>
+                    )}
+                </>
+            ) : (
+                <ListItemButton onClick={() => ensurePremium('App customization')}>
+                    <ListItemIcon>
+                        <WorkspacePremiumIcon color="primary" />
+                    </ListItemIcon>
+                    <ListItemText
+                        primary={t('settings.appearance.theme.premium.title')}
+                        secondary={t('settings.appearance.theme.premium.description')}
                     />
-                </ListItem>
+                </ListItemButton>
             )}
             <List
                 subheader={
@@ -176,17 +195,19 @@ export const Appearance = () => {
                     />
                 </ListItem>
 
-                <ListItem>
-                    <ListItemText
-                        primary={t('settings.appearance.manga_dynamic_color_schemes.title')}
-                        secondary={t('settings.appearance.manga_dynamic_color_schemes.description')}
-                    />
-                    <Switch
-                        edge="end"
-                        checked={mangaDynamicColorSchemes}
-                        onChange={(e) => updateMetadataSetting('mangaDynamicColorSchemes', e.target.checked)}
-                    />
-                </ListItem>
+                {isEntitled && (
+                    <ListItem>
+                        <ListItemText
+                            primary={t('settings.appearance.manga_dynamic_color_schemes.title')}
+                            secondary={t('settings.appearance.manga_dynamic_color_schemes.description')}
+                        />
+                        <Switch
+                            edge="end"
+                            checked={mangaDynamicColorSchemes}
+                            onChange={(e) => updateMetadataSetting('mangaDynamicColorSchemes', e.target.checked)}
+                        />
+                    </ListItem>
+                )}
             </List>
         </List>
     );

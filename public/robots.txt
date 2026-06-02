@@ -1,3 +1,11 @@
 # https://www.robotstxt.org/robotstxt.html
 User-agent: *
-Disallow:
+Allow: /
+# Private / authed surfaces — no SEO value, keep out of the index.
+Disallow: /api/
+Disallow: /settings
+Disallow: /admin
+Disallow: /downloads
+
+# After setting your domain, add (see docs/MANUAL_SETUP.md):
+# Sitemap: https://your-domain.com/sitemap.xml

@@ -25,6 +25,8 @@ import ForumIcon from '@mui/icons-material/Forum';
 import ForumOutlinedIcon from '@mui/icons-material/ForumOutlined';
 import RedeemIcon from '@mui/icons-material/Redeem';
 import RedeemOutlinedIcon from '@mui/icons-material/RedeemOutlined';
+import StorefrontIcon from '@mui/icons-material/Storefront';
+import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import AdminPanelSettingsOutlinedIcon from '@mui/icons-material/AdminPanelSettingsOutlined';
 import { useTranslation } from 'react-i18next';
@@ -98,6 +100,14 @@ const NAVIGATION_BAR_BASE_ITEMS = [
 ] as const satisfies RestrictedNavBarItem<'both'>[];
 
 const NAVIGATION_BAR_DESKTOP_ITEMS = [
+    {
+        path: AppRoutes.marketplace.path,
+        title: 'global.label.marketplace',
+        SelectedIconComponent: StorefrontIcon,
+        IconComponent: StorefrontOutlinedIcon,
+        show: 'desktop',
+        moreGroup: NavBarItemMoreGroup.GENERAL,
+    },
     {
         path: AppRoutes.store.path,
         title: 'global.label.get_coins',

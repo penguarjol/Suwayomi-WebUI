@@ -49,6 +49,11 @@ const { Store } = loadable(() => import('@/features/billing/screens/Store.tsx'),
 const { AdminConsole } = loadable(() => import('@/features/admin/screens/AdminConsole.tsx'), lazyLoadFallback);
 const { SocialFeed } = loadable(() => import('@/features/social/screens/SocialFeed.tsx'), lazyLoadFallback);
 const { EarnCoins } = loadable(() => import('@/features/campaigns/screens/EarnCoins.tsx'), lazyLoadFallback);
+const { Marketplace } = loadable(() => import('@/features/marketplace/screens/Marketplace.tsx'), lazyLoadFallback);
+const { CollectionDetail } = loadable(
+    () => import('@/features/marketplace/screens/CollectionDetail.tsx'),
+    lazyLoadFallback,
+);
 const { Manga } = loadable(() => import('@/features/manga/screens/Manga.tsx'), lazyLoadFallback);
 const { SearchAll } = loadable(() => import('@/features/global-search/screens/SearchAll.tsx'), lazyLoadFallback);
 const { Settings } = loadable(() => import('@/features/settings/screens/Settings.tsx'), lazyLoadFallback);
@@ -291,6 +296,8 @@ const MainApp = () => {
                         <Route path={AppRoutes.admin.match} element={<AdminConsole />} />
                         <Route path={AppRoutes.social.match} element={<SocialFeed />} />
                         <Route path={AppRoutes.earn.match} element={<EarnCoins />} />
+                        <Route path={AppRoutes.marketplace.match} element={<Marketplace />} />
+                        <Route path={AppRoutes.collection.match} element={<CollectionDetail />} />
                         <Route path={AppRoutes.updates.match} element={<Updates />} />
                         {!hideHistory && <Route path={AppRoutes.history.match} element={<History />} />}
                         <Route path={AppRoutes.browse.match} element={<Browse />} />
