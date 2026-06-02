@@ -6,7 +6,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
@@ -23,6 +23,12 @@ import { GetMangasBaseQuery, GetMangasBaseQueryVariables } from '@/lib/graphql/g
 import { Mangas } from '@/features/manga/services/Mangas.ts';
 import { useUserLibraryStore } from '@/features/library/services/UserLibrary.ts';
 import { ContinueReading } from '@/features/library/components/ContinueReading.tsx';
+import {
+    CategoryBar,
+    AssignCategoriesButton,
+    useUserCategories,
+} from '@/features/library/components/LibraryCategories.tsx';
+import { getMangaIdsInCategory, UserCategory } from '@/features/library/services/UserCategories.ts';
 import { useManageMangaLibraryState } from '@/features/manga/hooks/useManageMangaLibraryState.tsx';
 import { AppRoutes } from '@/base/AppRoute.constants.ts';
 import { useAppTitle } from '@/features/navigation-bar/hooks/useAppTitle.ts';
@@ -30,7 +36,7 @@ import { LoadingPlaceholder } from '@/base/components/feedback/LoadingPlaceholde
 
 type LibraryManga = GetMangasBaseQuery['mangas']['nodes'][number];
 
-const MyLibraryCard = ({ manga }: { manga: LibraryManga }) => {
+const MyLibraryCard = ({ manga, categories }: { manga: LibraryManga; categories: UserCategory[] }) => {
     const { updateLibraryState } = useManageMangaLibraryState(manga, true);
     const thumbnail = Mangas.getThumbnailUrl(manga);
 
@@ -87,6 +93,7 @@ const MyLibraryCard = ({ manga }: { manga: LibraryManga }) => {
             >
                 <FavoriteIcon fontSize="small" />
             </IconButton>
+            {categories.length > 0 && <AssignCategoriesButton mangaId={manga.id} categories={categories} />}
         </Box>
     );
 };
@@ -97,6 +104,20 @@ export function MyLibrary() {
 
     const favoriteIds = useUserLibraryStore((state) => state.favoriteIds);
     const loaded = useUserLibraryStore((state) => state.loaded);
+    const { categories, refresh: refreshCategories } = useUserCategories();
+
+    const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+    const [categoryMangaIds, setCategoryMangaIds] = useState<number[] | null>(null);
+
+    useEffect(() => {
+        if (selectedCategory === null) {
+            setCategoryMangaIds(null);
+            return;
+        }
+        getMangaIdsInCategory(selectedCategory)
+            .then(setCategoryMangaIds)
+            .catch(() => setCategoryMangaIds([]));
+    }, [selectedCategory]);
 
     const { data, loading } = requestManager.useGetMangas<GetMangasBaseQuery, GetMangasBaseQueryVariables>(
         GET_MANGAS_BASE,
@@ -106,9 +127,11 @@ export function MyLibrary() {
 
     const mangas = useMemo(() => {
         const nodes = data?.mangas.nodes ?? [];
+        const filtered =
+            categoryMangaIds === null ? nodes : nodes.filter((manga) => categoryMangaIds.includes(manga.id));
         // Most-recently-favorited first (favoriteIds is in insertion order).
-        return [...nodes].sort((a, b) => favoriteIds.indexOf(b.id) - favoriteIds.indexOf(a.id));
-    }, [data?.mangas.nodes, favoriteIds]);
+        return [...filtered].sort((a, b) => favoriteIds.indexOf(b.id) - favoriteIds.indexOf(a.id));
+    }, [data?.mangas.nodes, favoriteIds, categoryMangaIds]);
 
     if (!loaded || (favoriteIds.length > 0 && loading && mangas.length === 0)) {
         return <LoadingPlaceholder />;
@@ -157,6 +180,12 @@ export function MyLibrary() {
                     {mangas.length}
                 </Typography>
             </Stack>
+            <CategoryBar
+                categories={categories}
+                selected={selectedCategory}
+                onSelect={setSelectedCategory}
+                onChanged={refreshCategories}
+            />
             <Box
                 sx={{
                     display: 'grid',
@@ -168,9 +197,14 @@ export function MyLibrary() {
                 }}
             >
                 {mangas.map((manga) => (
-                    <MyLibraryCard key={manga.id} manga={manga} />
+                    <MyLibraryCard key={manga.id} manga={manga} categories={categories} />
                 ))}
             </Box>
+            {!mangas.length && (
+                <Typography color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+                    Nothing in this category yet.
+                </Typography>
+            )}
         </Box>
     );
 }
