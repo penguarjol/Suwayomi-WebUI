@@ -72,6 +72,18 @@ export function computeLockedChapters(
     return { lockedChapterIds, chapterCosts };
 }
 
+/** Public token-pack catalog: admin-configured (app_config) or the default. */
+export async function getPublicTokenPacks(): Promise<TokenPack[]> {
+    try {
+        const { data } = await supabase.from('app_config').select('value').eq('key', 'pricing').maybeSingle();
+        const packs = (data?.value as { tokenPacks?: TokenPack[] } | null)?.tokenPacks;
+        if (Array.isArray(packs) && packs.length) return packs;
+    } catch {
+        // fall through to defaults
+    }
+    return DEFAULT_TOKEN_PACKS;
+}
+
 export interface PaywallChapter {
     id: number;
     name: string;
@@ -85,6 +97,7 @@ interface BillingStore {
     tokens: number;
     isPremium: boolean;
     isAdmin: boolean;
+    acceptedTerms: boolean;
     loaded: boolean;
     busy: boolean;
     lockedChapterIds: number[];
@@ -92,6 +105,7 @@ interface BillingStore {
     paywall: { open: boolean; chapter?: PaywallChapter };
 
     loadProfile: () => Promise<void>;
+    acceptTerms: () => Promise<void>;
     loadLocksForChapters: (chapterIds: number[]) => Promise<void>;
     openPaywall: (chapter?: PaywallChapter) => void;
     closePaywall: () => void;
@@ -102,6 +116,7 @@ export const useBillingStore = create<BillingStore>((set, get) => ({
     tokens: 0,
     isPremium: false,
     isAdmin: false,
+    acceptedTerms: true,
     loaded: false,
     busy: false,
     lockedChapterIds: [],
@@ -110,16 +125,35 @@ export const useBillingStore = create<BillingStore>((set, get) => ({
 
     loadProfile: async () => {
         try {
-            const { data, error } = await supabase.from('profiles').select('tokens, is_premium, role').single();
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('tokens, is_premium, role, accepted_terms_at')
+                .single();
             if (error) throw error;
             set({
                 tokens: Number(data?.tokens ?? 0),
                 isPremium: !!data?.is_premium || data?.role === 'premium',
                 isAdmin: data?.role === 'admin',
+                acceptedTerms: !!data?.accepted_terms_at,
                 loaded: true,
             });
         } catch {
             set({ loaded: true });
+        }
+    },
+
+    acceptTerms: async () => {
+        set({ acceptedTerms: true }); // optimistic
+        try {
+            const { data: userData } = await supabase.auth.getUser();
+            if (userData.user?.id) {
+                await supabase
+                    .from('profiles')
+                    .update({ accepted_terms_at: new Date().toISOString() })
+                    .eq('id', userData.user.id);
+            }
+        } catch {
+            // The acknowledgement is recorded best-effort; the gate won't nag again this session.
         }
     },
 

@@ -19,8 +19,9 @@ import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { requestManager } from '@/lib/requests/RequestManager.ts';
-import { useBillingStore } from '@/features/billing/Billing.ts';
+import { DEFAULT_SUBSCRIPTION_PLANS, DEFAULT_TOKEN_PACKS, useBillingStore } from '@/features/billing/Billing.ts';
 import { Admin, ChapterSchedule, GlobalSource } from '@/features/admin/services/Admin.ts';
+import { FeedbackItem, getFeedback, setFeedbackStatus } from '@/features/feedback/Feedback.ts';
 import { useAppTitle } from '@/features/navigation-bar/hooks/useAppTitle.ts';
 import { LoadingPlaceholder } from '@/base/components/feedback/LoadingPlaceholder.tsx';
 import { AppRoutes } from '@/base/AppRoute.constants.ts';
@@ -245,6 +246,270 @@ const FastPassScheduler = () => {
     );
 };
 
+const GrantCoins = () => {
+    const [email, setEmail] = useState('');
+    const [amount, setAmount] = useState('50');
+    const [busy, setBusy] = useState(false);
+    const [ledger, setLedger] = useState<{ user_id: string; delta: number; reason: string; created_at: string }[]>([]);
+
+    const refresh = () =>
+        Admin.getRecentLedger()
+            .then(setLedger)
+            .catch(() => setLedger([]));
+    useEffect(() => {
+        refresh();
+    }, []);
+
+    const grant = async () => {
+        if (!email.trim()) return;
+        setBusy(true);
+        try {
+            const balance = await Admin.grantTokens(email.trim(), Number(amount) || 0);
+            makeToast(`Granted. New balance: ${balance} Coins`, 'success');
+            refresh();
+        } catch (e) {
+            makeToast('Grant failed', 'error', getErrorMessage(e));
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    return (
+        <Stack sx={{ gap: 3 }}>
+            <Typography variant="body2" color="text.secondary">
+                Grant Coins to a user by email (for support, campaigns, or compensation). Every grant is recorded in the
+                token ledger below.
+            </Typography>
+            <Stack sx={{ flexDirection: 'row', gap: 1.5, flexWrap: 'wrap', alignItems: 'center' }}>
+                <TextField size="small" label="User email" value={email} onChange={(e) => setEmail(e.target.value)} />
+                <TextField
+                    size="small"
+                    label="Coins"
+                    type="number"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    sx={{ width: 120 }}
+                />
+                <Button variant="contained" disabled={busy} onClick={grant} sx={{ textTransform: 'none' }}>
+                    Grant
+                </Button>
+            </Stack>
+            <Stack sx={{ gap: 1 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                    Recent token activity
+                </Typography>
+                {ledger.map((row, idx) => (
+                    <Stack
+                        // eslint-disable-next-line react/no-array-index-key
+                        key={`${row.user_id}-${row.created_at}-${idx}`}
+                        sx={{
+                            flexDirection: 'row',
+                            justifyContent: 'space-between',
+                            p: 1,
+                            borderRadius: 1.5,
+                            border: '1px solid rgba(255,255,255,0.06)',
+                        }}
+                    >
+                        <Typography variant="caption">{`${row.reason} · ${row.user_id.slice(0, 8)}…`}</Typography>
+                        <Typography
+                            variant="caption"
+                            sx={{ fontWeight: 700, color: row.delta >= 0 ? 'success.main' : 'warning.main' }}
+                        >
+                            {row.delta >= 0 ? `+${row.delta}` : row.delta}
+                        </Typography>
+                    </Stack>
+                ))}
+                {!ledger.length && <Typography color="text.secondary">No activity yet.</Typography>}
+            </Stack>
+        </Stack>
+    );
+};
+
+const Analytics = () => {
+    const [rows, setRows] = useState<{ manga_id: number; readers: number; chapters_read: number }[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        Admin.getTopManga(25)
+            .then(setRows)
+            .catch(() => setRows([]))
+            .finally(() => setLoading(false));
+    }, []);
+
+    if (loading) return <LoadingPlaceholder />;
+
+    return (
+        <Stack sx={{ gap: 1 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                Most-read titles across all users (by unique readers).
+            </Typography>
+            {rows.map((row, idx) => (
+                <Stack
+                    key={row.manga_id}
+                    sx={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 2,
+                        p: 1.25,
+                        borderRadius: 1.5,
+                        border: '1px solid rgba(255,255,255,0.06)',
+                    }}
+                >
+                    <Typography sx={{ fontWeight: 800, width: 28, color: 'primary.main' }}>{idx + 1}</Typography>
+                    <Typography sx={{ flexGrow: 1 }}>Manga #{row.manga_id}</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                        {`${row.readers} readers · ${row.chapters_read} chapters`}
+                    </Typography>
+                </Stack>
+            ))}
+            {!rows.length && <Typography color="text.secondary">No reading data yet.</Typography>}
+        </Stack>
+    );
+};
+
+interface EditablePack {
+    id: string;
+    label: string;
+    tokens: number;
+    bonus: number;
+    priceUsd: number;
+}
+
+const PricingEditor = () => {
+    const [packs, setPacks] = useState<EditablePack[]>(DEFAULT_TOKEN_PACKS.map((p) => ({ ...p })));
+    const [busy, setBusy] = useState(false);
+
+    useEffect(() => {
+        Admin.getPricing()
+            .then((cfg) => {
+                if (cfg?.tokenPacks?.length) setPacks(cfg.tokenPacks as EditablePack[]);
+            })
+            .catch(() => {});
+    }, []);
+
+    const updatePack = (id: string, field: keyof EditablePack, value: number) =>
+        setPacks((prev) => prev.map((p) => (p.id === id ? { ...p, [field]: value } : p)));
+
+    const save = async () => {
+        setBusy(true);
+        try {
+            await Admin.setPricing({ tokenPacks: packs, plans: DEFAULT_SUBSCRIPTION_PLANS });
+            makeToast('Pricing saved', 'success');
+        } catch (e) {
+            makeToast('Could not save pricing', 'error', getErrorMessage(e));
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    return (
+        <Stack sx={{ gap: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+                Configure Coin pack pricing shown in the Store. (Coins are credited via the payment webhook; keep the
+                Gatekeeper catalog in sync for charge amounts.)
+            </Typography>
+            {packs.map((pack) => (
+                <Stack key={pack.id} sx={{ flexDirection: 'row', gap: 1.5, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <Typography sx={{ width: 90, fontWeight: 700 }}>{pack.label}</Typography>
+                    <TextField
+                        size="small"
+                        label="Coins"
+                        type="number"
+                        value={pack.tokens}
+                        onChange={(e) => updatePack(pack.id, 'tokens', Number(e.target.value))}
+                        sx={{ width: 110 }}
+                    />
+                    <TextField
+                        size="small"
+                        label="Bonus"
+                        type="number"
+                        value={pack.bonus}
+                        onChange={(e) => updatePack(pack.id, 'bonus', Number(e.target.value))}
+                        sx={{ width: 110 }}
+                    />
+                    <TextField
+                        size="small"
+                        label="Price USD"
+                        type="number"
+                        value={pack.priceUsd}
+                        onChange={(e) => updatePack(pack.id, 'priceUsd', Number(e.target.value))}
+                        sx={{ width: 120 }}
+                    />
+                </Stack>
+            ))}
+            <Box>
+                <Button variant="contained" disabled={busy} onClick={save} sx={{ textTransform: 'none' }}>
+                    Save pricing
+                </Button>
+            </Box>
+        </Stack>
+    );
+};
+
+const FeedbackInbox = () => {
+    const [items, setItems] = useState<FeedbackItem[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    const refresh = () =>
+        getFeedback()
+            .then(setItems)
+            .catch(() => setItems([]))
+            .finally(() => setLoading(false));
+    useEffect(() => {
+        refresh();
+    }, []);
+
+    const cycle = async (item: FeedbackItem) => {
+        const order: FeedbackItem['status'][] = ['open', 'planned', 'done', 'declined'];
+        const next = order[(order.indexOf(item.status) + 1) % order.length];
+        try {
+            await setFeedbackStatus(item.id, next);
+            setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, status: next } : i)));
+        } catch (e) {
+            makeToast('Could not update', 'error', getErrorMessage(e));
+        }
+    };
+
+    if (loading) return <LoadingPlaceholder />;
+
+    return (
+        <Stack sx={{ gap: 1 }}>
+            {items.map((item) => (
+                <Stack
+                    key={item.id}
+                    sx={{ p: 1.5, gap: 0.5, borderRadius: 1.5, border: '1px solid rgba(255,255,255,0.06)' }}
+                >
+                    <Stack sx={{ flexDirection: 'row', alignItems: 'center', gap: 1 }}>
+                        <Typography
+                            variant="caption"
+                            sx={{ fontWeight: 800, textTransform: 'uppercase', color: 'primary.main' }}
+                        >
+                            {item.type}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                            {new Date(item.created_at).toLocaleString()} · {item.page}
+                        </Typography>
+                        <Button size="small" onClick={() => cycle(item)} sx={{ ml: 'auto', textTransform: 'none' }}>
+                            {item.status}
+                        </Button>
+                    </Stack>
+                    <Typography variant="body2">{item.message}</Typography>
+                </Stack>
+            ))}
+            {!items.length && <Typography color="text.secondary">No feedback yet.</Typography>}
+        </Stack>
+    );
+};
+
+const TABS = [
+    { label: 'Sources', render: () => <SourceManager /> },
+    { label: 'Fast Pass', render: () => <FastPassScheduler /> },
+    { label: 'Pricing', render: () => <PricingEditor /> },
+    { label: 'Grant Coins', render: () => <GrantCoins /> },
+    { label: 'Analytics', render: () => <Analytics /> },
+    { label: 'Feedback', render: () => <FeedbackInbox /> },
+];
+
 export function AdminConsole() {
     useAppTitle('Admin Console');
     const isAdmin = useBillingStore((state) => state.isAdmin);
@@ -259,11 +524,12 @@ export function AdminConsole() {
             <Typography variant="h5" sx={{ fontWeight: 900, mb: 2 }}>
                 Admin Console
             </Typography>
-            <Tabs value={tab} onChange={(_, value) => setTab(value)} sx={{ mb: 3 }}>
-                <Tab label="Sources" sx={{ textTransform: 'none' }} />
-                <Tab label="Fast Pass" sx={{ textTransform: 'none' }} />
+            <Tabs value={tab} onChange={(_, value) => setTab(value)} variant="scrollable" sx={{ mb: 3 }}>
+                {TABS.map((t) => (
+                    <Tab key={t.label} label={t.label} sx={{ textTransform: 'none' }} />
+                ))}
             </Tabs>
-            {tab === 0 ? <SourceManager /> : <FastPassScheduler />}
+            {TABS[tab].render()}
         </Box>
     );
 }

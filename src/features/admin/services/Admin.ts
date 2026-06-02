@@ -76,4 +76,45 @@ export const Admin = {
         const { error } = await supabase.from('chapter_schedules').delete().eq('id', id);
         if (error) throw error;
     },
+
+    async grantTokens(email: string, amount: number): Promise<number> {
+        const { data, error } = await supabase.rpc('admin_grant_tokens', { p_email: email, p_amount: amount });
+        if (error) throw error;
+        return Number(data);
+    },
+
+    async getTopManga(limit = 20): Promise<{ manga_id: number; readers: number; chapters_read: number }[]> {
+        const { data, error } = await supabase.rpc('admin_top_manga', { p_limit: limit });
+        if (error) throw error;
+        return (data ?? []).map((row: { manga_id: number; readers: number; chapters_read: number }) => ({
+            manga_id: Number(row.manga_id),
+            readers: Number(row.readers),
+            chapters_read: Number(row.chapters_read),
+        }));
+    },
+
+    async getRecentLedger(
+        limit = 50,
+    ): Promise<{ user_id: string; delta: number; reason: string; created_at: string }[]> {
+        const { data, error } = await supabase
+            .from('token_ledger')
+            .select('user_id, delta, reason, created_at')
+            .order('created_at', { ascending: false })
+            .limit(limit);
+        if (error) throw error;
+        return (data ?? []) as { user_id: string; delta: number; reason: string; created_at: string }[];
+    },
+
+    async getPricing(): Promise<{ tokenPacks?: unknown[]; plans?: unknown[] } | null> {
+        const { data, error } = await supabase.from('app_config').select('value').eq('key', 'pricing').maybeSingle();
+        if (error) throw error;
+        return (data?.value as { tokenPacks?: unknown[]; plans?: unknown[] }) ?? null;
+    },
+
+    async setPricing(value: { tokenPacks: unknown[]; plans: unknown[] }): Promise<void> {
+        const { error } = await supabase
+            .from('app_config')
+            .upsert({ key: 'pricing', value, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+        if (error) throw error;
+    },
 };

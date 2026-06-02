@@ -147,7 +147,10 @@ export function Settings() {
 
                         // Uses AuthManager.removeTokens() internally
                         requestManager.reset();
-                        window.location.reload(); // Force reload to clear state
+                        // Full navigation to home (not reload-in-place): reloading on
+                        // /settings made re-login capture ?redirect=/settings and land
+                        // the user back on settings instead of the library.
+                        window.location.href = AppRoutes.root.path;
                     }
                 }}
             >

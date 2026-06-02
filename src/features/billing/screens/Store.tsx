@@ -18,6 +18,7 @@ import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
 import {
     DEFAULT_TOKEN_PACKS,
     DEFAULT_SUBSCRIPTION_PLANS,
+    getPublicTokenPacks,
     startCheckout,
     useBillingStore,
     TokenPack,
@@ -116,8 +117,12 @@ export function Store() {
         }
     };
 
-    const packs: TokenPack[] = DEFAULT_TOKEN_PACKS;
+    const [packs, setPacks] = useState<TokenPack[]>(DEFAULT_TOKEN_PACKS);
     const plans: SubscriptionPlan[] = DEFAULT_SUBSCRIPTION_PLANS;
+
+    useEffect(() => {
+        getPublicTokenPacks().then(setPacks);
+    }, []);
 
     return (
         <Box sx={{ p: { xs: 2, sm: 3 }, maxWidth: 880, mx: 'auto' }}>

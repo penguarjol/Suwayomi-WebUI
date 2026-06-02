@@ -7,11 +7,12 @@
  */
 
 import BookmarkIcon from '@mui/icons-material/Bookmark';
-import LockIcon from '@mui/icons-material/Lock';
+import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import CardActionArea from '@mui/material/CardActionArea';
 import Checkbox from '@mui/material/Checkbox';
 import Stack from '@mui/material/Stack';
+import Typography from '@mui/material/Typography';
 import Card from '@mui/material/Card';
 import IconButton from '@mui/material/IconButton';
 import { useTheme } from '@mui/material/styles';
@@ -137,6 +138,8 @@ export const ChapterCard = memo((props: IProps) => {
                             ...applyStyles(mode === 'reader' && isActiveChapter, {
                                 backgroundColor: 'primary.main',
                             }),
+                            // Fade Fast Pass chapters the user hasn't unlocked yet.
+                            ...applyStyles(isLocked, { opacity: 0.55 }),
                         }}
                     >
                         <CardActionArea
@@ -164,11 +167,17 @@ export const ChapterCard = memo((props: IProps) => {
                                     infoIcons={
                                         <>
                                             {isLocked && (
-                                                <LockIcon
-                                                    color={
-                                                        mode === 'reader' && isActiveChapter ? 'secondary' : 'primary'
-                                                    }
-                                                />
+                                                <Stack
+                                                    direction="row"
+                                                    alignItems="center"
+                                                    spacing={0.25}
+                                                    sx={{ color: 'warning.main' }}
+                                                >
+                                                    <MonetizationOnIcon fontSize="small" />
+                                                    <Typography variant="caption" sx={{ fontWeight: 800 }}>
+                                                        {lockCost}
+                                                    </Typography>
+                                                </Stack>
                                             )}
                                             {chapter.isBookmarked && (
                                                 <BookmarkIcon
