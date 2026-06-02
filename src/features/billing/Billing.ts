@@ -161,11 +161,26 @@ export const useBillingStore = create<BillingStore>((set, get) => ({
 
     loadProfile: async () => {
         get().loadConfig();
+        // Scope every profile read to the current user id. An admin RLS policy
+        // (profiles_admin_read) lets admins SELECT every row, so an unscoped
+        // `.single()` returns multiple rows for admins and throws — which is why
+        // admin accounts were silently denied the console. `.eq('id', uid)` keeps
+        // the query to exactly one row for free and admin users alike.
+        const { data: userData } = await supabase.auth.getUser();
+        const uid = userData.user?.id;
+        if (!uid) {
+            set({ loaded: true });
+            return;
+        }
         try {
             // Core columns only — these always exist. Keeping this query minimal
             // ensures admin/balance never break if a newer column (e.g.
             // accepted_terms_at) hasn't been migrated to the live DB yet.
-            const { data, error } = await supabase.from('profiles').select('tokens, is_premium, role').single();
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('tokens, is_premium, role')
+                .eq('id', uid)
+                .maybeSingle();
             if (error) throw error;
             const isAdmin = data?.role === 'admin';
             set({
@@ -196,7 +211,11 @@ export const useBillingStore = create<BillingStore>((set, get) => ({
         // Legal acknowledgement is best-effort: the column may not exist until
         // the admin-console migration is applied. Never let it break the profile.
         try {
-            const { data: terms, error } = await supabase.from('profiles').select('accepted_terms_at').single();
+            const { data: terms, error } = await supabase
+                .from('profiles')
+                .select('accepted_terms_at')
+                .eq('id', uid)
+                .maybeSingle();
             if (!error) set({ acceptedTerms: !!terms?.accepted_terms_at });
         } catch {
             // column not present yet — leave acceptedTerms at its default (true)
