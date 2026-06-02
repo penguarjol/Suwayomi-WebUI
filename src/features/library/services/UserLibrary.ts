@@ -8,6 +8,8 @@
 
 import { create } from 'zustand';
 import { supabase } from '@/lib/SupabaseClient.ts';
+import { requestManager } from '@/lib/requests/RequestManager.ts';
+import { defaultPromiseErrorHandler } from '@/lib/DefaultPromiseErrorHandler.ts';
 
 /**
  * Per-user library (multi-tenancy). The Suwayomi engine's `inLibrary` flag is
@@ -69,6 +71,13 @@ export const useUserLibraryStore = create<UserLibraryStore>((set, get) => ({
             set({ favoriteIds: previous });
             throw error;
         }
+
+        // Engine "track" union flag: set the shared inLibrary so the engine keeps
+        // fetching new chapters for any series at least one user favorites
+        // (ADR-0005). Fire-and-forget; Supabase is the per-user source of truth.
+        requestManager
+            .updateManga(mangaId, { updateManga: { inLibrary: true } })
+            .response.catch(defaultPromiseErrorHandler('UserLibrary::trackInEngine'));
     },
     remove: async (mangaId) => {
         const previous = get().favoriteIds;

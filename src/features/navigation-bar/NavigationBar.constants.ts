@@ -19,6 +19,8 @@ import GetAppOutlinedIcon from '@mui/icons-material/GetAppOutlined';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import SettingsIcon from '@mui/icons-material/Settings';
 import InfoIcon from '@mui/icons-material/Info';
+import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
+import MonetizationOnOutlinedIcon from '@mui/icons-material/MonetizationOnOutlined';
 import { useTranslation } from 'react-i18next';
 import { NavbarItem, NavBarItemMoreGroup } from '@/features/navigation-bar/NavigationBar.types.ts';
 import { AppRoutes } from '@/base/AppRoute.constants.ts';
@@ -82,6 +84,14 @@ const NAVIGATION_BAR_BASE_ITEMS = [
 ] as const satisfies RestrictedNavBarItem<'both'>[];
 
 const NAVIGATION_BAR_DESKTOP_ITEMS = [
+    {
+        path: AppRoutes.store.path,
+        title: 'global.label.get_coins',
+        SelectedIconComponent: MonetizationOnIcon,
+        IconComponent: MonetizationOnOutlinedIcon,
+        show: 'desktop',
+        moreGroup: NavBarItemMoreGroup.GENERAL,
+    },
     {
         path: AppRoutes.downloads.path,
         title: 'download.title.download',

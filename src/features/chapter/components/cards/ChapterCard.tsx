@@ -7,6 +7,7 @@
  */
 
 import BookmarkIcon from '@mui/icons-material/Bookmark';
+import LockIcon from '@mui/icons-material/Lock';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import CardActionArea from '@mui/material/CardActionArea';
 import Checkbox from '@mui/material/Checkbox';
@@ -40,6 +41,7 @@ import {
     ChapterScanlatorInfo,
 } from '@/features/chapter/Chapter.types.ts';
 import { MediaQuery } from '@/base/utils/MediaQuery.tsx';
+import { useBillingStore } from '@/features/billing/Billing.ts';
 
 type TChapter = ChapterIdInfo &
     ChapterMangaInfo &
@@ -80,7 +82,25 @@ export const ChapterCard = memo((props: IProps) => {
 
     const { isDownloaded } = chapter;
 
+    const isLocked = useBillingStore((state) => state.lockedChapterIds.includes(chapter.id));
+    const lockCost = useBillingStore((state) => state.chapterCosts[chapter.id] ?? 5);
+    const openPaywall = useBillingStore((state) => state.openPaywall);
+
     const handleClick = (event: MouseEvent | TouchEvent) => {
+        // Fast Pass: intercept locked chapters and offer to unlock instead of
+        // navigating into a chapter whose pages would 402 (see ADR-0001).
+        if (isLocked && !isSelecting) {
+            event.preventDefault();
+            event.stopPropagation();
+            openPaywall({
+                id: chapter.id,
+                name: showChapterNumber ? `${t('chapter.title_one')} ${chapter.chapterNumber}` : chapter.name,
+                cost: lockCost,
+                readerUrl: Chapters.getReaderUrl(chapter),
+            });
+            return;
+        }
+
         if (!isSelecting) return;
 
         event.preventDefault();
@@ -142,11 +162,22 @@ export const ChapterCard = memo((props: IProps) => {
                                     secondaryText={chapter.scanlator}
                                     ternaryText={`${getDateString(Number(chapter.uploadDate ?? 0), true)}${isDownloaded ? ` • ${t('chapter.status.label.downloaded')}` : ''}`}
                                     infoIcons={
-                                        chapter.isBookmarked && (
-                                            <BookmarkIcon
-                                                color={mode === 'reader' && isActiveChapter ? 'secondary' : 'primary'}
-                                            />
-                                        )
+                                        <>
+                                            {isLocked && (
+                                                <LockIcon
+                                                    color={
+                                                        mode === 'reader' && isActiveChapter ? 'secondary' : 'primary'
+                                                    }
+                                                />
+                                            )}
+                                            {chapter.isBookmarked && (
+                                                <BookmarkIcon
+                                                    color={
+                                                        mode === 'reader' && isActiveChapter ? 'secondary' : 'primary'
+                                                    }
+                                                />
+                                            )}
+                                        </>
                                     }
                                     slotProps={{
                                         title: {

@@ -27,6 +27,7 @@ import { useNavBarContext } from '@/features/navigation-bar/NavbarContext.tsx';
 import { useMetadataServerSettings } from '@/features/settings/services/ServerSettingsMetadata.ts';
 import { NAVIGATION_BAR_ITEMS } from '@/features/navigation-bar/NavigationBar.constants.ts';
 import { NavigationBarUtil } from '@/features/navigation-bar/NavigationBar.util.ts';
+import { TokenBalanceChip } from '@/features/billing/components/TokenBalanceChip.tsx';
 
 export function DefaultNavBar() {
     const { title, action, override, isCollapsed, setIsCollapsed, setAppBarHeight, navBarWidth, setNavBarWidth } =
@@ -171,6 +172,7 @@ export function DefaultNavBar() {
                                 ? 'NEXUS READS'
                                 : title}
                         </Typography>
+                        <TokenBalanceChip />
                         {action}
                     </Stack>
                 </Toolbar>

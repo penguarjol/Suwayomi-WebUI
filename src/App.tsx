@@ -34,12 +34,15 @@ import { defaultPromiseErrorHandler } from '@/lib/DefaultPromiseErrorHandler.ts'
 import { ReactRouter } from '@/lib/react-router/ReactRouter.ts';
 import { AuthManager } from '@/features/authentication/AuthManager.ts';
 import { useUserLibraryStore } from '@/features/library/services/UserLibrary.ts';
+import { useBillingStore } from '@/features/billing/Billing.ts';
+import { PaywallDialog } from '@/features/billing/components/PaywallDialog.tsx';
 
 const { Browse } = loadable(() => import('@/features/browse/screens/Browse.tsx'), lazyLoadFallback);
 const { DownloadQueue } = loadable(() => import('@/features/downloads/screens/DownloadQueue.tsx'), lazyLoadFallback);
 // Per-user, Supabase-backed library (multi-tenancy). The engine's shared
 // `Library` screen is intentionally no longer routed (see ADR-0005).
 const { MyLibrary } = loadable(() => import('@/features/library/screens/MyLibrary.tsx'), lazyLoadFallback);
+const { Store } = loadable(() => import('@/features/billing/screens/Store.tsx'), lazyLoadFallback);
 const { Manga } = loadable(() => import('@/features/manga/screens/Manga.tsx'), lazyLoadFallback);
 const { SearchAll } = loadable(() => import('@/features/global-search/screens/SearchAll.tsx'), lazyLoadFallback);
 const { Settings } = loadable(() => import('@/features/settings/screens/Settings.tsx'), lazyLoadFallback);
@@ -118,8 +121,9 @@ const InitialBackgroundRequests = () => {
         // without having to show the extensions page
         fetchExtensionList().catch(defaultPromiseErrorHandler('App::InitialBackgroundRequests: extension list'));
 
-        // Load the per-user library (Supabase + RLS) once on startup.
+        // Load per-user library + billing profile (Supabase + RLS) once on startup.
         useUserLibraryStore.getState().load().catch(defaultPromiseErrorHandler('App::loadUserLibrary'));
+        useBillingStore.getState().loadProfile().catch(defaultPromiseErrorHandler('App::loadBillingProfile'));
 
         // Initialize RevenueCat if on native platform
         if (Capacitor.isNativePlatform()) {
@@ -277,6 +281,7 @@ const MainApp = () => {
                             <Route index element={<Manga />} />
                         </Route>
                         <Route path={AppRoutes.library.match} element={<MyLibrary />} />
+                        <Route path={AppRoutes.store.match} element={<Store />} />
                         <Route path={AppRoutes.updates.match} element={<Updates />} />
                         {!hideHistory && <Route path={AppRoutes.history.match} element={<History />} />}
                         <Route path={AppRoutes.browse.match} element={<Browse />} />
@@ -314,6 +319,7 @@ export const App: React.FC = () => (
             <BackgroundSubscriptions />
 
             <ReactRouterSetter />
+            <PaywallDialog />
 
             <CssBaseline enableColorScheme />
 

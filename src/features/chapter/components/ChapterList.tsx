@@ -10,9 +10,10 @@ import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import { styled } from '@mui/material/styles';
 import Typography from '@mui/material/Typography';
-import { ComponentProps, useCallback, useMemo, useState } from 'react';
+import { ComponentProps, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { requestManager } from '@/lib/requests/RequestManager.ts';
+import { useBillingStore } from '@/features/billing/Billing.ts';
 import { ResumeFab } from '@/features/manga/components/ResumeFAB.tsx';
 import {
     filterAndSortChapters,
@@ -143,6 +144,14 @@ export const ChapterList = ({
     const visibleChapters = useMemo(() => filterAndSortChapters(chapters, options), [chapters, options]);
     const visibleChapterIds = useMemo(() => Chapters.getIds(visibleChapters), [visibleChapters]);
     const missingChapterCount = useMemo(() => Chapters.getMissingCount(visibleChapters), [visibleChapters]);
+
+    // Resolve Fast Pass lock state for this manga's chapters (Supabase, per-user).
+    const allChapterIds = useMemo(() => Chapters.getIds(chapters), [chapters]);
+    useEffect(() => {
+        if (allChapterIds.length) {
+            useBillingStore.getState().loadLocksForChapters(allChapterIds);
+        }
+    }, [allChapterIds]);
 
     const noChaptersFound = chapters.length === 0;
     const noChaptersMatchingFilter = !noChaptersFound && visibleChapters.length === 0;

@@ -448,6 +448,7 @@
       "client": "Client",
       "close": "Close",
       "copied_clipboard": "Copied to clipboard",
+      "get_coins": "Get Coins",
       "dark": "Dark",
       "default": "Default",
       "desktop": "Desktop",
