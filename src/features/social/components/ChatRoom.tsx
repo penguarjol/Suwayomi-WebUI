@@ -14,7 +14,9 @@ import TextField from '@mui/material/TextField';
 import IconButton from '@mui/material/IconButton';
 import SendIcon from '@mui/icons-material/Send';
 import { ChatMessage, getRecentMessages, sendMessage, subscribeToChat } from '@/features/social/Chat.ts';
-import { censorProfanity, hasProfanity } from '@/features/social/Social.ts';
+import { hasProfanity } from '@/features/social/Social.ts';
+import { StickerPicker } from '@/features/stickers/components/StickerPicker.tsx';
+import { StickerText } from '@/features/stickers/components/StickerText.tsx';
 import { LoadingPlaceholder } from '@/base/components/feedback/LoadingPlaceholder.tsx';
 import { makeToast } from '@/base/utils/Toast.ts';
 import { getErrorMessage } from '@/lib/HelperFunctions.ts';
@@ -81,7 +83,7 @@ export const ChatRoom = () => {
                             {message.author_name ?? 'reader'}
                         </Typography>
                         <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                            {censorProfanity(message.content)}
+                            <StickerText text={message.content} />
                         </Typography>
                     </Box>
                 ))}
@@ -93,6 +95,7 @@ export const ChatRoom = () => {
                 <div ref={endRef} />
             </Stack>
             <Stack sx={{ flexDirection: 'row', gap: 1, pt: 1, alignItems: 'flex-end' }}>
+                <StickerPicker onPick={(token) => setDraft((d) => `${d}${token}`)} />
                 <TextField
                     fullWidth
                     size="small"

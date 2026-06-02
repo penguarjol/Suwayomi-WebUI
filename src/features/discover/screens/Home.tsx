@@ -29,7 +29,7 @@ import {
     getTrendingWindowIds,
 } from '@/features/discover/Discover.ts';
 import { getRecommendedMangaIds } from '@/features/library/services/Recommendations.ts';
-import { OriginalWork, coverUrl, listPublishedWorks } from '@/features/originals/Originals.ts';
+import { OriginalWork, coverUrl, getFollowedCreatorWorks, listPublishedWorks } from '@/features/originals/Originals.ts';
 import { Thread, getRecentThreads } from '@/features/social/Forum.ts';
 import { useAppTitle } from '@/features/navigation-bar/hooks/useAppTitle.ts';
 import { AppRoutes } from '@/base/AppRoute.constants.ts';
@@ -44,12 +44,12 @@ const railScrollSx = {
     WebkitOverflowScrolling: 'touch' as const,
 };
 
-const NewOriginalsRail = () => {
+const OriginalsRail = ({ title, load }: { title: string; load: () => Promise<OriginalWork[]> }) => {
     const [works, setWorks] = useState<OriginalWork[]>([]);
     const [loaded, setLoaded] = useState(false);
 
     useEffect(() => {
-        listPublishedWorks()
+        load()
             .then((list) => setWorks(list.slice(0, 12)))
             .finally(() => setLoaded(true));
     }, []);
@@ -61,7 +61,7 @@ const NewOriginalsRail = () => {
             <Stack sx={{ flexDirection: 'row', alignItems: 'center', gap: 1, mb: 1, px: 0.5 }}>
                 <AutoStoriesIcon color="primary" fontSize="small" />
                 <Typography variant="subtitle1" sx={{ fontWeight: 800, flexGrow: 1 }}>
-                    New Originals
+                    {title}
                 </Typography>
                 <Button component={Link} to={AppRoutes.originals.path} size="small" sx={{ textTransform: 'none' }}>
                     See all
@@ -206,7 +206,8 @@ export function Home() {
                 loadIds={() => getRecommendedMangaIds(14)}
             />
 
-            <NewOriginalsRail />
+            <OriginalsRail title="From creators you follow" load={getFollowedCreatorWorks} />
+            <OriginalsRail title="New Originals" load={listPublishedWorks} />
             <CommunityHighlights />
 
             <Box sx={{ textAlign: 'center', mt: 2 }}>

@@ -32,6 +32,8 @@ import AutoStoriesIcon from '@mui/icons-material/AutoStories';
 import AutoStoriesOutlinedIcon from '@mui/icons-material/AutoStoriesOutlined';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import AdminPanelSettingsOutlinedIcon from '@mui/icons-material/AdminPanelSettingsOutlined';
+import PersonIcon from '@mui/icons-material/Person';
+import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import { useTranslation } from 'react-i18next';
 import { NavbarItem, NavBarItemMoreGroup } from '@/features/navigation-bar/NavigationBar.types.ts';
 import { AppRoutes } from '@/base/AppRoute.constants.ts';
@@ -171,6 +173,14 @@ const NAVIGATION_BAR_DESKTOP_ITEMS = [
                 title: t(isPaused ? 'download.queue.info.paused' : 'download.queue.info.remaining', { count }),
             };
         },
+    },
+    {
+        path: AppRoutes.profile.path,
+        title: 'global.label.profile',
+        SelectedIconComponent: PersonIcon,
+        IconComponent: PersonOutlineIcon,
+        show: 'desktop',
+        moreGroup: NavBarItemMoreGroup.SETTING_INFO,
     },
     {
         path: AppRoutes.settings.path,

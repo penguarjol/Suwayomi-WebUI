@@ -89,6 +89,8 @@ const { ServerSettings } = loadable(() => import('@/features/settings/screens/Se
 const { BrowseSettings } = loadable(() => import('@/features/browse/screens/BrowseSettings.tsx'), lazyLoadFallback);
 const { WebUISettings } = loadable(() => import('@/features/settings/screens/WebUISettings.tsx'), lazyLoadFallback);
 const { Home } = loadable(() => import('@/features/discover/screens/Home.tsx'), lazyLoadFallback);
+const { Profile } = loadable(() => import('@/features/profile/screens/Profile.tsx'), lazyLoadFallback);
+const { StickerMarket } = loadable(() => import('@/features/stickers/screens/StickerMarket.tsx'), lazyLoadFallback);
 const { DeviceSetting } = loadable(() => import('@/features/device/screens/DeviceSetting.tsx'), lazyLoadFallback);
 const { TrackingSettings } = loadable(
     () => import('@/features/tracker/screens/TrackingSettings.tsx'),
@@ -238,6 +240,8 @@ const MainApp = () => {
                             element={<Navigate to={AppRoutes.root.path} replace />}
                         />
                         <Route path={AppRoutes.home.match} element={<Home />} />
+                        <Route path={AppRoutes.profile.match} element={<Profile />} />
+                        <Route path={AppRoutes.stickers.match} element={<StickerMarket />} />
                         {isMobileWidth && <Route path={AppRoutes.more.match} element={<More />} />}
                         <Route path={AppRoutes.about.match} element={<About />} />
                         <Route path={AppRoutes.settings.match}>

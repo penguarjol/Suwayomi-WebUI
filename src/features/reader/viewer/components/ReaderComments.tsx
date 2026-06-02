@@ -15,7 +15,9 @@ import Stack from '@mui/material/Stack';
 import Avatar from '@mui/material/Avatar';
 import { supabase } from '@/lib/SupabaseClient.ts';
 import { makeToast } from '@/base/utils/Toast.ts';
-import { censorProfanity, hasProfanity } from '@/features/social/Social.ts';
+import { hasProfanity } from '@/features/social/Social.ts';
+import { StickerPicker } from '@/features/stickers/components/StickerPicker.tsx';
+import { StickerText } from '@/features/stickers/components/StickerText.tsx';
 
 // Type for comment with basic profile relation if available
 interface Profile {
@@ -170,20 +172,23 @@ const ReaderCommentsBase = ({ chapterId }: { chapterId: number | string }) => {
                                 },
                             }}
                         />
-                        <Button
-                            variant="contained"
-                            disabled={!newComment.trim() || submitting}
-                            onClick={handlePostComment}
-                            sx={{
-                                background: 'linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)',
-                                borderRadius: '20px',
-                                textTransform: 'none',
-                                fontWeight: '700',
-                                padding: '6px 24px',
-                            }}
-                        >
-                            Post
-                        </Button>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <StickerPicker onPick={(token) => setNewComment((c) => `${c}${token}`)} />
+                            <Button
+                                variant="contained"
+                                disabled={!newComment.trim() || submitting}
+                                onClick={handlePostComment}
+                                sx={{
+                                    background: 'linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)',
+                                    borderRadius: '20px',
+                                    textTransform: 'none',
+                                    fontWeight: '700',
+                                    padding: '6px 24px',
+                                }}
+                            >
+                                Post
+                            </Button>
+                        </Box>
                     </Box>
                 </Box>
             ) : (
@@ -240,8 +245,9 @@ const ReaderCommentsBase = ({ chapterId }: { chapterId: number | string }) => {
                                             wordBreak: 'break-word',
                                             whiteSpace: 'pre-wrap',
                                         }}
+                                        component="div"
                                     >
-                                        {censorProfanity(comment.content)}
+                                        <StickerText text={comment.content} />
                                     </Typography>
                                     <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
                                         <Typography

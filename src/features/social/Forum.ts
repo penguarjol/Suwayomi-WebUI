@@ -67,6 +67,19 @@ export async function getRecentThreads(limit = 5): Promise<Thread[]> {
     return getThreads(null, limit);
 }
 
+export async function getMyThreads(limit = 50): Promise<Thread[]> {
+    const { data: userData } = await supabase.auth.getUser();
+    const uid = userData.user?.id;
+    if (!uid) return [];
+    const { data } = await supabase
+        .from('threads')
+        .select('*')
+        .eq('user_id', uid)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+    return (data ?? []) as Thread[];
+}
+
 export async function getThread(id: string): Promise<{ thread: Thread | null; replies: ThreadReply[] }> {
     const [{ data: thread }, { data: replies }] = await Promise.all([
         supabase.from('threads').select('*').eq('id', id).maybeSingle(),

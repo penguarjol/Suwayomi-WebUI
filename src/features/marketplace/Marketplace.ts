@@ -116,3 +116,46 @@ export async function boostCollection(id: string): Promise<string> {
     if (error) return 'error';
     return (data ?? 'error') as string;
 }
+
+// --- Multi-collection membership (which of my collections contain a manga) ---
+export async function getCollectionIdsForManga(mangaId: number): Promise<Set<string>> {
+    const { data: userData } = await supabase.auth.getUser();
+    const uid = userData.user?.id;
+    if (!uid) return new Set();
+    // Only my own collections' memberships matter for the toggle menu.
+    const { data } = await supabase
+        .from('collection_items')
+        .select('collection_id, collections!inner(user_id)')
+        .eq('manga_id', mangaId)
+        .eq('collections.user_id', uid);
+    return new Set((data ?? []).map((row) => String(row.collection_id)));
+}
+
+// --- Following collections ---
+export async function getMyFollowedCollectionIds(): Promise<Set<string>> {
+    const { data } = await supabase.from('collection_follows').select('collection_id');
+    return new Set((data ?? []).map((row) => String(row.collection_id)));
+}
+
+export async function followCollection(id: string): Promise<void> {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) return;
+    await supabase.from('collection_follows').insert({ collection_id: id, user_id: userData.user.id });
+}
+
+export async function unfollowCollection(id: string): Promise<void> {
+    await supabase.from('collection_follows').delete().eq('collection_id', id);
+}
+
+/** Collections the current user follows, most-recently-followed first. */
+export async function getFollowedCollections(): Promise<Collection[]> {
+    const { data: follows } = await supabase
+        .from('collection_follows')
+        .select('collection_id, created_at')
+        .order('created_at', { ascending: false });
+    const ids = (follows ?? []).map((row) => String(row.collection_id));
+    if (!ids.length) return [];
+    const { data } = await supabase.from('collections').select('*').in('id', ids);
+    const order = new Map(ids.map((id, i) => [id, i]));
+    return ((data ?? []) as Collection[]).sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+}

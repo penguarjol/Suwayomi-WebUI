@@ -33,6 +33,10 @@ export const AppRoutes = {
         match: 'home',
         path: '/home',
     },
+    profile: {
+        match: 'profile',
+        path: '/profile',
+    },
     authentication: {
         match: 'auth',
         path: '/auth',
@@ -232,6 +236,10 @@ export const AppRoutes = {
     marketplace: {
         match: 'marketplace',
         path: '/marketplace',
+    },
+    stickers: {
+        match: 'stickers',
+        path: '/stickers',
     },
     collection: {
         match: 'collection/:id',

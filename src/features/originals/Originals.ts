@@ -84,6 +84,43 @@ export async function listPublishedWorks(): Promise<OriginalWork[]> {
     return (data ?? []) as OriginalWork[];
 }
 
+// --- Tipping + creator following ---
+export async function tipCreator(creatorId: string, amount: number): Promise<string> {
+    const { data, error } = await supabase.rpc('tip_creator', { p_creator_id: creatorId, p_amount: amount });
+    if (error) return 'error';
+    return (data ?? 'error') as string;
+}
+
+export async function getMyFollowedCreatorIds(): Promise<Set<string>> {
+    const { data } = await supabase.from('creator_follows').select('creator_id');
+    return new Set((data ?? []).map((row) => String(row.creator_id)));
+}
+
+export async function followCreator(creatorId: string): Promise<void> {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) return;
+    await supabase.from('creator_follows').insert({ creator_id: creatorId, user_id: userData.user.id });
+}
+
+export async function unfollowCreator(creatorId: string): Promise<void> {
+    await supabase.from('creator_follows').delete().eq('creator_id', creatorId);
+}
+
+/** Newest published works from creators the user follows. */
+export async function getFollowedCreatorWorks(limit = 12): Promise<OriginalWork[]> {
+    const { data: follows } = await supabase.from('creator_follows').select('creator_id');
+    const ids = (follows ?? []).map((row) => String(row.creator_id));
+    if (!ids.length) return [];
+    const { data } = await supabase
+        .from('original_works')
+        .select('*')
+        .eq('status', 'published')
+        .in('creator_id', ids)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+    return (data ?? []) as OriginalWork[];
+}
+
 export async function createWork(input: {
     title: string;
     description: string;

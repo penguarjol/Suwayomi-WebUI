@@ -23,6 +23,7 @@ import FavoriteIcon from '@mui/icons-material/Favorite';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import AddIcon from '@mui/icons-material/Add';
 import StorefrontIcon from '@mui/icons-material/Storefront';
+import EmojiEmotionsOutlinedIcon from '@mui/icons-material/EmojiEmotionsOutlined';
 import {
     Collection,
     createCollection,
@@ -159,6 +160,15 @@ export function Marketplace() {
                     Marketplace
                 </Typography>
                 <Button
+                    component={Link}
+                    to={AppRoutes.stickers.path}
+                    variant="outlined"
+                    startIcon={<EmojiEmotionsOutlinedIcon />}
+                    sx={{ borderRadius: '50px', textTransform: 'none', fontWeight: 700 }}
+                >
+                    Stickers
+                </Button>
+                <Button
                     variant="contained"
                     startIcon={<AddIcon />}
                     onClick={() => setCreateOpen(true)}
@@ -168,7 +178,7 @@ export function Marketplace() {
                 </Button>
             </Stack>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                Reader-made collections. Publish your own, like the best, and boost yours to the top.
+                Reader-made collections and stickers. Publish your own, like the best, and boost yours to the top.
             </Typography>
 
             {featured.length > 0 && (

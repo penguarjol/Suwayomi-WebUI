@@ -17,6 +17,8 @@ import Chip from '@mui/material/Chip';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import RocketLaunchIcon from '@mui/icons-material/RocketLaunch';
+import BookmarkAddIcon from '@mui/icons-material/BookmarkAdd';
+import BookmarkAddedIcon from '@mui/icons-material/BookmarkAdded';
 import { requestManager } from '@/lib/requests/RequestManager.ts';
 import { GET_MANGAS_BASE } from '@/lib/graphql/queries/MangaQuery.ts';
 import { GetMangasBaseQuery, GetMangasBaseQueryVariables } from '@/lib/graphql/generated/graphql.ts';
@@ -26,9 +28,12 @@ import {
     Collection,
     CollectionItem,
     boostCollection,
+    followCollection,
     getCollection,
+    getMyFollowedCollectionIds,
     getMyLikedCollectionIds,
     likeCollection,
+    unfollowCollection,
     unlikeCollection,
 } from '@/features/marketplace/Marketplace.ts';
 import { useApprovedSourceIds } from '@/features/library/services/useApprovedSources.ts';
@@ -50,20 +55,35 @@ export function CollectionDetail() {
     const [collection, setCollection] = useState<Collection | null>(null);
     const [items, setItems] = useState<CollectionItem[]>([]);
     const [liked, setLiked] = useState(false);
+    const [following, setFollowing] = useState(false);
     const [loading, setLoading] = useState(true);
     const { ready: sourcesReady, isApproved } = useApprovedSourceIds();
 
     useAppTitle(collection?.title ?? 'Collection');
 
     const refresh = async () => {
-        const [{ collection: c, items: i }, likedIds] = await Promise.all([
+        const [{ collection: c, items: i }, likedIds, followedIds] = await Promise.all([
             getCollection(id),
             getMyLikedCollectionIds(),
+            getMyFollowedCollectionIds(),
         ]);
         setCollection(c);
         setItems(i);
         setLiked(likedIds.has(id));
+        setFollowing(followedIds.has(id));
         setLoading(false);
+    };
+
+    const toggleFollow = async () => {
+        const next = !following;
+        setFollowing(next);
+        try {
+            if (next) await followCollection(id);
+            else await unfollowCollection(id);
+            makeToast(next ? 'Following — it will show in your Library' : 'Unfollowed', 'success');
+        } catch {
+            setFollowing(!next);
+        }
     };
 
     useEffect(() => {
@@ -131,14 +151,24 @@ export function CollectionDetail() {
                 </Typography>
             )}
 
-            <Button
-                variant="outlined"
-                startIcon={<RocketLaunchIcon />}
-                onClick={boost}
-                sx={{ mb: 3, borderRadius: '50px', textTransform: 'none', fontWeight: 700 }}
-            >
-                Boost to Featured
-            </Button>
+            <Stack sx={{ flexDirection: 'row', gap: 1, mb: 3, flexWrap: 'wrap' }}>
+                <Button
+                    variant={following ? 'outlined' : 'contained'}
+                    startIcon={following ? <BookmarkAddedIcon /> : <BookmarkAddIcon />}
+                    onClick={toggleFollow}
+                    sx={{ borderRadius: '50px', textTransform: 'none', fontWeight: 700 }}
+                >
+                    {following ? 'Following' : 'Follow'}
+                </Button>
+                <Button
+                    variant="outlined"
+                    startIcon={<RocketLaunchIcon />}
+                    onClick={boost}
+                    sx={{ borderRadius: '50px', textTransform: 'none', fontWeight: 700 }}
+                >
+                    Boost to Featured
+                </Button>
+            </Stack>
 
             <Box
                 sx={{

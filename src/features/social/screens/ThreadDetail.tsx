@@ -27,7 +27,9 @@ import {
     likeThread,
     unlikeThread,
 } from '@/features/social/Forum.ts';
-import { censorProfanity, hasProfanity } from '@/features/social/Social.ts';
+import { hasProfanity } from '@/features/social/Social.ts';
+import { StickerPicker } from '@/features/stickers/components/StickerPicker.tsx';
+import { StickerText } from '@/features/stickers/components/StickerText.tsx';
 import { useAppTitle } from '@/features/navigation-bar/hooks/useAppTitle.ts';
 import { LoadingPlaceholder } from '@/base/components/feedback/LoadingPlaceholder.tsx';
 import { EmptyViewAbsoluteCentered } from '@/base/components/feedback/EmptyViewAbsoluteCentered.tsx';
@@ -101,8 +103,8 @@ export function ThreadDetail() {
                 <Typography variant="h6" sx={{ fontWeight: 900 }}>
                     {thread.title}
                 </Typography>
-                <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
-                    {censorProfanity(thread.content)}
+                <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }} component="div">
+                    <StickerText text={thread.content} />
                 </Typography>
                 <Stack sx={{ flexDirection: 'row', alignItems: 'center', gap: 0.5 }}>
                     <IconButton size="small" aria-label="like" onClick={toggleLike}>
@@ -122,6 +124,7 @@ export function ThreadDetail() {
 
             {!thread.locked && (
                 <Stack sx={{ flexDirection: 'row', gap: 1, mb: 3, alignItems: 'flex-end' }}>
+                    <StickerPicker onPick={(token) => setDraft((d) => `${d}${token}`)} />
                     <TextField
                         fullWidth
                         size="small"
@@ -152,8 +155,12 @@ export function ThreadDetail() {
                             <Typography variant="caption" sx={{ fontWeight: 700, color: 'primary.main' }}>
                                 {reply.author_name ?? 'reader'}
                             </Typography>
-                            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                                {censorProfanity(reply.content)}
+                            <Typography
+                                variant="body2"
+                                component="div"
+                                sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+                            >
+                                <StickerText text={reply.content} />
                             </Typography>
                         </Box>
                     </Stack>

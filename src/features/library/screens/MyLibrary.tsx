@@ -23,6 +23,7 @@ import { GetMangasBaseQuery, GetMangasBaseQueryVariables } from '@/lib/graphql/g
 import { Mangas } from '@/features/manga/services/Mangas.ts';
 import { useUserLibraryStore } from '@/features/library/services/UserLibrary.ts';
 import { ContinueReading } from '@/features/library/components/ContinueReading.tsx';
+import { FollowedCollections } from '@/features/library/components/FollowedCollections.tsx';
 import {
     CategoryBar,
     AssignCategoriesButton,
@@ -42,28 +43,54 @@ const MyLibraryCard = ({ manga, categories }: { manga: LibraryManga; categories:
     const thumbnail = Mangas.getThumbnailUrl(manga);
 
     return (
-        <Box sx={{ position: 'relative' }}>
-            <Box
-                component={Link}
-                to={AppRoutes.manga.path(manga.id)}
-                sx={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
-            >
+        <Box>
+            {/* Overlay controls anchor to the COVER (this relative box), never the
+                title below it, so they can't block the title. */}
+            <Box sx={{ position: 'relative' }}>
                 <Box
-                    component="img"
-                    src={thumbnail}
-                    alt={manga.title}
-                    loading="lazy"
+                    component={Link}
+                    to={AppRoutes.manga.path(manga.id)}
+                    sx={{ textDecoration: 'none', display: 'block' }}
+                >
+                    <Box
+                        component="img"
+                        src={thumbnail}
+                        alt={manga.title}
+                        loading="lazy"
+                        sx={{
+                            width: '100%',
+                            aspectRatio: '2 / 3',
+                            objectFit: 'cover',
+                            borderRadius: 2,
+                            backgroundColor: 'action.hover',
+                            boxShadow: '0 4px 14px rgba(0,0,0,0.35)',
+                            transition: 'transform 0.15s ease',
+                            '&:hover': { transform: 'translateY(-2px)' },
+                        }}
+                    />
+                </Box>
+                <IconButton
+                    size="small"
+                    aria-label="remove from library"
+                    onClick={updateLibraryState}
                     sx={{
-                        width: '100%',
-                        aspectRatio: '2 / 3',
-                        objectFit: 'cover',
-                        borderRadius: 2,
-                        backgroundColor: 'action.hover',
-                        boxShadow: '0 4px 14px rgba(0,0,0,0.35)',
-                        transition: 'transform 0.15s ease',
-                        '&:hover': { transform: 'translateY(-2px)' },
+                        position: 'absolute',
+                        top: 6,
+                        right: 6,
+                        color: 'primary.main',
+                        backgroundColor: 'rgba(0,0,0,0.45)',
+                        backdropFilter: 'blur(6px)',
+                        '&:hover': { backgroundColor: 'rgba(0,0,0,0.65)' },
                     }}
-                />
+                >
+                    <FavoriteIcon fontSize="small" />
+                </IconButton>
+                {categories.length > 0 && <AssignCategoriesButton mangaId={manga.id} categories={categories} />}
+                <Box sx={{ position: 'absolute', bottom: 6, right: 6 }}>
+                    <AddToCollectionButton mangaId={manga.id} mangaTitle={manga.title} />
+                </Box>
+            </Box>
+            <Box component={Link} to={AppRoutes.manga.path(manga.id)} sx={{ textDecoration: 'none', color: 'inherit' }}>
                 <Typography
                     variant="body2"
                     sx={{
@@ -77,26 +104,6 @@ const MyLibraryCard = ({ manga, categories }: { manga: LibraryManga; categories:
                 >
                     {manga.title}
                 </Typography>
-            </Box>
-            <IconButton
-                size="small"
-                aria-label="remove from library"
-                onClick={updateLibraryState}
-                sx={{
-                    position: 'absolute',
-                    top: 6,
-                    right: 6,
-                    color: 'primary.main',
-                    backgroundColor: 'rgba(0,0,0,0.45)',
-                    backdropFilter: 'blur(6px)',
-                    '&:hover': { backgroundColor: 'rgba(0,0,0,0.65)' },
-                }}
-            >
-                <FavoriteIcon fontSize="small" />
-            </IconButton>
-            {categories.length > 0 && <AssignCategoriesButton mangaId={manga.id} categories={categories} />}
-            <Box sx={{ position: 'absolute', bottom: 6, left: 6 }}>
-                <AddToCollectionButton mangaId={manga.id} mangaTitle={manga.title} />
             </Box>
         </Box>
     );
@@ -176,6 +183,7 @@ export function MyLibrary() {
     return (
         <Box sx={{ p: { xs: 1.5, sm: 2 } }}>
             <ContinueReading />
+            <FollowedCollections />
             <Stack sx={{ flexDirection: 'row', alignItems: 'baseline', gap: 1, mb: 2, px: 0.5 }}>
                 <Typography variant="h6" sx={{ fontWeight: 800 }}>
                     {t('library.title')}
