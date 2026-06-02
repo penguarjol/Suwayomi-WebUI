@@ -789,7 +789,9 @@ export function AdminConsole() {
                         fontSize: 13,
                     }}
                 >
-                    {"update public.profiles\n  set role = 'admin'\n  where email = 'YOUR_EMAIL_HERE';"}
+                    {
+                        "-- email lives in auth.users; profiles.id references it.\nupdate public.profiles\n   set role = 'admin'\n where id = (select id from auth.users where email = 'YOUR_EMAIL_HERE');"
+                    }
                 </Box>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                     Run it in the Supabase SQL editor (or psql), then click Re-check (or reload). Once you are an admin,
