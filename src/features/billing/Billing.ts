@@ -125,20 +125,28 @@ export const useBillingStore = create<BillingStore>((set, get) => ({
 
     loadProfile: async () => {
         try {
-            const { data, error } = await supabase
-                .from('profiles')
-                .select('tokens, is_premium, role, accepted_terms_at')
-                .single();
+            // Core columns only — these always exist. Keeping this query minimal
+            // ensures admin/balance never break if a newer column (e.g.
+            // accepted_terms_at) hasn't been migrated to the live DB yet.
+            const { data, error } = await supabase.from('profiles').select('tokens, is_premium, role').single();
             if (error) throw error;
             set({
                 tokens: Number(data?.tokens ?? 0),
                 isPremium: !!data?.is_premium || data?.role === 'premium',
                 isAdmin: data?.role === 'admin',
-                acceptedTerms: !!data?.accepted_terms_at,
                 loaded: true,
             });
         } catch {
             set({ loaded: true });
+        }
+
+        // Legal acknowledgement is best-effort: the column may not exist until
+        // the admin-console migration is applied. Never let it break the profile.
+        try {
+            const { data: terms, error } = await supabase.from('profiles').select('accepted_terms_at').single();
+            if (!error) set({ acceptedTerms: !!terms?.accepted_terms_at });
+        } catch {
+            // column not present yet — leave acceptedTerms at its default (true)
         }
     },
 
