@@ -24,7 +24,6 @@ import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import RedeemIcon from '@mui/icons-material/Redeem';
 import SettingsIcon from '@mui/icons-material/Settings';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
-import InfoIcon from '@mui/icons-material/Info';
 import LogoutIcon from '@mui/icons-material/Logout';
 import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
 import { supabase } from '@/lib/SupabaseClient.ts';
@@ -144,12 +143,6 @@ export function Profile() {
                         <SettingsIcon />
                     </ListItemIcon>
                     <ListItemText primary="Settings" />
-                </ListItemLink>
-                <ListItemLink to={AppRoutes.about.path}>
-                    <ListItemIcon>
-                        <InfoIcon />
-                    </ListItemIcon>
-                    <ListItemText primary="About Nexus Reads" />
                 </ListItemLink>
             </List>
 

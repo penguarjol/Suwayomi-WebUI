@@ -20,6 +20,7 @@ export interface GlobalSource {
     name: string | null;
     enabled: boolean;
     hidden: boolean;
+    is_nsfw?: boolean;
 }
 
 export interface ChapterSchedule {
@@ -74,19 +75,29 @@ export interface AdminLedgerEntry {
 
 export const Admin = {
     async getGlobalSources(): Promise<GlobalSource[]> {
-        const { data, error } = await supabase.from('global_sources').select('source_id, name, enabled, hidden');
+        const { data, error } = await supabase
+            .from('global_sources')
+            .select('source_id, name, enabled, hidden, is_nsfw');
         if (error) throw error;
         return (data ?? []) as GlobalSource[];
     },
 
-    async upsertGlobalSource(sourceId: string, name: string | null, enabled: boolean, hidden: boolean): Promise<void> {
+    async upsertGlobalSource(
+        sourceId: string,
+        name: string | null,
+        enabled: boolean,
+        hidden: boolean,
+        isNsfw = false,
+    ): Promise<void> {
         const { data: userData } = await supabase.auth.getUser();
         const { error } = await supabase.from('global_sources').upsert(
             {
                 source_id: sourceId,
                 name,
-                enabled,
-                hidden,
+                // NSFW sources are never user-visible; record the flag and force admin-only.
+                enabled: isNsfw ? false : enabled,
+                hidden: isNsfw ? true : hidden,
+                is_nsfw: isNsfw,
                 added_by: userData.user?.id ?? null,
                 updated_at: new Date().toISOString(),
             },

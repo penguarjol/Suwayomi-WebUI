@@ -103,12 +103,12 @@ const SourceManager = () => {
     const currentPage = Math.min(page, pageCount);
     const visible = sources.slice((currentPage - 1) * SOURCE_PAGE_SIZE, currentPage * SOURCE_PAGE_SIZE);
 
-    const update = async (id: string, name: string, patch: Partial<SourceState>) => {
+    const update = async (id: string, name: string, isNsfw: boolean, patch: Partial<SourceState>) => {
         const current = state[id] ?? { enabled: false, hidden: false, name };
         const next = { ...current, ...patch, name };
         setState((prev) => ({ ...prev, [id]: next })); // optimistic
         try {
-            await Admin.upsertGlobalSource(id, name, next.enabled, next.hidden);
+            await Admin.upsertGlobalSource(id, name, next.enabled, next.hidden, isNsfw);
         } catch (e) {
             setState((prev) => ({ ...prev, [id]: current })); // revert
             makeToast('Failed to update source', 'error', getErrorMessage(e));
@@ -122,7 +122,8 @@ const SourceManager = () => {
             <Typography variant="body2" color="text.secondary">
                 These are the sources from your installed extensions. Enable a source to make it visible to all users.
                 Admin-only keeps it usable by admins but hidden from everyone else. Disabled sources are off for
-                everyone. To add or remove sources, use the Extensions tab.
+                everyone. 18+ sources are always admin-only and can never be made visible to regular users. To add or
+                remove sources, use the Extensions tab.
             </Typography>
             <Stack sx={{ flexDirection: 'row', gap: 1.5, flexWrap: 'wrap', alignItems: 'center' }}>
                 <TextField
@@ -191,27 +192,35 @@ const SourceManager = () => {
                                     </Typography>
                                 </Stack>
                             </Stack>
-                            <Stack sx={{ flexDirection: 'row', gap: 2, alignItems: 'center' }}>
-                                <Stack sx={{ alignItems: 'center' }}>
-                                    <Switch
-                                        checked={s.enabled}
-                                        onChange={(e) =>
-                                            update(source.id, source.displayName, { enabled: e.target.checked })
-                                        }
-                                    />
-                                    <Typography variant="caption">Visible</Typography>
+                            {source.isNsfw ? (
+                                <Chip size="small" color="warning" variant="outlined" label="18+ · admin-only" />
+                            ) : (
+                                <Stack sx={{ flexDirection: 'row', gap: 2, alignItems: 'center' }}>
+                                    <Stack sx={{ alignItems: 'center' }}>
+                                        <Switch
+                                            checked={s.enabled}
+                                            onChange={(e) =>
+                                                update(source.id, source.displayName, false, {
+                                                    enabled: e.target.checked,
+                                                })
+                                            }
+                                        />
+                                        <Typography variant="caption">Visible</Typography>
+                                    </Stack>
+                                    <Stack sx={{ alignItems: 'center' }}>
+                                        <Switch
+                                            color="warning"
+                                            checked={s.hidden}
+                                            onChange={(e) =>
+                                                update(source.id, source.displayName, false, {
+                                                    hidden: e.target.checked,
+                                                })
+                                            }
+                                        />
+                                        <Typography variant="caption">Admin-only</Typography>
+                                    </Stack>
                                 </Stack>
-                                <Stack sx={{ alignItems: 'center' }}>
-                                    <Switch
-                                        color="warning"
-                                        checked={s.hidden}
-                                        onChange={(e) =>
-                                            update(source.id, source.displayName, { hidden: e.target.checked })
-                                        }
-                                    />
-                                    <Typography variant="caption">Admin-only</Typography>
-                                </Stack>
-                            </Stack>
+                            )}
                         </Stack>
                     );
                 })}
