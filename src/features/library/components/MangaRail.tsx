@@ -64,12 +64,16 @@ export const MangaRail = ({
 
     return (
         <Box sx={{ mb: 3 }}>
-            <Stack sx={{ flexDirection: 'row', alignItems: 'center', gap: 1, mb: 1, px: 0.5 }}>
-                {icon}
-                <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
-                    {title}
-                </Typography>
-            </Stack>
+            {(title || icon) && (
+                <Stack sx={{ flexDirection: 'row', alignItems: 'center', gap: 1, mb: 1, px: 0.5 }}>
+                    {icon}
+                    {title && (
+                        <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
+                            {title}
+                        </Typography>
+                    )}
+                </Stack>
+            )}
             <Stack
                 sx={{
                     flexDirection: 'row',

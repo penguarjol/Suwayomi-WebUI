@@ -16,14 +16,11 @@ import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
-import SyncAltIcon from '@mui/icons-material/SyncAlt';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { AwaitableComponent } from 'awaitable-component';
 import { CustomTooltip } from '@/base/components/CustomTooltip.tsx';
 import { MangaType } from '@/lib/graphql/generated/graphql.ts';
-import { AppRoutes } from '@/base/AppRoute.constants.ts';
 import { CategorySelect } from '@/features/category/components/CategorySelect.tsx';
 
 interface IProps {
@@ -64,33 +61,16 @@ export const MangaToolbarMenu = ({ manga, onRefresh, refreshing }: IProps) => {
                         </IconButton>
                     </CustomTooltip>
                     {manga.inLibrary && (
-                        <>
-                            <CustomTooltip title={t('global.button.migrate')}>
-                                <Link
-                                    to={AppRoutes.migrate.childRoutes.search.path(
-                                        manga.sourceId,
-                                        manga.id,
-                                        manga.title,
-                                    )}
-                                    state={{ mangaTitle: manga.title }}
-                                    style={{ textDecoration: 'none', color: 'inherit' }}
-                                >
-                                    <IconButton color="inherit">
-                                        <SyncAltIcon />
-                                    </IconButton>
-                                </Link>
-                            </CustomTooltip>
-                            <CustomTooltip title={t('manga.label.edit_categories')}>
-                                <IconButton
-                                    onClick={() => {
-                                        openCategorySelection();
-                                    }}
-                                    color="inherit"
-                                >
-                                    <Label />
-                                </IconButton>
-                            </CustomTooltip>
-                        </>
+                        <CustomTooltip title={t('manga.label.edit_categories')}>
+                            <IconButton
+                                onClick={() => {
+                                    openCategorySelection();
+                                }}
+                                color="inherit"
+                            >
+                                <Label />
+                            </IconButton>
+                        </CustomTooltip>
                     )}
                 </>
             )}
@@ -128,18 +108,6 @@ export const MangaToolbarMenu = ({ manga, onRefresh, refreshing }: IProps) => {
                             <ListItemText>{t('manga.label.reload_from_source')}</ListItemText>
                         </MenuItem>
                         {manga.inLibrary && [
-                            <MenuItem
-                                key="migrate"
-                                component={Link}
-                                to={AppRoutes.migrate.childRoutes.search.path(manga.sourceId, manga.id, manga.title)}
-                                state={{ mangaTitle: manga.title }}
-                                style={{ textDecoration: 'none', color: 'inherit' }}
-                            >
-                                <ListItemIcon>
-                                    <SyncAltIcon fontSize="small" />
-                                </ListItemIcon>
-                                <ListItemText>{t('migrate.title')}</ListItemText>
-                            </MenuItem>,
                             <MenuItem
                                 key="categories"
                                 onClick={() => {

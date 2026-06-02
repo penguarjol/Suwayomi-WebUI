@@ -9,6 +9,7 @@
 import { useCallback, useMemo, useState, useEffect } from 'react';
 import IconButton from '@mui/material/IconButton';
 import TravelExploreIcon from '@mui/icons-material/TravelExplore';
+import TuneIcon from '@mui/icons-material/Tune';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Typography from '@mui/material/Typography';
@@ -31,9 +32,13 @@ import { VirtuosoUtil } from '@/lib/virtuoso/Virtuoso.util.tsx';
 import { StyledGroupHeader } from '@/base/components/virtuoso/StyledGroupHeader.tsx';
 import { StyledGroupItemWrapper } from '@/base/components/virtuoso/StyledGroupItemWrapper.tsx';
 import { SourceLanguageSelect } from '@/features/source/components/SourceLanguageSelect.tsx';
+import { SourceManagerDialog } from '@/features/source/components/SourceManagerDialog.tsx';
+import { useSourcePrefs } from '@/features/source/services/SourcePreferences.ts';
 
 export function Sources({ tabsMenuHeight }: { tabsMenuHeight: number }) {
     const { t } = useTranslation();
+    const [manageOpen, setManageOpen] = useState(false);
+    const hiddenSources = useSourcePrefs((state) => state.hidden);
 
     const { languages: shownLangs, setLanguages: setShownLangs } = SourceService.useLanguages();
     const {
@@ -58,7 +63,7 @@ export function Sources({ tabsMenuHeight }: { tabsMenuHeight: number }) {
     }, []);
 
     const sources = data?.sources.nodes;
-    const filteredSources = useMemo(() => {
+    const approvedSources = useMemo(() => {
         let s = sources ?? [];
         const isAdmin = localStorage.getItem('isAdmin') === 'true';
 
@@ -90,6 +95,11 @@ export function Sources({ tabsMenuHeight }: { tabsMenuHeight: number }) {
             enabled: true,
         });
     }, [sources, shownLangs, allowedExtensions]);
+    // Apply the user's personal source visibility preference (within the approved set).
+    const filteredSources = useMemo(
+        () => approvedSources.filter((src) => !hiddenSources.has(String(src.id))),
+        [approvedSources, hiddenSources],
+    );
     const sourcesByLanguage = useMemo(() => {
         const lastUsedSource = SourceService.getLastUsedSource(lastUsedSourceId, filteredSources);
         const groupedByLanguageTuple = Object.entries(SourceService.groupByLanguage(filteredSources));
@@ -136,6 +146,11 @@ export function Sources({ tabsMenuHeight }: { tabsMenuHeight: number }) {
                     <TravelExploreIcon />
                 </IconButton>
             </CustomTooltip>
+            <CustomTooltip title="Manage sources">
+                <IconButton onClick={() => setManageOpen(true)} color="inherit">
+                    <TuneIcon />
+                </IconButton>
+            </CustomTooltip>
             <SourceLanguageSelect
                 selectedLanguages={shownLangs}
                 setSelectedLanguages={setShownLangs}
@@ -163,37 +178,49 @@ export function Sources({ tabsMenuHeight }: { tabsMenuHeight: number }) {
     }
 
     return (
-        <StyledGroupedVirtuoso
-            persistKey="sources"
-            heightToSubtract={tabsMenuHeight}
-            overscan={window.innerHeight * 0.5}
-            groupCounts={groupCounts}
-            computeItemKey={computeItemKey}
-            groupContent={(index) => {
-                const [language] = sourcesByLanguage[index];
+        <>
+            <StyledGroupedVirtuoso
+                persistKey="sources"
+                heightToSubtract={tabsMenuHeight}
+                overscan={window.innerHeight * 0.5}
+                groupCounts={groupCounts}
+                computeItemKey={computeItemKey}
+                groupContent={(index) => {
+                    const [language] = sourcesByLanguage[index];
 
-                return (
-                    <StyledGroupHeader isFirstItem={!index}>
-                        <Typography variant="h5" component="h2">
-                            {translateExtensionLanguage(language)}
-                        </Typography>
-                    </StyledGroupHeader>
-                );
-            }}
-            itemContent={(index, groupIndex) => {
-                const language = sourcesByLanguage[groupIndex][0];
-                const source = visibleSources[index];
+                    return (
+                        <StyledGroupHeader isFirstItem={!index}>
+                            <Typography variant="h5" component="h2">
+                                {translateExtensionLanguage(language)}
+                            </Typography>
+                        </StyledGroupHeader>
+                    );
+                }}
+                itemContent={(index, groupIndex) => {
+                    const language = sourcesByLanguage[groupIndex][0];
+                    const source = visibleSources[index];
 
-                return (
-                    <StyledGroupItemWrapper>
-                        <SourceCard
-                            source={source}
-                            showSourceRepo={areSourcesFromDifferentRepos}
-                            showLanguage={isPinnedOrLastUsedSource(language)}
-                        />
-                    </StyledGroupItemWrapper>
-                );
-            }}
-        />
+                    return (
+                        <StyledGroupItemWrapper>
+                            <SourceCard
+                                source={source}
+                                showSourceRepo={areSourcesFromDifferentRepos}
+                                showLanguage={isPinnedOrLastUsedSource(language)}
+                            />
+                        </StyledGroupItemWrapper>
+                    );
+                }}
+            />
+            <SourceManagerDialog
+                open={manageOpen}
+                onClose={() => setManageOpen(false)}
+                sources={approvedSources.map((src) => ({
+                    id: String(src.id),
+                    name: src.displayName ?? src.name,
+                    lang: src.lang,
+                    iconUrl: src.iconUrl,
+                }))}
+            />
+        </>
     );
 }

@@ -19,6 +19,7 @@ import { supabase } from '@/lib/SupabaseClient.ts';
 import { PasswordTextField } from '@/base/components/inputs/PasswordTextField.tsx';
 import { makeToast } from '@/base/utils/Toast.ts';
 import { AuthManager } from '@/features/authentication/AuthManager.ts';
+import { useBillingStore } from '@/features/billing/Billing.ts';
 import { AppRoutes } from '@/base/AppRoute.constants.ts';
 import { useNavBarContext } from '@/features/navigation-bar/NavbarContext.tsx';
 import { SearchParam } from '@/base/Base.types.ts';
@@ -69,35 +70,21 @@ export const LoginPage = () => {
                 data = res.data;
 
                 if (data.session) {
-                    // Store the Supabase JWT as the Access Token
-                    AuthManager.setTokens(data.session.access_token, data.session.refresh_token);
-
-                    // Fetch Profile using the session user ID
-                    const { data: profile, error: profileError } = await supabase
-                        .from('profiles')
-                        .select('role')
-                        .eq('id', data.session.user.id)
-                        .single();
-
-                    if (profileError) {
-                        // eslint-disable-next-line no-console
-                        console.error('[LoginPage] Profile fetch error:', profileError);
-                    }
-
-                    if (profile && profile.role === 'admin') {
-                        localStorage.setItem('isAdmin', 'true');
-                    } else {
-                        localStorage.setItem('isAdmin', 'false');
-                    }
-
-                    // Reset client to clear cache/stale state before redirecting
+                    // Clear any stale client state/cache from a previous session
+                    // FIRST (reset() also clears tokens + auth-init), THEN establish
+                    // the fresh auth state — otherwise the app wedges on the splash
+                    // until a manual refresh.
                     requestManager.reset();
 
-                    // Short delay to allow Apollo Client to re-initialize sockets/cache before we fire the new query
-                    await new Promise<void>((resolve) => {
-                        setTimeout(resolve, 500);
-                    });
+                    AuthManager.setTokens(data.session.access_token, data.session.refresh_token);
+                    AuthManager.setAuthRequired(true);
+                    AuthManager.setAuthInitialized(true);
 
+                    // Load profile (sets tokens/premium/admin in the store + localStorage,
+                    // the single source of truth for admin gating).
+                    await useBillingStore.getState().loadProfile();
+
+                    requestManager.processQueues();
                     navigate(redirect ?? AppRoutes.root.path);
                 }
             }
@@ -117,7 +104,7 @@ export const LoginPage = () => {
     }, []);
 
     if (isAuthenticated) {
-        return <Navigate to={AppRoutes.root.path} replace />;
+        return <Navigate to={redirect ?? AppRoutes.root.path} replace />;
     }
 
     return (

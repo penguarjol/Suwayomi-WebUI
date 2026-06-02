@@ -6,6 +6,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+import HomeIcon from '@mui/icons-material/Home';
+import HomeOutlinedIcon from '@mui/icons-material/HomeOutlined';
 import CollectionsBookmarkIcon from '@mui/icons-material/CollectionsBookmark';
 import CollectionsOutlinedBookmarkIcon from '@mui/icons-material/CollectionsBookmarkOutlined';
 import NewReleasesIcon from '@mui/icons-material/NewReleases';
@@ -18,7 +20,6 @@ import GetAppIcon from '@mui/icons-material/GetApp';
 import GetAppOutlinedIcon from '@mui/icons-material/GetAppOutlined';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import SettingsIcon from '@mui/icons-material/Settings';
-import InfoIcon from '@mui/icons-material/Info';
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import MonetizationOnOutlinedIcon from '@mui/icons-material/MonetizationOnOutlined';
 import ForumIcon from '@mui/icons-material/Forum';
@@ -41,26 +42,18 @@ type RestrictedNavBarItem<Show extends NavbarItem['show']> = Omit<NavbarItem, 's
 
 const NAVIGATION_BAR_BASE_ITEMS = [
     {
+        path: AppRoutes.home.path,
+        title: 'global.label.discover',
+        SelectedIconComponent: HomeIcon,
+        IconComponent: HomeOutlinedIcon,
+        show: 'both',
+        moreGroup: NavBarItemMoreGroup.GENERAL,
+    },
+    {
         path: AppRoutes.library.path() as RestrictedNavBarItem<'both'>['path'],
         title: 'library.title',
         SelectedIconComponent: CollectionsBookmarkIcon,
         IconComponent: CollectionsOutlinedBookmarkIcon,
-        show: 'both',
-        moreGroup: NavBarItemMoreGroup.GENERAL,
-    },
-    {
-        path: AppRoutes.updates.path,
-        title: 'updates.title',
-        SelectedIconComponent: NewReleasesIcon,
-        IconComponent: NewReleasesOutlinedIcon,
-        show: 'both',
-        moreGroup: NavBarItemMoreGroup.GENERAL,
-    },
-    {
-        path: AppRoutes.history.path,
-        title: 'history.title',
-        SelectedIconComponent: HistoryIcon,
-        IconComponent: HistoryOutlinedIcon,
         show: 'both',
         moreGroup: NavBarItemMoreGroup.GENERAL,
     },
@@ -102,6 +95,22 @@ const NAVIGATION_BAR_BASE_ITEMS = [
 ] as const satisfies RestrictedNavBarItem<'both'>[];
 
 const NAVIGATION_BAR_DESKTOP_ITEMS = [
+    {
+        path: AppRoutes.updates.path,
+        title: 'updates.title',
+        SelectedIconComponent: NewReleasesIcon,
+        IconComponent: NewReleasesOutlinedIcon,
+        show: 'desktop',
+        moreGroup: NavBarItemMoreGroup.GENERAL,
+    },
+    {
+        path: AppRoutes.history.path,
+        title: 'history.title',
+        SelectedIconComponent: HistoryIcon,
+        IconComponent: HistoryOutlinedIcon,
+        show: 'desktop',
+        moreGroup: NavBarItemMoreGroup.GENERAL,
+    },
     {
         path: AppRoutes.originals.path,
         title: 'global.label.originals',
@@ -179,14 +188,6 @@ const NAVIGATION_BAR_DESKTOP_ITEMS = [
         show: 'desktop',
         moreGroup: NavBarItemMoreGroup.GENERAL,
         requiresAdmin: true,
-    },
-    {
-        path: AppRoutes.about.path,
-        title: 'settings.about.title',
-        SelectedIconComponent: InfoIcon,
-        IconComponent: InfoIcon,
-        show: 'desktop',
-        moreGroup: NavBarItemMoreGroup.SETTING_INFO,
     },
 ] as const satisfies RestrictedNavBarItem<'desktop'>[];
 

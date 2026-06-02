@@ -15,8 +15,6 @@ import Button from '@mui/material/Button';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import ExploreIcon from '@mui/icons-material/Explore';
 import CollectionsBookmarkIcon from '@mui/icons-material/CollectionsBookmark';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
-import WhatshotIcon from '@mui/icons-material/Whatshot';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { requestManager } from '@/lib/requests/RequestManager.ts';
@@ -25,8 +23,6 @@ import { GetMangasBaseQuery, GetMangasBaseQueryVariables } from '@/lib/graphql/g
 import { Mangas } from '@/features/manga/services/Mangas.ts';
 import { useUserLibraryStore } from '@/features/library/services/UserLibrary.ts';
 import { ContinueReading } from '@/features/library/components/ContinueReading.tsx';
-import { MangaRail } from '@/features/library/components/MangaRail.tsx';
-import { getRecommendedMangaIds, getTrendingMangaIds } from '@/features/library/services/Recommendations.ts';
 import {
     CategoryBar,
     AssignCategoriesButton,
@@ -180,16 +176,6 @@ export function MyLibrary() {
     return (
         <Box sx={{ p: { xs: 1.5, sm: 2 } }}>
             <ContinueReading />
-            <MangaRail
-                title="Recommended for you"
-                icon={<AutoAwesomeIcon color="primary" fontSize="small" />}
-                loadIds={() => getRecommendedMangaIds(12)}
-            />
-            <MangaRail
-                title="Trending"
-                icon={<WhatshotIcon color="primary" fontSize="small" />}
-                loadIds={() => getTrendingMangaIds(12)}
-            />
             <Stack sx={{ flexDirection: 'row', alignItems: 'baseline', gap: 1, mb: 2, px: 0.5 }}>
                 <Typography variant="h6" sx={{ fontWeight: 800 }}>
                     {t('library.title')}

@@ -166,14 +166,30 @@ export const useBillingStore = create<BillingStore>((set, get) => ({
             // accepted_terms_at) hasn't been migrated to the live DB yet.
             const { data, error } = await supabase.from('profiles').select('tokens, is_premium, role').single();
             if (error) throw error;
+            const isAdmin = data?.role === 'admin';
             set({
                 tokens: Number(data?.tokens ?? 0),
                 isPremium: !!data?.is_premium || data?.role === 'premium',
-                isAdmin: data?.role === 'admin',
+                isAdmin,
                 loaded: true,
             });
+            // Keep the legacy localStorage admin flag (read by Browse) in sync so
+            // there is one source of truth for admin gating.
+            try {
+                localStorage.setItem('isAdmin', isAdmin ? 'true' : 'false');
+            } catch {
+                /* ignore storage errors */
+            }
         } catch {
-            set({ loaded: true });
+            // Transient profile error: don't drop admin — trust the cached flag so
+            // the admin nav/console stays reachable for a known admin.
+            let cachedAdmin = false;
+            try {
+                cachedAdmin = localStorage.getItem('isAdmin') === 'true';
+            } catch {
+                cachedAdmin = false;
+            }
+            set({ isAdmin: cachedAdmin, loaded: true });
         }
 
         // Legal acknowledgement is best-effort: the column may not exist until

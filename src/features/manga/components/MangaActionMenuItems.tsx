@@ -15,8 +15,6 @@ import { useTranslation } from 'react-i18next';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import Label from '@mui/icons-material/Label';
 import { useMemo, useState } from 'react';
-import SyncAltIcon from '@mui/icons-material/SyncAlt';
-import { Link } from 'react-router-dom';
 import SyncIcon from '@mui/icons-material/Sync';
 import Dialog from '@mui/material/Dialog';
 import { AwaitableComponent } from 'awaitable-component';
@@ -35,7 +33,6 @@ import { NestedMenuItem } from '@/base/components/menu/NestedMenuItem.tsx';
 import { MangaChapterStatFieldsFragment, MangaType } from '@/lib/graphql/generated/graphql.ts';
 import { MangaAction, MangaDownloadInfo, MangaIdInfo, MangaUnreadInfo } from '@/features/manga/Manga.types.ts';
 import { MANGA_ACTION_TO_TRANSLATION } from '@/features/manga/Manga.constants.ts';
-import { AppRoutes } from '@/base/AppRoute.constants.ts';
 import { CategorySelect } from '@/features/category/components/CategorySelect.tsx';
 
 type BaseProps = { onClose: () => void; setHideMenu: (hide: boolean) => void };
@@ -146,15 +143,6 @@ export const MangaActionMenuItems = ({
                     onClick={() => performAction('mark_as_unread', readMangas)}
                     title={getMenuItemTitle('mark_as_unread', readMangas.length)}
                 />
-            )}
-            {isSingleMode && (
-                <Link
-                    to={AppRoutes.migrate.childRoutes.search.path(manga?.sourceId ?? -1, manga?.id ?? -1, manga?.title)}
-                    state={{ mangaTitle: manga?.title }}
-                    style={{ textDecoration: 'none', color: 'inherit' }}
-                >
-                    <MenuItem Icon={SyncAltIcon} title={getMenuItemTitle('migrate', selectedMangas.length)} />
-                </Link>
             )}
             {isSingleMode && (
                 <MenuItem

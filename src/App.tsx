@@ -47,7 +47,8 @@ const { DownloadQueue } = loadable(() => import('@/features/downloads/screens/Do
 const { MyLibrary } = loadable(() => import('@/features/library/screens/MyLibrary.tsx'), lazyLoadFallback);
 const { Store } = loadable(() => import('@/features/billing/screens/Store.tsx'), lazyLoadFallback);
 const { AdminConsole } = loadable(() => import('@/features/admin/screens/AdminConsole.tsx'), lazyLoadFallback);
-const { SocialFeed } = loadable(() => import('@/features/social/screens/SocialFeed.tsx'), lazyLoadFallback);
+const { Community } = loadable(() => import('@/features/social/screens/Community.tsx'), lazyLoadFallback);
+const { ThreadDetail } = loadable(() => import('@/features/social/screens/ThreadDetail.tsx'), lazyLoadFallback);
 const { EarnCoins } = loadable(() => import('@/features/campaigns/screens/EarnCoins.tsx'), lazyLoadFallback);
 const { Marketplace } = loadable(() => import('@/features/marketplace/screens/Marketplace.tsx'), lazyLoadFallback);
 const { CollectionDetail } = loadable(
@@ -87,7 +88,7 @@ const { DownloadSettings } = loadable(
 const { ServerSettings } = loadable(() => import('@/features/settings/screens/ServerSettings.tsx'), lazyLoadFallback);
 const { BrowseSettings } = loadable(() => import('@/features/browse/screens/BrowseSettings.tsx'), lazyLoadFallback);
 const { WebUISettings } = loadable(() => import('@/features/settings/screens/WebUISettings.tsx'), lazyLoadFallback);
-const { Migrate } = loadable(() => import('@/features/migration/screens/Migrate.tsx'), lazyLoadFallback);
+const { Home } = loadable(() => import('@/features/discover/screens/Home.tsx'), lazyLoadFallback);
 const { DeviceSetting } = loadable(() => import('@/features/device/screens/DeviceSetting.tsx'), lazyLoadFallback);
 const { TrackingSettings } = loadable(
     () => import('@/features/tracker/screens/TrackingSettings.tsx'),
@@ -228,17 +229,15 @@ const MainApp = () => {
 
                     <Route element={<PrivateRoutes />}>
                         {/* General Routes */}
-                        {/* Home = Library: a robust landing with a defined empty state.
-                            Avoids the prior hardcoded-source redirect that black-screened
-                            when that source was missing/restricted (see ADR-0004). */}
-                        <Route
-                            path={AppRoutes.root.match}
-                            element={<Navigate to={AppRoutes.library.path()} replace />}
-                        />
+                        {/* Landing = Home/Discover (Webtoons-style). Library is its own
+                            tab. Avoids the prior hardcoded-source redirect that
+                            black-screened when that source was missing (see ADR-0004). */}
+                        <Route path={AppRoutes.root.match} element={<Navigate to={AppRoutes.home.path} replace />} />
                         <Route
                             path={AppRoutes.matchAll.match}
                             element={<Navigate to={AppRoutes.root.path} replace />}
                         />
+                        <Route path={AppRoutes.home.match} element={<Home />} />
                         {isMobileWidth && <Route path={AppRoutes.more.match} element={<More />} />}
                         <Route path={AppRoutes.about.match} element={<About />} />
                         <Route path={AppRoutes.settings.match}>
@@ -299,7 +298,8 @@ const MainApp = () => {
                         <Route path={AppRoutes.library.match} element={<MyLibrary />} />
                         <Route path={AppRoutes.store.match} element={<Store />} />
                         <Route path={AppRoutes.admin.match} element={<AdminConsole />} />
-                        <Route path={AppRoutes.social.match} element={<SocialFeed />} />
+                        <Route path={AppRoutes.social.match} element={<Community />} />
+                        <Route path={AppRoutes.thread.match} element={<ThreadDetail />} />
                         <Route path={AppRoutes.earn.match} element={<EarnCoins />} />
                         <Route path={AppRoutes.marketplace.match} element={<Marketplace />} />
                         <Route path={AppRoutes.collection.match} element={<CollectionDetail />} />
@@ -311,10 +311,6 @@ const MainApp = () => {
                         <Route path={AppRoutes.updates.match} element={<Updates />} />
                         {!hideHistory && <Route path={AppRoutes.history.match} element={<History />} />}
                         <Route path={AppRoutes.browse.match} element={<Browse />} />
-                        <Route path={AppRoutes.migrate.match}>
-                            <Route index element={<Migrate />} />
-                            <Route path={AppRoutes.migrate.childRoutes.search.match} element={<SearchAll />} />
-                        </Route>
                         <Route path={AppRoutes.tracker.match} element={<TrackerOAuthLogin />} />
                     </Route>
                 </Routes>

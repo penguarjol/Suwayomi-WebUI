@@ -10,6 +10,7 @@ import { ReactNode, useEffect, useRef } from 'react';
 import { SplashScreen } from '@/features/authentication/components/SplashScreen.tsx';
 import { requestManager } from '@/lib/requests/RequestManager.ts';
 import { AuthManager } from '@/features/authentication/AuthManager.ts';
+import { useBillingStore } from '@/features/billing/Billing.ts';
 import { supabase } from '@/lib/SupabaseClient.ts';
 
 export const AuthGuard = ({ children }: { children: ReactNode }) => {
@@ -40,19 +41,13 @@ export const AuthGuard = ({ children }: { children: ReactNode }) => {
                 if (session) {
                     AuthManager.setTokens(session.access_token, session.refresh_token);
 
-                    // Sync Admin state from localStorage/Profile
-                    const cachedIsAdmin = localStorage.getItem('isAdmin');
-
-                    if (cachedIsAdmin === null) {
-                        // Cold start rescue: fetch profile if missing from cache
-                        const { data: profile } = await supabase
-                            .from('profiles')
-                            .select('role')
-                            .eq('id', session.user.id)
-                            .single();
-
-                        localStorage.setItem('isAdmin', profile?.role === 'admin' ? 'true' : 'false');
-                    }
+                    // Load the profile (sets tokens/premium/admin in the billing
+                    // store AND localStorage — the single source of truth for admin
+                    // gating). Fire-and-forget so a slow query never blocks the UI.
+                    useBillingStore
+                        .getState()
+                        .loadProfile()
+                        .catch(() => {});
                 } else {
                     // No session, ensure clean slate
                     AuthManager.removeTokens();

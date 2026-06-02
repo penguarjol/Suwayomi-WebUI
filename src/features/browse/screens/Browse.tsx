@@ -15,12 +15,12 @@ import { Extensions } from '@/features/browse/extensions/Extensions.tsx';
 import { TabPanel } from '@/base/components/tabs/TabPanel.tsx';
 import { TabsWrapper } from '@/base/components/tabs/TabsWrapper.tsx';
 import { TabsMenu } from '@/base/components/tabs/TabsMenu.tsx';
-import { Migration } from '@/features/migration/screens/Migration.tsx';
 import { useResizeObserver } from '@/base/hooks/useResizeObserver.tsx';
 import { useAppTitle } from '@/features/navigation-bar/hooks/useAppTitle.ts';
 import { BrowseTab } from '@/features/browse/Browse.types.ts';
 import { GROUPED_VIRTUOSO_Z_INDEX } from '@/lib/virtuoso/Virtuoso.constants.ts';
 import { SearchParam } from '@/base/Base.types.ts';
+import { useBillingStore } from '@/features/billing/Billing.ts';
 
 export function Browse() {
     const { t } = useTranslation();
@@ -40,7 +40,7 @@ export function Browse() {
         setTabSearchParam(tabName, 'replaceIn');
     }
 
-    const [isAdmin] = useState(() => localStorage.getItem('isAdmin') === 'true');
+    const isAdmin = useBillingStore((state) => state.isAdmin);
 
     return (
         <TabsWrapper>
@@ -59,7 +59,6 @@ export function Browse() {
                         label={t('extension.title_other')}
                     />
                 )}
-                <Tab value={BrowseTab.MIGRATE} sx={{ textTransform: 'none' }} label={t('migrate.title')} />
             </TabsMenu>
             <TabPanel index={BrowseTab.SOURCE_DEPRECATED} currentIndex={tabName}>
                 <Sources tabsMenuHeight={tabsMenuHeight} />
@@ -69,10 +68,6 @@ export function Browse() {
             </TabPanel>
             <TabPanel index={BrowseTab.EXTENSIONS} currentIndex={tabName}>
                 {isAdmin ? <Extensions tabsMenuHeight={tabsMenuHeight} /> : null}
-            </TabPanel>
-
-            <TabPanel index={BrowseTab.MIGRATE} currentIndex={tabName}>
-                <Migration tabsMenuHeight={tabsMenuHeight} />
             </TabPanel>
         </TabsWrapper>
     );

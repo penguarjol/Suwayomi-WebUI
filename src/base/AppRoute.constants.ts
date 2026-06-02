@@ -29,6 +29,10 @@ export const AppRoutes = {
     matchAll: {
         match: '*',
     },
+    home: {
+        match: 'home',
+        path: '/home',
+    },
     authentication: {
         match: 'auth',
         path: '/auth',
@@ -177,6 +181,9 @@ export const AppRoutes = {
                 [SearchParam.TAB]: tab,
             }),
     },
+    // Migration is no longer surfaced in the UI (Browse tab + manga menu entries
+    // removed), but the route constant is retained so the dormant migration
+    // module still type-checks. Not registered as a route.
     migrate: {
         match: 'migrate/source/:sourceId',
         path: (sourceId: SourceType['id']) => `/migrate/source/${sourceId}`,
@@ -213,6 +220,10 @@ export const AppRoutes = {
     social: {
         match: 'community',
         path: '/community',
+    },
+    thread: {
+        match: 'community/thread/:id',
+        path: (id: string) => `/community/thread/${id}`,
     },
     earn: {
         match: 'earn',
