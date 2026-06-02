@@ -24,11 +24,14 @@ import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import AddIcon from '@mui/icons-material/Add';
 import StorefrontIcon from '@mui/icons-material/Storefront';
 import EmojiEmotionsOutlinedIcon from '@mui/icons-material/EmojiEmotionsOutlined';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import {
     Collection,
+    Curator,
     createCollection,
     getCollections,
     getMyLikedCollectionIds,
+    getTopCurators,
     likeCollection,
     unlikeCollection,
 } from '@/features/marketplace/Marketplace.ts';
@@ -90,6 +93,7 @@ export function Marketplace() {
     useAppTitle('Marketplace');
     const [featured, setFeatured] = useState<Collection[]>([]);
     const [recent, setRecent] = useState<Collection[]>([]);
+    const [curators, setCurators] = useState<Curator[]>([]);
     const [liked, setLiked] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(true);
     const [createOpen, setCreateOpen] = useState(false);
@@ -99,13 +103,15 @@ export function Marketplace() {
 
     const refresh = async () => {
         try {
-            const [{ featured: f, recent: r }, likedIds] = await Promise.all([
+            const [{ featured: f, recent: r }, likedIds, topCurators] = await Promise.all([
                 getCollections(),
                 getMyLikedCollectionIds(),
+                getTopCurators(),
             ]);
             setFeatured(f);
             setRecent(r);
             setLiked(likedIds);
+            setCurators(topCurators);
         } finally {
             setLoading(false);
         }
@@ -180,6 +186,27 @@ export function Marketplace() {
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
                 Reader-made collections and stickers. Publish your own, like the best, and boost yours to the top.
             </Typography>
+
+            {curators.length > 0 && (
+                <Box sx={{ mb: 3 }}>
+                    <Stack sx={{ flexDirection: 'row', alignItems: 'center', gap: 1, mb: 1 }}>
+                        <EmojiEventsIcon color="primary" fontSize="small" />
+                        <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
+                            Top Curators
+                        </Typography>
+                    </Stack>
+                    <Stack sx={{ flexDirection: 'row', gap: 1, overflowX: 'auto', pb: 1 }}>
+                        {curators.map((curator) => (
+                            <Chip
+                                key={curator.author_name}
+                                label={`${curator.author_name} · ${curator.likes}♥`}
+                                variant="outlined"
+                                sx={{ fontWeight: 600 }}
+                            />
+                        ))}
+                    </Stack>
+                </Box>
+            )}
 
             {featured.length > 0 && (
                 <Box sx={{ mb: 3 }}>

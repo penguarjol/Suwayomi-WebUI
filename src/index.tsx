@@ -15,6 +15,11 @@ import '@/lib/PointerDeviceUtil.ts';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from '@/App';
+import { initAnalytics } from '@/features/analytics/Analytics.ts';
+import { captureReferralFromUrl } from '@/features/referrals/Referrals.ts';
+
+initAnalytics();
+captureReferralFromUrl();
 
 const container = document.getElementById('root');
 const root = createRoot(container!);

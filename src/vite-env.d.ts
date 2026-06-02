@@ -22,6 +22,8 @@ interface ImportMetaEnv {
     readonly VITE_REVENUECAT_API_KEY?: string;
     readonly VITE_ADSENSE_CLIENT?: string;
     readonly VITE_ADSENSE_SLOT_INTERCHAPTER?: string;
+    readonly VITE_ANALYTICS_DOMAIN?: string;
+    readonly VITE_ANALYTICS_SRC?: string;
     // more env variables...
 }
 

@@ -11,6 +11,7 @@ import { SplashScreen } from '@/features/authentication/components/SplashScreen.
 import { requestManager } from '@/lib/requests/RequestManager.ts';
 import { AuthManager } from '@/features/authentication/AuthManager.ts';
 import { useBillingStore } from '@/features/billing/Billing.ts';
+import { processCapturedReferral } from '@/features/referrals/Referrals.ts';
 import { supabase } from '@/lib/SupabaseClient.ts';
 
 export const AuthGuard = ({ children }: { children: ReactNode }) => {
@@ -48,6 +49,9 @@ export const AuthGuard = ({ children }: { children: ReactNode }) => {
                         .getState()
                         .loadProfile()
                         .catch(() => {});
+
+                    // Redeem a captured invite + reward the referrer once eligible.
+                    processCapturedReferral().catch(() => {});
                 } else {
                     // No session, ensure clean slate
                     AuthManager.removeTokens();

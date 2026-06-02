@@ -46,6 +46,26 @@ export async function getCollections(): Promise<{ featured: Collection[]; recent
     return { featured, recent: all };
 }
 
+export interface Curator {
+    author_name: string;
+    collections: number;
+    likes: number;
+}
+
+/** Spotlight: curators ranked by total likes across their public collections. */
+export async function getTopCurators(limit = 8): Promise<Curator[]> {
+    const { data } = await supabase.from('collections').select('author_name, like_count').eq('is_public', true);
+    const map = new Map<string, Curator>();
+    (data ?? []).forEach((row) => {
+        const name = row.author_name ?? 'reader';
+        const curator = map.get(name) ?? { author_name: name, collections: 0, likes: 0 };
+        curator.collections += 1;
+        curator.likes += row.like_count ?? 0;
+        map.set(name, curator);
+    });
+    return [...map.values()].sort((a, b) => b.likes - a.likes || b.collections - a.collections).slice(0, limit);
+}
+
 export async function getMyCollections(): Promise<Collection[]> {
     const { data: userData } = await supabase.auth.getUser();
     const uid = userData.user?.id;

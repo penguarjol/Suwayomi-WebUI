@@ -30,6 +30,7 @@ import {
     unfollowCreator,
 } from '@/features/originals/Originals.ts';
 import { useBillingStore } from '@/features/billing/Billing.ts';
+import { ShareButton } from '@/base/components/ShareButton.tsx';
 import { makeToast } from '@/base/utils/Toast.ts';
 import { useAppTitle } from '@/features/navigation-bar/hooks/useAppTitle.ts';
 import { AppRoutes } from '@/base/AppRoute.constants.ts';
@@ -137,6 +138,7 @@ export function OriginalWork() {
                         >
                             Tip 10 Coins
                         </Button>
+                        <ShareButton title={work.title} path={AppRoutes.originalWork.path(work.id)} />
                     </Stack>
                 </Stack>
             </Stack>

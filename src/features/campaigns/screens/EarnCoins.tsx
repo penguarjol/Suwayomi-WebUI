@@ -21,6 +21,7 @@ import {
     getClaimedCampaignIds,
 } from '@/features/campaigns/Campaigns.ts';
 import { useBillingStore } from '@/features/billing/Billing.ts';
+import { InviteFriendsCard } from '@/features/referrals/components/InviteFriendsCard.tsx';
 import { useAppTitle } from '@/features/navigation-bar/hooks/useAppTitle.ts';
 import { LoadingPlaceholder } from '@/base/components/feedback/LoadingPlaceholder.tsx';
 import { makeToast } from '@/base/utils/Toast.ts';
@@ -85,6 +86,8 @@ export function EarnCoins() {
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
                 Complete activities to earn free Coins and Premium time.
             </Typography>
+
+            <InviteFriendsCard />
 
             <Stack sx={{ gap: 1.5 }}>
                 {campaigns.map((campaign) => {

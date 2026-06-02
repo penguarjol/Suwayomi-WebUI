@@ -8,6 +8,7 @@
 
 import { create } from 'zustand';
 import { supabase } from '@/lib/SupabaseClient.ts';
+import { track } from '@/features/analytics/Analytics.ts';
 
 /**
  * Nexus Reads billing (tokens "Coins" + Fast Pass paywall).
@@ -272,6 +273,7 @@ export const useBillingStore = create<BillingStore>((set, get) => ({
             const { data, error } = await supabase.rpc('unlock_chapter', { p_chapter_id: String(chapterId) });
             if (error) throw error;
             const status = (data ?? 'error') as UnlockStatus;
+            if (status === 'unlocked') track('unlock_chapter');
             if (['unlocked', 'already_unlocked', 'free', 'entitled'].includes(status)) {
                 set((state) => ({ lockedChapterIds: state.lockedChapterIds.filter((id) => id !== chapterId) }));
                 await get().loadProfile();
@@ -308,6 +310,7 @@ export async function claimPremiumBonus(): Promise<string> {
 /** Build a Stripe (or other) web-checkout URL via the Gatekeeper, or null. */
 export async function startCheckout(productId: string): Promise<{ url?: string; error?: string }> {
     try {
+        track('checkout_start', { product: productId });
         const { data } = await supabase.auth.getSession();
         const token = data.session?.access_token;
         const res = await fetch('/api/saas/checkout', {

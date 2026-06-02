@@ -38,6 +38,7 @@ import {
 } from '@/features/marketplace/Marketplace.ts';
 import { useApprovedSourceIds } from '@/features/library/services/useApprovedSources.ts';
 import { useBillingStore } from '@/features/billing/Billing.ts';
+import { ShareButton } from '@/base/components/ShareButton.tsx';
 import { useAppTitle } from '@/features/navigation-bar/hooks/useAppTitle.ts';
 import { LoadingPlaceholder } from '@/base/components/feedback/LoadingPlaceholder.tsx';
 import { EmptyViewAbsoluteCentered } from '@/base/components/feedback/EmptyViewAbsoluteCentered.tsx';
@@ -140,6 +141,7 @@ export function CollectionDetail() {
                         by {collection.author_name ?? 'reader'} · {collection.like_count} likes
                     </Typography>
                 </Box>
+                <ShareButton title={collection.title} path={AppRoutes.collection.path(id)} />
                 <IconButton aria-label="like" onClick={toggleLike}>
                     {liked ? <FavoriteIcon color="primary" /> : <FavoriteBorderIcon />}
                 </IconButton>

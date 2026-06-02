@@ -30,6 +30,8 @@ import {
 import { hasProfanity } from '@/features/social/Social.ts';
 import { StickerPicker } from '@/features/stickers/components/StickerPicker.tsx';
 import { StickerText } from '@/features/stickers/components/StickerText.tsx';
+import { ShareButton } from '@/base/components/ShareButton.tsx';
+import { AppRoutes } from '@/base/AppRoute.constants.ts';
 import { useAppTitle } from '@/features/navigation-bar/hooks/useAppTitle.ts';
 import { LoadingPlaceholder } from '@/base/components/feedback/LoadingPlaceholder.tsx';
 import { EmptyViewAbsoluteCentered } from '@/base/components/feedback/EmptyViewAbsoluteCentered.tsx';
@@ -115,6 +117,7 @@ export function ThreadDetail() {
                         )}
                     </IconButton>
                     <Typography variant="caption">{thread.like_count}</Typography>
+                    <ShareButton title={thread.title} path={AppRoutes.thread.path(id)} />
                 </Stack>
             </Stack>
 

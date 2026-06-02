@@ -20,6 +20,7 @@ import { PasswordTextField } from '@/base/components/inputs/PasswordTextField.ts
 import { makeToast } from '@/base/utils/Toast.ts';
 import { AuthManager } from '@/features/authentication/AuthManager.ts';
 import { useBillingStore } from '@/features/billing/Billing.ts';
+import { track } from '@/features/analytics/Analytics.ts';
 import { AppRoutes } from '@/base/AppRoute.constants.ts';
 import { useNavBarContext } from '@/features/navigation-bar/NavbarContext.tsx';
 import { SearchParam } from '@/base/Base.types.ts';
@@ -55,6 +56,7 @@ export const LoginPage = () => {
                 error = res.error;
                 data = res.data;
                 if (!error && data.user) {
+                    track('signup');
                     makeToast('Account created! You can now log in.', 'success');
                     setIsSignUp(false); // Switch back to login
                     setIsLoading(false);
