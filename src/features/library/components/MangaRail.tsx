@@ -6,7 +6,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-import { ReactNode, useEffect, useMemo, useState } from 'react';
+import { ReactNode, useEffect, useId, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
@@ -18,6 +18,8 @@ import { Mangas } from '@/features/manga/services/Mangas.ts';
 import { AppRoutes } from '@/base/AppRoute.constants.ts';
 import { useApprovedSourceIds } from '@/features/library/services/useApprovedSources.ts';
 import { DiscoverMangaRank } from '@/features/discover/Discover.ts';
+import { useDedupedMangas } from '@/features/discover/DiscoverDedupe.tsx';
+import { CoverImage } from '@/features/discover/components/CoverImage.tsx';
 
 /** A horizontal "shelf" of manga covers, hydrated from a list of ids. Self-hides when empty. */
 export const MangaRail = ({
@@ -85,13 +87,15 @@ export const MangaRail = ({
         { skip: ids.length === 0 },
     );
     const { ready: sourcesReady, isApproved } = useApprovedSourceIds();
+    const railOwner = useId();
 
-    const mangas = useMemo(() => {
+    const approvedMangas = useMemo(() => {
         const nodes = data?.mangas.nodes ?? [];
         return [...nodes]
             .filter((manga) => isApproved(manga.sourceId))
             .sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
     }, [data?.mangas.nodes, ids, isApproved]);
+    const mangas = useDedupedMangas(approvedMangas, railOwner);
 
     // Hide the rail until sources load, so unfiltered (possibly NSFW) titles never flash.
     if (!loaded || !sourcesReady || mangas.length === 0) return null;
@@ -132,20 +136,7 @@ export const MangaRail = ({
                             sx={{ textDecoration: 'none', color: 'inherit', flex: '0 0 auto', width: 120 }}
                         >
                             <Box sx={{ position: 'relative' }}>
-                                <Box
-                                    component="img"
-                                    src={Mangas.getThumbnailUrl(manga)}
-                                    alt={manga.title}
-                                    loading="lazy"
-                                    sx={{
-                                        width: 120,
-                                        aspectRatio: '2 / 3',
-                                        objectFit: 'cover',
-                                        borderRadius: 2,
-                                        backgroundColor: 'action.hover',
-                                        boxShadow: '0 4px 14px rgba(0,0,0,0.35)',
-                                    }}
-                                />
+                                <CoverImage src={Mangas.getThumbnailUrl(manga)} title={manga.title} />
                                 {badge && (
                                     <Box
                                         component="span"
