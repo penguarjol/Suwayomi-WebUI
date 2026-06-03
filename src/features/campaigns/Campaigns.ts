@@ -43,7 +43,13 @@ export async function getClaimedCampaignIds(): Promise<Set<string>> {
 }
 
 export async function claimCampaign(id: string): Promise<ClaimResult> {
-    const { data, error } = await supabase.rpc('claim_campaign', { p_campaign_id: id });
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData.session) return { status: 'unauthenticated' };
+
+    let { data, error } = await supabase.rpc('claim_campaign', { p_campaign_id: id });
+    if (error?.code === 'PGRST202') {
+        ({ data, error } = await supabase.rpc('claim_campaign', { campaign_id: id }));
+    }
     if (error) return { status: 'error', error: getErrorMessage(error) };
     return { status: (data ?? 'error') as ClaimStatus };
 }

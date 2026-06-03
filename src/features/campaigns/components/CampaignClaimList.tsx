@@ -88,7 +88,7 @@ export function CampaignClaimList({
         try {
             const { status, error } = await claimCampaign(campaign.id);
             const message = CLAIM_MESSAGE[status] ?? CLAIM_MESSAGE.error;
-            makeToast(message.text, message.severity, error);
+            makeToast(status === 'error' && error ? `${message.text} ${error}` : message.text, message.severity);
             if (status === 'claimed') {
                 await useBillingStore.getState().loadProfile();
                 await refresh();
