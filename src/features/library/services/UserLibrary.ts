@@ -29,6 +29,7 @@ const resolveUserId = async (): Promise<string | null> => {
 
 interface UserLibraryStore {
     favoriteIds: number[];
+    favoriteTitles: Record<number, string | null>;
     loaded: boolean;
     load: () => Promise<void>;
     add: (mangaId: number, title?: string | null) => Promise<void>;
@@ -38,6 +39,7 @@ interface UserLibraryStore {
 
 export const useUserLibraryStore = create<UserLibraryStore>((set, get) => ({
     favoriteIds: [],
+    favoriteTitles: {},
     loaded: false,
     load: async () => {
         try {
@@ -46,9 +48,14 @@ export const useUserLibraryStore = create<UserLibraryStore>((set, get) => ({
                 set({ loaded: true });
                 return;
             }
-            const { data, error } = await supabase.from('user_library').select('manga_id');
+            const { data, error } = await supabase.from('user_library').select('manga_id, title');
             if (error) throw error;
-            set({ favoriteIds: (data ?? []).map((row) => Number(row.manga_id)), loaded: true });
+            const rows = data ?? [];
+            set({
+                favoriteIds: rows.map((row) => Number(row.manga_id)),
+                favoriteTitles: Object.fromEntries(rows.map((row) => [Number(row.manga_id), row.title ?? null])),
+                loaded: true,
+            });
         } catch {
             // Fail soft: an empty library is better than a wedged UI.
             set({ loaded: true });
@@ -56,19 +63,20 @@ export const useUserLibraryStore = create<UserLibraryStore>((set, get) => ({
     },
     add: async (mangaId, title) => {
         const previous = get().favoriteIds;
+        const previousTitles = get().favoriteTitles;
         if (previous.includes(mangaId)) return;
-        set({ favoriteIds: [...previous, mangaId] }); // optimistic
+        set({ favoriteIds: [...previous, mangaId], favoriteTitles: { ...previousTitles, [mangaId]: title ?? null } });
 
         const userId = await resolveUserId();
         if (!userId) {
-            set({ favoriteIds: previous });
+            set({ favoriteIds: previous, favoriteTitles: previousTitles });
             throw new Error('Not authenticated');
         }
         const { error } = await supabase
             .from('user_library')
             .upsert({ user_id: userId, manga_id: mangaId, title: title ?? null }, { onConflict: 'user_id,manga_id' });
         if (error) {
-            set({ favoriteIds: previous });
+            set({ favoriteIds: previous, favoriteTitles: previousTitles });
             throw error;
         }
 
@@ -81,21 +89,24 @@ export const useUserLibraryStore = create<UserLibraryStore>((set, get) => ({
     },
     remove: async (mangaId) => {
         const previous = get().favoriteIds;
-        set({ favoriteIds: previous.filter((id) => id !== mangaId) }); // optimistic
+        const previousTitles = get().favoriteTitles;
+        const nextTitles = { ...previousTitles };
+        delete nextTitles[mangaId];
+        set({ favoriteIds: previous.filter((id) => id !== mangaId), favoriteTitles: nextTitles });
 
         const userId = await resolveUserId();
         if (!userId) {
-            set({ favoriteIds: previous });
+            set({ favoriteIds: previous, favoriteTitles: previousTitles });
             throw new Error('Not authenticated');
         }
         const { error } = await supabase.from('user_library').delete().eq('user_id', userId).eq('manga_id', mangaId);
         if (error) {
-            set({ favoriteIds: previous });
+            set({ favoriteIds: previous, favoriteTitles: previousTitles });
             throw error;
         }
     },
     reset: () => {
         cachedUserId = null;
-        set({ favoriteIds: [], loaded: false });
+        set({ favoriteIds: [], favoriteTitles: {}, loaded: false });
     },
 }));

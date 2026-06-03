@@ -15,6 +15,7 @@ import Button from '@mui/material/Button';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import ExploreIcon from '@mui/icons-material/Explore';
 import CollectionsBookmarkIcon from '@mui/icons-material/CollectionsBookmark';
+import SearchIcon from '@mui/icons-material/Search';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { requestManager } from '@/lib/requests/RequestManager.ts';
@@ -109,11 +110,72 @@ const MyLibraryCard = ({ manga, categories }: { manga: LibraryManga; categories:
     );
 };
 
+const UnavailableLibraryCard = ({ mangaId, title }: { mangaId: number; title: string | null }) => {
+    const remove = useUserLibraryStore((state) => state.remove);
+    const label = title || `Manga #${mangaId}`;
+
+    return (
+        <Box>
+            <Stack
+                sx={{
+                    width: '100%',
+                    aspectRatio: '2 / 3',
+                    borderRadius: 2,
+                    p: 1.5,
+                    justifyContent: 'space-between',
+                    backgroundColor: 'action.hover',
+                    border: '1px dashed rgba(255,255,255,0.18)',
+                }}
+            >
+                <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                    Source unavailable
+                </Typography>
+                <Stack sx={{ gap: 1 }}>
+                    <Button
+                        component={Link}
+                        to={AppRoutes.sources.childRoutes.searchAll.path(title ?? undefined)}
+                        state={{ shouldShowOnlyPinnedSources: false }}
+                        variant="contained"
+                        size="small"
+                        startIcon={<SearchIcon />}
+                        disabled={!title}
+                        sx={{ borderRadius: '50px', textTransform: 'none', fontWeight: 700 }}
+                    >
+                        Find again
+                    </Button>
+                    <Button
+                        variant="text"
+                        size="small"
+                        onClick={() => remove(mangaId)}
+                        sx={{ textTransform: 'none', fontWeight: 700 }}
+                    >
+                        Remove
+                    </Button>
+                </Stack>
+            </Stack>
+            <Typography
+                variant="body2"
+                sx={{
+                    mt: 0.75,
+                    fontWeight: 600,
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
+                }}
+            >
+                {label}
+            </Typography>
+        </Box>
+    );
+};
+
 export function MyLibrary() {
     const { t } = useTranslation();
     useAppTitle('Nexus Reads');
 
     const favoriteIds = useUserLibraryStore((state) => state.favoriteIds);
+    const favoriteTitles = useUserLibraryStore((state) => state.favoriteTitles);
     const loaded = useUserLibraryStore((state) => state.loaded);
     const { categories, refresh: refreshCategories } = useUserCategories();
 
@@ -143,6 +205,13 @@ export function MyLibrary() {
         // Most-recently-favorited first (favoriteIds is in insertion order).
         return [...filtered].sort((a, b) => favoriteIds.indexOf(b.id) - favoriteIds.indexOf(a.id));
     }, [data?.mangas.nodes, favoriteIds, categoryMangaIds]);
+    const unavailableIds = useMemo(() => {
+        const loadedIds = new Set(mangas.map((manga) => manga.id));
+        return favoriteIds.filter((id) => {
+            if (loadedIds.has(id)) return false;
+            return categoryMangaIds === null || categoryMangaIds.includes(id);
+        });
+    }, [favoriteIds, mangas, categoryMangaIds]);
 
     if (!loaded || (favoriteIds.length > 0 && loading && mangas.length === 0)) {
         return <LoadingPlaceholder />;
@@ -189,7 +258,7 @@ export function MyLibrary() {
                     {t('library.title')}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                    {mangas.length}
+                    {mangas.length + unavailableIds.length}
                 </Typography>
             </Stack>
             <CategoryBar
@@ -211,8 +280,11 @@ export function MyLibrary() {
                 {mangas.map((manga) => (
                     <MyLibraryCard key={manga.id} manga={manga} categories={categories} />
                 ))}
+                {unavailableIds.map((mangaId) => (
+                    <UnavailableLibraryCard key={mangaId} mangaId={mangaId} title={favoriteTitles[mangaId] ?? null} />
+                ))}
             </Box>
-            {!mangas.length && (
+            {!mangas.length && !unavailableIds.length && (
                 <Typography color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
                     Nothing in this category yet.
                 </Typography>

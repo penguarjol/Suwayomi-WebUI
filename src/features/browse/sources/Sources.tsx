@@ -6,7 +6,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-import { useCallback, useMemo, useState, useEffect } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import IconButton from '@mui/material/IconButton';
 import TravelExploreIcon from '@mui/icons-material/TravelExplore';
 import TuneIcon from '@mui/icons-material/Tune';
@@ -23,7 +23,6 @@ import { defaultPromiseErrorHandler } from '@/lib/DefaultPromiseErrorHandler.ts'
 import { isPinnedOrLastUsedSource, translateExtensionLanguage } from '@/features/extension/Extensions.utils.ts';
 import { AppRoutes } from '@/base/AppRoute.constants.ts';
 import { getErrorMessage } from '@/lib/HelperFunctions.ts';
-import { makeToast } from '@/base/utils/Toast.ts';
 import { Sources as SourceService } from '@/features/source/services/Sources.ts';
 import { useMetadataServerSettings } from '@/features/settings/services/ServerSettingsMetadata.ts';
 import { useAppAction } from '@/features/navigation-bar/hooks/useAppAction.ts';
@@ -34,6 +33,7 @@ import { StyledGroupItemWrapper } from '@/base/components/virtuoso/StyledGroupIt
 import { SourceLanguageSelect } from '@/features/source/components/SourceLanguageSelect.tsx';
 import { SourceManagerDialog } from '@/features/source/components/SourceManagerDialog.tsx';
 import { useSourcePrefs } from '@/features/source/services/SourcePreferences.ts';
+import { useSaasSourceAccess } from '@/features/source/services/SourceAccess.ts';
 
 export function Sources({ tabsMenuHeight }: { tabsMenuHeight: number }) {
     const { t } = useTranslation();
@@ -52,41 +52,16 @@ export function Sources({ tabsMenuHeight }: { tabsMenuHeight: number }) {
         refetch,
     } = requestManager.useGetSourceList({ notifyOnNetworkStatusChange: true });
 
-    const [allowedExtensions, setAllowedExtensions] = useState<string[] | null>(null);
-
-    // Fetch Allowed Extensions for SaaS
-    useEffect(() => {
-        fetch('/api/saas/config')
-            .then((res) => res.json())
-            .then((config) => setAllowedExtensions(config.allowedExtensions))
-            .catch((e) => makeToast('Failed to load filtered source list', 'error', getErrorMessage(e)));
-    }, []);
+    const { ready: sourceAccessReady, isAllowed } = useSaasSourceAccess();
 
     const sources = data?.sources.nodes;
     const approvedSources = useMemo(() => {
         let s = sources ?? [];
-        const isAdmin = localStorage.getItem('isAdmin') === 'true';
-
-        // SaaS Filtering: If not admin, restrict visibility
-        if (!isAdmin) {
-            // Fail Closed: If config not loaded, show nothing
-            if (!allowedExtensions) {
-                return [];
-            }
-
-            s = s.filter((src) => {
-                // Determine if we should allow this source
-                // 1. If it has an extension, check if the package name is allowed
-                if (src.extension?.pkgName) {
-                    return allowedExtensions.includes(src.extension.pkgName);
-                }
-
-                // 2. If it has NO extension (e.g. Local Source), we assume it's restricted unless we decide otherwise.
-                // For now, let's HIDE Local Source for non-admins to be safe/clean.
-                // If you want to allow Local Source, change this to `return true;`
-                return false;
-            });
+        if (!sourceAccessReady) {
+            return [];
         }
+
+        s = s.filter(isAllowed);
 
         return SourceService.filter(s, {
             showNsfw,
@@ -94,7 +69,7 @@ export function Sources({ tabsMenuHeight }: { tabsMenuHeight: number }) {
             keepLocalSource: true,
             enabled: true,
         });
-    }, [sources, shownLangs, allowedExtensions]);
+    }, [sources, shownLangs, sourceAccessReady, isAllowed]);
     // Apply the user's personal source visibility preference (within the approved set).
     const filteredSources = useMemo(
         () => approvedSources.filter((src) => !hiddenSources.has(String(src.id))),
@@ -161,7 +136,7 @@ export function Sources({ tabsMenuHeight }: { tabsMenuHeight: number }) {
         [t, shownLangs, sourceLanguages, sources],
     );
 
-    if (isLoading) return <LoadingPlaceholder />;
+    if (isLoading || !sourceAccessReady) return <LoadingPlaceholder />;
 
     if (error) {
         return (

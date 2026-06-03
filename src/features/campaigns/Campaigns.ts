@@ -7,6 +7,7 @@
  */
 
 import { supabase } from '@/lib/SupabaseClient.ts';
+import { getErrorMessage } from '@/lib/HelperFunctions.ts';
 
 export interface Campaign {
     id: string;
@@ -20,6 +21,11 @@ export interface Campaign {
 }
 
 export type ClaimStatus = 'claimed' | 'already_claimed' | 'too_soon' | 'inactive' | 'unauthenticated' | 'error';
+
+export interface ClaimResult {
+    status: ClaimStatus;
+    error?: string;
+}
 
 export async function getActiveCampaigns(): Promise<Campaign[]> {
     const { data, error } = await supabase
@@ -36,10 +42,10 @@ export async function getClaimedCampaignIds(): Promise<Set<string>> {
     return new Set((data ?? []).map((row) => String(row.campaign_id)));
 }
 
-export async function claimCampaign(id: string): Promise<ClaimStatus> {
+export async function claimCampaign(id: string): Promise<ClaimResult> {
     const { data, error } = await supabase.rpc('claim_campaign', { p_campaign_id: id });
-    if (error) return 'error';
-    return (data ?? 'error') as ClaimStatus;
+    if (error) return { status: 'error', error: getErrorMessage(error) };
+    return { status: (data ?? 'error') as ClaimStatus };
 }
 
 // --- Admin ---

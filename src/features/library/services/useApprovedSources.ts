@@ -8,6 +8,7 @@
 
 import { useMemo } from 'react';
 import { requestManager } from '@/lib/requests/RequestManager.ts';
+import { useSaasSourceAccess } from '@/features/source/services/SourceAccess.ts';
 
 /**
  * Set of source ids that are safe to surface in global/home rails: sources the
@@ -19,16 +20,17 @@ import { requestManager } from '@/lib/requests/RequestManager.ts';
  */
 export function useApprovedSourceIds(): { ready: boolean; isApproved: (sourceId: string | number) => boolean } {
     const { data } = requestManager.useGetSourceList({ fetchPolicy: 'cache-first' });
+    const { ready: sourceAccessReady, isAllowed } = useSaasSourceAccess();
 
     return useMemo(() => {
         const nodes = data?.sources?.nodes ?? [];
         const approved = new Set<string>();
         nodes.forEach((source) => {
-            if (!source.isNsfw) approved.add(String(source.id));
+            if (!source.isNsfw && isAllowed(source)) approved.add(String(source.id));
         });
         return {
-            ready: nodes.length > 0,
+            ready: sourceAccessReady && nodes.length > 0,
             isApproved: (sourceId: string | number) => approved.has(String(sourceId)),
         };
-    }, [data?.sources?.nodes]);
+    }, [data?.sources?.nodes, sourceAccessReady, isAllowed]);
 }

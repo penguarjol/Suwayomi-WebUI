@@ -17,33 +17,67 @@ import { GetMangasBaseQuery, GetMangasBaseQueryVariables } from '@/lib/graphql/g
 import { Mangas } from '@/features/manga/services/Mangas.ts';
 import { AppRoutes } from '@/base/AppRoute.constants.ts';
 import { useApprovedSourceIds } from '@/features/library/services/useApprovedSources.ts';
+import { DiscoverMangaRank } from '@/features/discover/Discover.ts';
 
 /** A horizontal "shelf" of manga covers, hydrated from a list of ids. Self-hides when empty. */
 export const MangaRail = ({
     title,
     icon,
     loadIds,
+    loadRanks,
+    rankLabel,
 }: {
     title: string;
     icon?: ReactNode;
-    loadIds: () => Promise<number[]>;
+    loadIds?: () => Promise<number[]>;
+    loadRanks?: () => Promise<DiscoverMangaRank[]>;
+    rankLabel?: string;
 }) => {
     const [ids, setIds] = useState<number[]>([]);
+    const [ranks, setRanks] = useState<Map<number, DiscoverMangaRank>>(new Map());
     const [loaded, setLoaded] = useState(false);
 
     useEffect(() => {
         let active = true;
-        loadIds()
-            .then((result) => {
-                if (active) setIds(result);
-            })
-            .finally(() => {
-                if (active) setLoaded(true);
-            });
+        const load = loadRanks
+            ? loadRanks().then((result) => {
+                  if (!active) return;
+                  setIds(result.map((row) => row.manga_id));
+                  setRanks(new Map(result.map((row) => [row.manga_id, row])));
+              })
+            : (loadIds?.() ?? Promise.resolve([])).then((result) => {
+                  if (!active) return;
+                  setIds(result);
+                  setRanks(new Map(result.map((mangaId, index) => [mangaId, { manga_id: mangaId, rank: index + 1 }])));
+              });
+
+        load.finally(() => {
+            if (active) {
+                setLoaded(true);
+            }
+        });
+
         return () => {
             active = false;
         };
+        // Loader callbacks are sampled once per mount; callers remount the rail when the ranking window changes.
     }, []);
+
+    const rankCaption = (rank?: DiscoverMangaRank): string | null => {
+        if (!rank) return null;
+        if (rank.readers && rank.chapters_read) {
+            return `${rank.readers} readers · ${rank.chapters_read} reads`;
+        }
+        if (rank.readers) {
+            return `${rank.readers} readers`;
+        }
+        return rankLabel ? `#${rank.rank} ${rankLabel}` : `#${rank.rank}`;
+    };
+
+    const rankBadge = (rank?: DiscoverMangaRank): string | null => {
+        if (!rank) return null;
+        return rankLabel ? `#${rank.rank} ${rankLabel}` : `#${rank.rank}`;
+    };
 
     const { data } = requestManager.useGetMangas<GetMangasBaseQuery, GetMangasBaseQueryVariables>(
         GET_MANGAS_BASE,
@@ -85,42 +119,75 @@ export const MangaRail = ({
                     WebkitOverflowScrolling: 'touch',
                 }}
             >
-                {mangas.map((manga) => (
-                    <Box
-                        key={manga.id}
-                        component={Link}
-                        to={AppRoutes.manga.path(manga.id)}
-                        sx={{ textDecoration: 'none', color: 'inherit', flex: '0 0 auto', width: 120 }}
-                    >
+                {mangas.map((manga) => {
+                    const rank = ranks.get(manga.id);
+                    const badge = rankBadge(rank);
+                    const caption = rankCaption(rank);
+
+                    return (
                         <Box
-                            component="img"
-                            src={Mangas.getThumbnailUrl(manga)}
-                            alt={manga.title}
-                            loading="lazy"
-                            sx={{
-                                width: 120,
-                                aspectRatio: '2 / 3',
-                                objectFit: 'cover',
-                                borderRadius: 2,
-                                backgroundColor: 'action.hover',
-                                boxShadow: '0 4px 14px rgba(0,0,0,0.35)',
-                            }}
-                        />
-                        <Typography
-                            variant="caption"
-                            sx={{
-                                mt: 0.5,
-                                display: '-webkit-box',
-                                WebkitLineClamp: 2,
-                                WebkitBoxOrient: 'vertical',
-                                overflow: 'hidden',
-                                fontWeight: 600,
-                            }}
+                            key={manga.id}
+                            component={Link}
+                            to={AppRoutes.manga.path(manga.id)}
+                            sx={{ textDecoration: 'none', color: 'inherit', flex: '0 0 auto', width: 120 }}
                         >
-                            {manga.title}
-                        </Typography>
-                    </Box>
-                ))}
+                            <Box sx={{ position: 'relative' }}>
+                                <Box
+                                    component="img"
+                                    src={Mangas.getThumbnailUrl(manga)}
+                                    alt={manga.title}
+                                    loading="lazy"
+                                    sx={{
+                                        width: 120,
+                                        aspectRatio: '2 / 3',
+                                        objectFit: 'cover',
+                                        borderRadius: 2,
+                                        backgroundColor: 'action.hover',
+                                        boxShadow: '0 4px 14px rgba(0,0,0,0.35)',
+                                    }}
+                                />
+                                {badge && (
+                                    <Box
+                                        component="span"
+                                        sx={{
+                                            position: 'absolute',
+                                            top: 6,
+                                            left: 6,
+                                            px: 0.75,
+                                            py: 0.25,
+                                            borderRadius: 1,
+                                            fontSize: '0.7rem',
+                                            fontWeight: 800,
+                                            lineHeight: 1.2,
+                                            color: '#fff',
+                                            backgroundColor: 'rgba(0,0,0,0.68)',
+                                        }}
+                                    >
+                                        {badge}
+                                    </Box>
+                                )}
+                            </Box>
+                            <Typography
+                                variant="caption"
+                                sx={{
+                                    mt: 0.5,
+                                    display: '-webkit-box',
+                                    WebkitLineClamp: 2,
+                                    WebkitBoxOrient: 'vertical',
+                                    overflow: 'hidden',
+                                    fontWeight: 600,
+                                }}
+                            >
+                                {manga.title}
+                            </Typography>
+                            {caption && (
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }} noWrap>
+                                    {caption}
+                                </Typography>
+                            )}
+                        </Box>
+                    );
+                })}
             </Stack>
         </Box>
     );

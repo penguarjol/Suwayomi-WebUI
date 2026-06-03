@@ -55,6 +55,7 @@ import { MUIUtil } from '@/lib/mui/MUI.util.ts';
 import { MetadataBrowseSettings } from '@/features/browse/Browse.types.ts';
 import { SourceLanguageSelect } from '@/features/source/components/SourceLanguageSelect.tsx';
 import { SearchParam } from '@/base/Base.types.ts';
+import { useSaasSourceAccess } from '@/features/source/services/SourceAccess.ts';
 
 type SourceLoadingState = { isLoading: boolean; hasResults: boolean; emptySearch: boolean; error: any };
 type SourceToLoadingStateMap = Map<string, SourceLoadingState>;
@@ -237,8 +238,9 @@ export const SearchAll: React.FC = () => {
     const { pathname, state } = useLocation<{ mangaTitle?: string; shouldShowOnlyPinnedSources?: boolean }>();
     const { ref: filterHeaderRef, height: filterHeaderHeight } = useElementSize();
 
-    const shouldShowOnlyPinnedSources = state?.shouldShowOnlyPinnedSources ?? true;
+    const shouldShowOnlyPinnedSources = state?.shouldShowOnlyPinnedSources ?? false;
     const isMigrateMode = pathname.startsWith('/migrate/source');
+    const { ready: sourceAccessReady, isAllowed } = useSaasSourceAccess();
 
     const [query] = useQueryParam(SearchParam.QUERY, StringParam);
     const searchString = useDebounce(query, TRIGGER_SEARCH_THRESHOLD);
@@ -258,14 +260,14 @@ export const SearchAll: React.FC = () => {
 
     const filteredSources = useMemo(
         () =>
-            Sources.filter(sources, {
+            Sources.filter(sources.filter(isAllowed), {
                 showNsfw,
                 languages: shownLangs,
                 keepLocalSource: true,
                 pinned: shouldShowOnlyPinnedSources,
                 enabled: true,
             }),
-        [sources, shownLangs, shouldShowOnlyPinnedSources],
+        [sources, shownLangs, shouldShowOnlyPinnedSources, isAllowed],
     );
     const sourcesSortedByName = useMemo(() => [...filteredSources].toSorted(compareSourceByName), [filteredSources]);
     const sourcesSortedByResult = useMemo(
@@ -305,7 +307,7 @@ export const SearchAll: React.FC = () => {
         [shownLangs, setShownLangs, sourceLanguages, sources],
     );
 
-    if (loading) {
+    if (loading || !sourceAccessReady) {
         return <LoadingPlaceholder />;
     }
 

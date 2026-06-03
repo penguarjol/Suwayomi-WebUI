@@ -27,15 +27,16 @@ import { Mangas } from '@/features/manga/services/Mangas.ts';
 import { useApprovedSourceIds } from '@/features/library/services/useApprovedSources.ts';
 import {
     TrendingWindow,
-    getPopularReadingIds,
-    getRisingIds,
-    getTrendingWindowIds,
+    getPopularReadingRanks,
+    getRisingRanks,
+    getTrendingWindowRanks,
 } from '@/features/discover/Discover.ts';
 import { getRecommendedMangaIds } from '@/features/library/services/Recommendations.ts';
 import { OriginalWork, coverUrl, getFollowedCreatorWorks, listPublishedWorks } from '@/features/originals/Originals.ts';
 import { Thread, getRecentThreads } from '@/features/social/Forum.ts';
 import { useAppTitle } from '@/features/navigation-bar/hooks/useAppTitle.ts';
 import { AppRoutes } from '@/base/AppRoute.constants.ts';
+import { useSaasSourceAccess } from '@/features/source/services/SourceAccess.ts';
 
 const railScrollSx = {
     flexDirection: 'row' as const,
@@ -59,16 +60,6 @@ const CURATED_POPULAR = [
     "Omniscient Reader's Viewpoint",
     'Tower of God',
     'Solo Max-Level Newbie',
-    'Return of the Mount Hua Sect',
-    'Nano Machine',
-    'Lookism',
-    'Eleceed',
-    'Sakamoto Days',
-    'Kagurabachi',
-    'Blue Lock',
-    'Oshi no Ko',
-    'Damn Reincarnation',
-    'The Greatest Estate Developer',
 ];
 
 // Real, source-backed "popular" shelf. On a fresh instance the user-activity
@@ -143,44 +134,144 @@ const SeededPopularRail = () => {
     return <SourcePopularRail sourceId={sourceId} />;
 };
 
-const CuratedPicks = () => (
-    <Box sx={{ mb: 3 }}>
-        <Stack sx={{ flexDirection: 'row', alignItems: 'center', gap: 1, mb: 1, px: 0.5 }}>
-            <AutoAwesomeIcon color="primary" fontSize="small" />
-            <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
-                Editor&apos;s picks
-            </Typography>
-        </Stack>
-        <Stack sx={railScrollSx}>
-            {CURATED_POPULAR.map((title, i) => (
+const CuratedPickCard = ({
+    title,
+    sources,
+}: {
+    title: string;
+    sources: { id: string; displayName?: string | null; name?: string | null }[];
+}) => {
+    const [sourceIndex, setSourceIndex] = useState(0);
+    const source = sources[sourceIndex];
+    const [, pages] = requestManager.useSourceSearch(source?.id ?? '-1', title, undefined, 1, {
+        skipRequest: !source,
+    });
+    const page = pages?.[0];
+    const mangas = page?.data?.fetchSourceManga?.mangas ?? [];
+    const manga = mangas[0];
+    const isDone = !!page && !page.isLoading;
+
+    useEffect(() => {
+        if (!source || !isDone || manga || sourceIndex >= sources.length - 1) return;
+        setSourceIndex((index) => index + 1);
+    }, [isDone, manga, source, sourceIndex, sources.length]);
+
+    if (!source) return null;
+
+    if (!manga && !isDone) {
+        return (
+            <Box sx={{ flex: '0 0 auto', width: 120 }}>
                 <Box
-                    key={title}
-                    component={Link}
-                    to={AppRoutes.sources.childRoutes.searchAll.path(title)}
-                    sx={{ textDecoration: 'none', color: 'inherit', flex: '0 0 auto', width: 120 }}
+                    sx={{
+                        width: 120,
+                        aspectRatio: '2 / 3',
+                        borderRadius: 2,
+                        backgroundColor: 'action.hover',
+                    }}
+                />
+            </Box>
+        );
+    }
+
+    if (!manga) {
+        return (
+            <Box
+                component={Link}
+                to={AppRoutes.sources.childRoutes.searchAll.path(title)}
+                state={{ shouldShowOnlyPinnedSources: false }}
+                sx={{ textDecoration: 'none', color: 'inherit', flex: '0 0 auto', width: 120 }}
+            >
+                <Stack
+                    sx={{
+                        width: 120,
+                        aspectRatio: '2 / 3',
+                        borderRadius: 2,
+                        p: 1.5,
+                        justifyContent: 'flex-end',
+                        color: '#fff',
+                        backgroundColor: 'primary.dark',
+                    }}
                 >
-                    <Stack
-                        sx={{
-                            width: 120,
-                            aspectRatio: '2 / 3',
-                            borderRadius: 2,
-                            p: 1.5,
-                            justifyContent: 'flex-end',
-                            color: '#fff',
-                            boxShadow: '0 4px 14px rgba(0,0,0,0.35)',
-                            background: (theme) =>
-                                `linear-gradient(${140 + i * 12}deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                        }}
-                    >
-                        <Typography variant="subtitle2" sx={{ fontWeight: 800, lineHeight: 1.15 }}>
-                            {title}
-                        </Typography>
-                    </Stack>
-                </Box>
-            ))}
-        </Stack>
-    </Box>
-);
+                    <Typography variant="subtitle2" sx={{ fontWeight: 800, lineHeight: 1.15 }}>
+                        {title}
+                    </Typography>
+                </Stack>
+                <Typography variant="caption" color="text.secondary">
+                    Search all sources
+                </Typography>
+            </Box>
+        );
+    }
+
+    return (
+        <Box
+            component={Link}
+            to={AppRoutes.manga.path(manga.id)}
+            sx={{ textDecoration: 'none', color: 'inherit', flex: '0 0 auto', width: 120 }}
+        >
+            <Box
+                component="img"
+                src={Mangas.getThumbnailUrl(manga)}
+                alt={manga.title}
+                loading="lazy"
+                sx={{
+                    width: 120,
+                    aspectRatio: '2 / 3',
+                    objectFit: 'cover',
+                    borderRadius: 2,
+                    backgroundColor: 'action.hover',
+                    boxShadow: '0 4px 14px rgba(0,0,0,0.35)',
+                }}
+            />
+            <Typography
+                variant="caption"
+                sx={{
+                    mt: 0.5,
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
+                    fontWeight: 600,
+                }}
+            >
+                {manga.title}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }} noWrap>
+                {source.displayName ?? source.name ?? 'Source'}
+            </Typography>
+        </Box>
+    );
+};
+
+const CuratedPicks = () => {
+    const { data } = requestManager.useGetSourceList({ fetchPolicy: 'cache-first' });
+    const { ready, isAllowed } = useSaasSourceAccess();
+    const sources = useMemo(
+        () =>
+            (data?.sources.nodes ?? [])
+                .filter((source) => !source.isNsfw && isAllowed(source))
+                .map((source) => ({ id: String(source.id), displayName: source.displayName, name: source.name })),
+        [data?.sources.nodes, isAllowed],
+    );
+
+    if (!ready || !sources.length) return null;
+
+    return (
+        <Box sx={{ mb: 3 }}>
+            <Stack sx={{ flexDirection: 'row', alignItems: 'center', gap: 1, mb: 1, px: 0.5 }}>
+                <AutoAwesomeIcon color="primary" fontSize="small" />
+                <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
+                    Editor&apos;s picks
+                </Typography>
+            </Stack>
+            <Stack sx={railScrollSx}>
+                {CURATED_POPULAR.map((title) => (
+                    <CuratedPickCard key={title} title={title} sources={sources} />
+                ))}
+            </Stack>
+        </Box>
+    );
+};
 
 const OriginalsRail = ({ title, load }: { title: string; load: () => Promise<OriginalWork[]> }) => {
     const [works, setWorks] = useState<OriginalWork[]>([]);
@@ -353,17 +444,19 @@ export function Home() {
                     </ToggleButton>
                 </ToggleButtonGroup>
             </Stack>
-            <MangaRail key={window} title="" loadIds={() => getTrendingWindowIds(window, 14)} />
+            <MangaRail key={window} title="" loadRanks={() => getTrendingWindowRanks(window, 14)} rankLabel={window} />
 
             <MangaRail
                 title="Fast-rising"
                 icon={<TrendingUpIcon color="primary" fontSize="small" />}
-                loadIds={() => getRisingIds(14)}
+                loadRanks={() => getRisingRanks(14)}
+                rankLabel="rising"
             />
             <MangaRail
                 title="Readers are reading"
                 icon={<MenuBookIcon color="primary" fontSize="small" />}
-                loadIds={() => getPopularReadingIds(14)}
+                loadRanks={() => getPopularReadingRanks(14)}
+                rankLabel="read"
             />
             <MangaRail
                 title="Recommended for you"
