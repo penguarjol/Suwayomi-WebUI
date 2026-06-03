@@ -27,12 +27,15 @@ export const MangaRail = ({
     loadIds,
     loadRanks,
     rankLabel,
+    fallback,
 }: {
     title: string;
     icon?: ReactNode;
     loadIds?: () => Promise<number[]>;
     loadRanks?: () => Promise<DiscoverMangaRank[]>;
     rankLabel?: string;
+    /** Rendered when the ranked/id list resolves empty (e.g. preseed content). */
+    fallback?: ReactNode;
 }) => {
     const [ids, setIds] = useState<number[]>([]);
     const [ranks, setRanks] = useState<Map<number, DiscoverMangaRank>>(new Map());
@@ -95,7 +98,9 @@ export const MangaRail = ({
     }, [data?.mangas.nodes, ids, isApproved]);
 
     // Hide the rail until sources load, so unfiltered (possibly NSFW) titles never flash.
-    if (!loaded || !sourcesReady || mangas.length === 0) return null;
+    if (!loaded || !sourcesReady) return null;
+    // No ranked content yet — show the preseed fallback if one was provided.
+    if (mangas.length === 0) return (fallback as JSX.Element) ?? null;
 
     return (
         <Box sx={{ mb: 3 }}>

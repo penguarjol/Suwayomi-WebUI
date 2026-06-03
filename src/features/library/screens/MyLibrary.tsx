@@ -177,7 +177,14 @@ export function MyLibrary() {
     const favoriteIds = useUserLibraryStore((state) => state.favoriteIds);
     const favoriteTitles = useUserLibraryStore((state) => state.favoriteTitles);
     const loaded = useUserLibraryStore((state) => state.loaded);
+    const loadLibrary = useUserLibraryStore((state) => state.load);
     const { categories, refresh: refreshCategories } = useUserCategories();
+
+    // Re-sync from Supabase whenever the library is opened, so it reflects the
+    // latest persisted state (e.g. adds from another device, or a post-login load).
+    useEffect(() => {
+        loadLibrary().catch(() => {});
+    }, [loadLibrary]);
 
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [categoryMangaIds, setCategoryMangaIds] = useState<number[] | null>(null);

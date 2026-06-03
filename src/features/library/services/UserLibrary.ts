@@ -48,16 +48,26 @@ export const useUserLibraryStore = create<UserLibraryStore>((set, get) => ({
                 set({ loaded: true });
                 return;
             }
-            const { data, error } = await supabase.from('user_library').select('manga_id, title');
-            if (error) throw error;
-            const rows = data ?? [];
+            // Read ids + title, but fall back to ids-only if the denormalized
+            // `title` column is absent on older installs. Never let a missing
+            // column silently empty a user's library.
+            let rows: { manga_id: number; title?: string | null }[] = [];
+            const withTitle = await supabase.from('user_library').select('manga_id, title');
+            if (withTitle.error) {
+                const idsOnly = await supabase.from('user_library').select('manga_id');
+                if (idsOnly.error) throw idsOnly.error;
+                rows = (idsOnly.data ?? []) as typeof rows;
+            } else {
+                rows = (withTitle.data ?? []) as typeof rows;
+            }
             set({
                 favoriteIds: rows.map((row) => Number(row.manga_id)),
                 favoriteTitles: Object.fromEntries(rows.map((row) => [Number(row.manga_id), row.title ?? null])),
                 loaded: true,
             });
-        } catch {
-            // Fail soft: an empty library is better than a wedged UI.
+        } catch (e) {
+            // Keep the UI usable, but surface the failure instead of hiding it.
+            defaultPromiseErrorHandler('UserLibrary::load')(e);
             set({ loaded: true });
         }
     },
@@ -72,9 +82,16 @@ export const useUserLibraryStore = create<UserLibraryStore>((set, get) => ({
             set({ favoriteIds: previous, favoriteTitles: previousTitles });
             throw new Error('Not authenticated');
         }
-        const { error } = await supabase
+        let { error } = await supabase
             .from('user_library')
             .upsert({ user_id: userId, manga_id: mangaId, title: title ?? null }, { onConflict: 'user_id,manga_id' });
+        if (error) {
+            // Older installs may lack the `title` column — persist ids-only so the
+            // favorite is never lost just because a denormalized column is missing.
+            ({ error } = await supabase
+                .from('user_library')
+                .upsert({ user_id: userId, manga_id: mangaId }, { onConflict: 'user_id,manga_id' }));
+        }
         if (error) {
             set({ favoriteIds: previous, favoriteTitles: previousTitles });
             throw error;

@@ -138,6 +138,63 @@ const SeededPopularRail = () => {
     return <SourcePopularRail sourceId={sourceId} />;
 };
 
+// Preseed for the Trending rail when there's no reading-activity ranking yet:
+// the latest releases from a source (a reasonable "what's hot/new" proxy),
+// rendered headerless since the Trending header is shown above it.
+const SourceLatestRow = ({ sourceId }: { sourceId: string }) => {
+    const railOwner = useId();
+    const [, pages] = requestManager.useGetSourceLatestMangas(sourceId, 1);
+    const page = pages?.[0];
+    const rawMangas = useMemo(
+        () => (page?.data?.fetchSourceManga?.mangas ?? []).slice(0, 24),
+        [page?.data?.fetchSourceManga?.mangas],
+    );
+    const mangas = useDedupedMangas(rawMangas, railOwner).slice(0, 14);
+    if (!mangas.length) return null;
+
+    return (
+        <Box sx={{ mb: 3 }}>
+            <Stack sx={railScrollSx}>
+                {mangas.map((manga) => (
+                    <Box
+                        key={manga.id}
+                        component={Link}
+                        to={AppRoutes.manga.path(manga.id)}
+                        sx={{ textDecoration: 'none', color: 'inherit', flex: '0 0 auto', width: 120 }}
+                    >
+                        <CoverImage src={Mangas.getThumbnailUrl(manga)} title={manga.title} />
+                        <Typography
+                            variant="caption"
+                            sx={{
+                                mt: 0.5,
+                                display: '-webkit-box',
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical',
+                                overflow: 'hidden',
+                                fontWeight: 600,
+                            }}
+                        >
+                            {manga.title}
+                        </Typography>
+                    </Box>
+                ))}
+            </Stack>
+        </Box>
+    );
+};
+
+const TrendingFallback = () => {
+    const { data } = requestManager.useGetSourceList();
+    const { ready, isApproved } = useApprovedSourceIds();
+    const sourceId = useMemo(() => {
+        const nodes = (data?.sources?.nodes ?? []).filter((s) => !s.isNsfw && s.id !== '0' && isApproved(s.id));
+        return (nodes.find((s) => s.supportsLatest) ?? nodes[0])?.id ?? null;
+    }, [data?.sources?.nodes, isApproved]);
+
+    if (!ready || !sourceId) return null;
+    return <SourceLatestRow sourceId={sourceId} />;
+};
+
 const CuratedPickCard = ({
     title,
     sources,
@@ -447,6 +504,7 @@ export function Home() {
                     title=""
                     loadRanks={() => getTrendingWindowRanks(window, 14)}
                     rankLabel={window}
+                    fallback={<TrendingFallback />}
                 />
 
                 <MangaRail

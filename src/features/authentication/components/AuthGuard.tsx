@@ -11,6 +11,7 @@ import { SplashScreen } from '@/features/authentication/components/SplashScreen.
 import { requestManager } from '@/lib/requests/RequestManager.ts';
 import { AuthManager } from '@/features/authentication/AuthManager.ts';
 import { useBillingStore } from '@/features/billing/Billing.ts';
+import { useUserLibraryStore } from '@/features/library/services/UserLibrary.ts';
 import { processCapturedReferral } from '@/features/referrals/Referrals.ts';
 import { supabase } from '@/lib/SupabaseClient.ts';
 
@@ -48,6 +49,14 @@ export const AuthGuard = ({ children }: { children: ReactNode }) => {
                     useBillingStore
                         .getState()
                         .loadProfile()
+                        .catch(() => {});
+
+                    // Load the per-user library here too — with a confirmed
+                    // session — so a fresh page load reliably retrieves it even
+                    // if the early background load raced ahead of auth.
+                    useUserLibraryStore
+                        .getState()
+                        .load()
                         .catch(() => {});
 
                     // Redeem a captured invite + reward the referrer once eligible.
