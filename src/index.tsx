@@ -14,12 +14,15 @@ import '@/index.css';
 import '@/lib/PointerDeviceUtil.ts';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { inject } from '@vercel/analytics';
 import { App } from '@/App';
 import { initAnalytics } from '@/features/analytics/Analytics.ts';
 import { captureReferralFromUrl } from '@/features/referrals/Referrals.ts';
 
 initAnalytics();
 captureReferralFromUrl();
+
+inject();
 
 const container = document.getElementById('root');
 const root = createRoot(container!);
