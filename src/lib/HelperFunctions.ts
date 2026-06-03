@@ -25,6 +25,26 @@ export const getErrorMessage = (error: unknown): string => {
         return '';
     }
 
+    if (typeof error === 'object') {
+        const record = error as Record<string, unknown>;
+        const parts = [
+            typeof record.code === 'string' ? `[${record.code}]` : null,
+            typeof record.message === 'string' ? record.message : null,
+            typeof record.details === 'string' ? record.details : null,
+            typeof record.hint === 'string' ? `Hint: ${record.hint}` : null,
+        ].filter(Boolean);
+
+        if (parts.length) {
+            return parts.join(' ');
+        }
+
+        try {
+            return JSON.stringify(error);
+        } catch {
+            return `${error}`;
+        }
+    }
+
     return `${error}`;
 };
 
