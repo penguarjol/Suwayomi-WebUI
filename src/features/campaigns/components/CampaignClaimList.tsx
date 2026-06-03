@@ -16,7 +16,7 @@ import {
     ClaimStatus,
     claimCampaign,
     getActiveCampaigns,
-    getClaimedCampaignIds,
+    getCampaignClaimTimes,
 } from '@/features/campaigns/Campaigns.ts';
 import { useBillingStore } from '@/features/billing/Billing.ts';
 import { LoadingPlaceholder } from '@/base/components/feedback/LoadingPlaceholder.tsx';
@@ -37,8 +37,29 @@ function getReward(campaign: Campaign): string {
         : `${campaign.reward_amount} Premium days`;
 }
 
-function canClaimFromClientState(campaign: Campaign, claimed: Set<string>): boolean {
-    return !(campaign.cooldown_hours === 0 && claimed.has(campaign.id));
+interface ClaimState {
+    claimable: boolean;
+    /** epoch ms when it becomes claimable again (cooldown campaigns only) */
+    availableAt: number | null;
+}
+
+/** Whether a campaign can be claimed right now, given the last claim time. */
+function getClaimState(campaign: Campaign, claimTimes: Map<string, number>): ClaimState {
+    const last = claimTimes.get(campaign.id);
+    if (last == null) return { claimable: true, availableAt: null };
+    // One-time campaign: a single claim locks it forever.
+    if (campaign.cooldown_hours === 0) return { claimable: false, availableAt: null };
+    const availableAt = last + campaign.cooldown_hours * 3_600_000;
+    return { claimable: Date.now() >= availableAt, availableAt };
+}
+
+function formatCountdown(availableAt: number): string {
+    const ms = availableAt - Date.now();
+    if (ms <= 0) return 'now';
+    const hours = Math.floor(ms / 3_600_000);
+    if (hours >= 1) return `in ${hours}h`;
+    const minutes = Math.max(1, Math.floor(ms / 60_000));
+    return `in ${minutes}m`;
 }
 
 export function CampaignClaimList({
@@ -53,18 +74,18 @@ export function CampaignClaimList({
     onClaimed?: () => void;
 }) {
     const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-    const [claimed, setClaimed] = useState<Set<string>>(new Set());
+    const [claimTimes, setClaimTimes] = useState<Map<string, number>>(new Map());
     const [loading, setLoading] = useState(true);
     const [busyId, setBusyId] = useState<string | null>(null);
 
     const refresh = async () => {
         try {
-            const [list, claimedIds] = await Promise.all([getActiveCampaigns(), getClaimedCampaignIds()]);
+            const [list, times] = await Promise.all([getActiveCampaigns(), getCampaignClaimTimes()]);
             setCampaigns(list);
-            setClaimed(claimedIds);
+            setClaimTimes(times);
         } catch {
             setCampaigns([]);
-            setClaimed(new Set());
+            setClaimTimes(new Map());
         } finally {
             setLoading(false);
         }
@@ -75,8 +96,8 @@ export function CampaignClaimList({
     }, []);
 
     const hasClaimable = useMemo(
-        () => campaigns.some((campaign) => canClaimFromClientState(campaign, claimed)),
-        [campaigns, claimed],
+        () => campaigns.some((campaign) => getClaimState(campaign, claimTimes).claimable),
+        [campaigns, claimTimes],
     );
 
     useEffect(() => {
@@ -104,8 +125,12 @@ export function CampaignClaimList({
     return (
         <Stack sx={{ gap: dense ? 1 : 1.5 }}>
             {campaigns.map((campaign) => {
-                const isOneTimeClaimed = campaign.cooldown_hours === 0 && claimed.has(campaign.id);
+                const state = getClaimState(campaign, claimTimes);
                 const reward = getReward(campaign);
+                let buttonLabel = 'Claim';
+                if (!state.claimable) {
+                    buttonLabel = campaign.cooldown_hours === 0 ? 'Claimed' : 'Done';
+                }
 
                 return (
                     <Stack
@@ -127,20 +152,27 @@ export function CampaignClaimList({
                                     {campaign.description}
                                 </Typography>
                             )}
-                            <Chip
-                                label={`+ ${reward}`}
-                                color="primary"
-                                size="small"
-                                sx={{ alignSelf: 'flex-start', mt: 0.5, fontWeight: 700 }}
-                            />
+                            <Stack sx={{ flexDirection: 'row', alignItems: 'center', gap: 1, mt: 0.5 }}>
+                                <Chip
+                                    label={`+ ${reward}`}
+                                    color="primary"
+                                    size="small"
+                                    sx={{ alignSelf: 'flex-start', fontWeight: 700 }}
+                                />
+                                {!state.claimable && state.availableAt && (
+                                    <Typography variant="caption" color="text.secondary">
+                                        Resets {formatCountdown(state.availableAt)}
+                                    </Typography>
+                                )}
+                            </Stack>
                         </Stack>
                         <Button
                             variant="contained"
-                            disabled={busyId === campaign.id || isOneTimeClaimed}
+                            disabled={busyId === campaign.id || !state.claimable}
                             onClick={() => claim(campaign)}
                             sx={{ borderRadius: '50px', textTransform: 'none', fontWeight: 700, minWidth: 96 }}
                         >
-                            {isOneTimeClaimed ? 'Claimed' : 'Claim'}
+                            {buttonLabel}
                         </Button>
                     </Stack>
                 );

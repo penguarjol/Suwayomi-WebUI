@@ -42,6 +42,25 @@ export async function getClaimedCampaignIds(): Promise<Set<string>> {
     return new Set((data ?? []).map((row) => String(row.campaign_id)));
 }
 
+/**
+ * Latest claim time (epoch ms) per campaign. Uses created_at, which is always
+ * present on campaign_participations (claimed_at may not exist until the
+ * reconciliation migration lands). Powers cooldown-aware button state so daily
+ * campaigns grey out after claiming and reset when the cooldown elapses.
+ */
+export async function getCampaignClaimTimes(): Promise<Map<string, number>> {
+    const { data } = await supabase
+        .from('campaign_participations')
+        .select('campaign_id, created_at')
+        .order('created_at', { ascending: false });
+    const latest = new Map<string, number>();
+    for (const row of data ?? []) {
+        const id = String(row.campaign_id);
+        if (!latest.has(id)) latest.set(id, new Date(row.created_at as string).getTime());
+    }
+    return latest;
+}
+
 export async function claimCampaign(id: string): Promise<ClaimResult> {
     const { data: sessionData } = await supabase.auth.getSession();
     if (!sessionData.session) return { status: 'unauthenticated' };
