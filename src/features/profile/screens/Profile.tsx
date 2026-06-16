@@ -19,6 +19,7 @@ import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Divider from '@mui/material/Divider';
 import BrushIcon from '@mui/icons-material/Brush';
+import RssFeedIcon from '@mui/icons-material/RssFeed';
 import StorefrontIcon from '@mui/icons-material/Storefront';
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import RedeemIcon from '@mui/icons-material/Redeem';
@@ -106,6 +107,12 @@ export function Profile() {
             </Stack>
 
             <List sx={{ mb: 1 }}>
+                <ListItemLink to={AppRoutes.feed.path}>
+                    <ListItemIcon>
+                        <RssFeedIcon />
+                    </ListItemIcon>
+                    <ListItemText primary="Following" secondary="New chapters from creators you follow" />
+                </ListItemLink>
                 <ListItemLink to={AppRoutes.studio.path}>
                     <ListItemIcon>
                         <BrushIcon />

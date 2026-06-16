@@ -6,7 +6,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { StringParam, useQueryParam } from 'use-query-params';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
@@ -16,6 +16,7 @@ import Chip from '@mui/material/Chip';
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
 import RedeemIcon from '@mui/icons-material/Redeem';
+import LanguageIcon from '@mui/icons-material/Language';
 import { Link } from 'react-router-dom';
 import { AppRoutes } from '@/base/AppRoute.constants.ts';
 import {
@@ -23,11 +24,15 @@ import {
     DEFAULT_SUBSCRIPTION_PLANS,
     getPublicTokenPacks,
     startCheckout,
+    purchaseNative,
+    openWebStore,
     claimPremiumBonus,
     useBillingStore,
     TokenPack,
     SubscriptionPlan,
 } from '@/features/billing/Billing.ts';
+import { resolvePurchaseOptions, webDiscountedPrice } from '@/features/billing/PaymentRouter.ts';
+import { detectPlatform, detectRegion } from '@/features/billing/Platform.ts';
 import { useAppTitle } from '@/features/navigation-bar/hooks/useAppTitle.ts';
 import { makeToast } from '@/base/utils/Toast.ts';
 
@@ -38,58 +43,83 @@ const PackCard = ({
     highlight,
     onBuy,
     busy,
+    discountPercent,
 }: {
     pack: TokenPack;
     highlight?: boolean;
     onBuy: () => void;
     busy: boolean;
-}) => (
-    <Stack
-        sx={{
-            p: 2.5,
-            gap: 1,
-            borderRadius: 3,
-            alignItems: 'center',
-            textAlign: 'center',
-            position: 'relative',
-            border: (theme) => `1px solid ${highlight ? theme.palette.primary.main : 'rgba(255,255,255,0.08)'}`,
-            background: 'rgba(255,255,255,0.03)',
-            boxShadow: highlight ? (theme) => `0 0 24px ${theme.palette.primary.main}40` : 'none',
-        }}
-    >
-        {highlight && (
-            <Chip
-                label="Best value"
-                color="primary"
-                size="small"
-                sx={{ position: 'absolute', top: -12, fontWeight: 700 }}
-            />
-        )}
-        <MonetizationOnIcon color="primary" sx={{ fontSize: 36 }} />
-        <Typography variant="h5" sx={{ fontWeight: 900 }}>
-            {pack.tokens + pack.bonus}
-        </Typography>
-        <Typography variant="caption" color="text.secondary">
-            {pack.bonus > 0 ? `${pack.tokens} + ${pack.bonus} bonus Coins` : 'Coins'}
-        </Typography>
-        <Button
-            fullWidth
-            variant={highlight ? 'contained' : 'outlined'}
-            disabled={busy}
-            onClick={onBuy}
-            sx={{ borderRadius: '50px', textTransform: 'none', fontWeight: 700, mt: 1 }}
+    discountPercent: number;
+}) => {
+    const discounted = discountPercent > 0;
+    const price = discounted ? webDiscountedPrice(pack.priceUsd, discountPercent) : pack.priceUsd;
+    return (
+        <Stack
+            sx={{
+                p: 2.5,
+                gap: 1,
+                borderRadius: 3,
+                alignItems: 'center',
+                textAlign: 'center',
+                position: 'relative',
+                border: (theme) => `1px solid ${highlight ? theme.palette.primary.main : 'rgba(255,255,255,0.08)'}`,
+                background: 'rgba(255,255,255,0.03)',
+                boxShadow: highlight ? (theme) => `0 0 24px ${theme.palette.primary.main}40` : 'none',
+            }}
         >
-            {fmt(pack.priceUsd)}
-        </Button>
-    </Stack>
-);
+            {highlight && (
+                <Chip
+                    label="Best value"
+                    color="primary"
+                    size="small"
+                    sx={{ position: 'absolute', top: -12, fontWeight: 700 }}
+                />
+            )}
+            <MonetizationOnIcon color="primary" sx={{ fontSize: 36 }} />
+            <Typography variant="h5" sx={{ fontWeight: 900 }}>
+                {pack.tokens + pack.bonus}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+                {pack.bonus > 0 ? `${pack.tokens} + ${pack.bonus} bonus Coins` : 'Coins'}
+            </Typography>
+            <Button
+                fullWidth
+                variant={highlight ? 'contained' : 'outlined'}
+                disabled={busy}
+                onClick={onBuy}
+                sx={{ borderRadius: '50px', textTransform: 'none', fontWeight: 700, mt: 1 }}
+            >
+                {discounted ? (
+                    <Stack component="span" sx={{ flexDirection: 'row', alignItems: 'center', gap: 0.75 }}>
+                        <Box component="span" sx={{ textDecoration: 'line-through', opacity: 0.6 }}>
+                            {fmt(pack.priceUsd)}
+                        </Box>
+                        <Box component="span">{fmt(price)}</Box>
+                    </Stack>
+                ) : (
+                    fmt(price)
+                )}
+            </Button>
+        </Stack>
+    );
+};
 
 export function Store() {
     useAppTitle('Get Coins');
     const tokens = useBillingStore((state) => state.tokens);
     const isPremium = useBillingStore((state) => state.isPremium);
+    const purchasePolicy = useBillingStore((state) => state.purchasePolicy);
     const [busy, setBusy] = useState(false);
     const [purchase, setPurchase] = useQueryParam('purchase', StringParam);
+
+    // Resolve the purchase channel once from platform + region + server policy.
+    const channel = useMemo(
+        () => resolvePurchaseOptions(detectPlatform(), detectRegion(), purchasePolicy),
+        [purchasePolicy],
+    );
+    // Web/PWA buyers pay the discounted price; native buyers pay the store (IAP)
+    // price and are nudged to the web only where policy permits.
+    const cardDiscount = channel.primaryChannel === 'web' ? channel.webDiscountPercent : 0;
 
     // Handle the return from Stripe web checkout (success/cancel redirect).
     useEffect(() => {
@@ -106,6 +136,17 @@ export function Store() {
     const buy = async (productId: string) => {
         setBusy(true);
         try {
+            if (channel.primaryChannel === 'iap') {
+                const { ok, error } = await purchaseNative(productId);
+                if (ok) {
+                    makeToast('Purchase complete!', 'success');
+                } else if (error === 'product_unavailable') {
+                    makeToast('This item is not available on this device yet.', 'error');
+                } else if (error !== 'cancelled') {
+                    makeToast('Could not complete the purchase. Please try again.', 'error');
+                }
+                return;
+            }
             const { url, error } = await startCheckout(productId);
             if (url) {
                 window.location.href = url;
@@ -150,6 +191,36 @@ export function Store() {
                 />
             </Stack>
 
+            {/* Native "save on web" nudge — only where the region permits an
+                external purchase link (ADR-0008). Opens the system browser. */}
+            {channel.showWebLink && channel.webDiscountPercent > 0 && (
+                <Stack
+                    sx={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 1.5,
+                        p: 2,
+                        mb: 3,
+                        borderRadius: 3,
+                        border: '1px solid rgba(255,255,255,0.10)',
+                        background: 'rgba(255,255,255,0.03)',
+                    }}
+                >
+                    <LanguageIcon color="primary" />
+                    <Typography variant="body2" sx={{ flexGrow: 1, fontWeight: 600 }}>
+                        {`Save ${channel.webDiscountPercent}% on every top-up when you buy on the web.`}
+                    </Typography>
+                    <Button
+                        onClick={openWebStore}
+                        variant="outlined"
+                        size="small"
+                        sx={{ borderRadius: '50px', textTransform: 'none', fontWeight: 700, flexShrink: 0 }}
+                    >
+                        Open web store
+                    </Button>
+                </Stack>
+            )}
+
             {/* Premium */}
             <Stack
                 sx={{
@@ -172,17 +243,21 @@ export function Store() {
                     Unlimited Fast Pass on every series, ad-free reading, offline downloads, and a monthly Coin bonus.
                 </Typography>
                 <Stack sx={{ flexDirection: 'row', gap: 1.5, flexWrap: 'wrap', mt: 1 }}>
-                    {plans.map((plan) => (
-                        <Button
-                            key={plan.id}
-                            variant="contained"
-                            disabled={busy || isPremium}
-                            onClick={() => buy(plan.id)}
-                            sx={{ borderRadius: '50px', textTransform: 'none', fontWeight: 700 }}
-                        >
-                            {isPremium ? 'Active' : `${fmt(plan.priceUsd)} / ${plan.period}`}
-                        </Button>
-                    ))}
+                    {plans.map((plan) => {
+                        const planPrice =
+                            cardDiscount > 0 ? webDiscountedPrice(plan.priceUsd, cardDiscount) : plan.priceUsd;
+                        return (
+                            <Button
+                                key={plan.id}
+                                variant="contained"
+                                disabled={busy || isPremium}
+                                onClick={() => buy(plan.id)}
+                                sx={{ borderRadius: '50px', textTransform: 'none', fontWeight: 700 }}
+                            >
+                                {isPremium ? 'Active' : `${fmt(planPrice)} / ${plan.period}`}
+                            </Button>
+                        );
+                    })}
                     {isPremium && (
                         <Button
                             variant="outlined"
@@ -213,6 +288,7 @@ export function Store() {
                         pack={pack}
                         highlight={index === 1}
                         busy={busy}
+                        discountPercent={cardDiscount}
                         onBuy={() => buy(pack.id)}
                     />
                 ))}

@@ -225,6 +225,10 @@ export const AppRoutes = {
         match: 'community',
         path: '/community',
     },
+    feed: {
+        match: 'feed',
+        path: '/feed',
+    },
     thread: {
         match: 'community/thread/:id',
         path: (id: string) => `/community/thread/${id}`,

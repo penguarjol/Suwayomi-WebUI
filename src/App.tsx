@@ -40,6 +40,7 @@ import { PremiumUpsellDialog } from '@/features/billing/components/PremiumUpsell
 import { LegalGate, LegalFooter } from '@/features/legal/Legal.tsx';
 import { FeedbackFab } from '@/features/feedback/components/FeedbackFab.tsx';
 import { CampaignLoginDialog } from '@/features/campaigns/components/CampaignLoginDialog.tsx';
+import { InstallPrompt } from '@/features/pwa/InstallPrompt.tsx';
 
 const { Browse } = loadable(() => import('@/features/browse/screens/Browse.tsx'), lazyLoadFallback);
 const { DownloadQueue } = loadable(() => import('@/features/downloads/screens/DownloadQueue.tsx'), lazyLoadFallback);
@@ -50,6 +51,7 @@ const { Store } = loadable(() => import('@/features/billing/screens/Store.tsx'),
 const { AdminConsole } = loadable(() => import('@/features/admin/screens/AdminConsole.tsx'), lazyLoadFallback);
 const { Community } = loadable(() => import('@/features/social/screens/Community.tsx'), lazyLoadFallback);
 const { ThreadDetail } = loadable(() => import('@/features/social/screens/ThreadDetail.tsx'), lazyLoadFallback);
+const { ActivityFeed } = loadable(() => import('@/features/social/screens/ActivityFeed.tsx'), lazyLoadFallback);
 const { EarnCoins } = loadable(() => import('@/features/campaigns/screens/EarnCoins.tsx'), lazyLoadFallback);
 const { Marketplace } = loadable(() => import('@/features/marketplace/screens/Marketplace.tsx'), lazyLoadFallback);
 const { CollectionDetail } = loadable(
@@ -299,6 +301,7 @@ const MainApp = () => {
                         <Route path={AppRoutes.store.match} element={<Store />} />
                         <Route path={AppRoutes.admin.match} element={<AdminConsole />} />
                         <Route path={AppRoutes.social.match} element={<Community />} />
+                        <Route path={AppRoutes.feed.match} element={<ActivityFeed />} />
                         <Route path={AppRoutes.thread.match} element={<ThreadDetail />} />
                         <Route path={AppRoutes.earn.match} element={<EarnCoins />} />
                         <Route path={AppRoutes.marketplace.match} element={<Marketplace />} />
@@ -317,6 +320,7 @@ const MainApp = () => {
             </ErrorBoundary>
             <LegalFooter />
             <FeedbackFab />
+            <InstallPrompt />
         </Box>
     );
 };

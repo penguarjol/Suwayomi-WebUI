@@ -9,14 +9,12 @@
 import { useTheme } from '@mui/material/styles';
 import Stack, { StackProps } from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { ServerAddressSetting } from '@/features/settings/components/ServerAddressSetting.tsx';
 
 export const SplashScreen = ({
     slots,
 }: {
     slots?: {
         stackProps?: StackProps;
-        serverAddressProps?: StackProps;
     };
 }) => {
     const theme = useTheme();
@@ -52,17 +50,6 @@ export const SplashScreen = ({
             >
                 NEXUS READS
             </Typography>
-            <Stack
-                {...slots?.serverAddressProps}
-                sx={{
-                    position: 'absolute',
-                    left: 0,
-                    bottom: 0,
-                    ...slots?.serverAddressProps?.sx,
-                }}
-            >
-                <ServerAddressSetting />
-            </Stack>
         </Stack>
     );
 };

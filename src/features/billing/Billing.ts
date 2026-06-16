@@ -9,6 +9,7 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/SupabaseClient.ts';
 import { track } from '@/features/analytics/Analytics.ts';
+import { DEFAULT_PURCHASE_POLICY, type PurchasePolicy } from '@/features/billing/PaymentRouter.ts';
 
 /**
  * Nexus Reads billing (tokens "Coins" + Fast Pass paywall).
@@ -129,6 +130,7 @@ interface BillingStore {
     busy: boolean;
     gatedCount: number;
     unlockCost: number;
+    purchasePolicy: PurchasePolicy;
     lockedChapterIds: number[];
     chapterCosts: Record<number, number>;
     paywall: { open: boolean; chapter?: PaywallChapter };
@@ -154,6 +156,7 @@ export const useBillingStore = create<BillingStore>((set, get) => ({
     busy: false,
     gatedCount: DEFAULT_GATED_COUNT,
     unlockCost: DEFAULT_UNLOCK_COST,
+    purchasePolicy: DEFAULT_PURCHASE_POLICY,
     lockedChapterIds: [],
     chapterCosts: {},
     paywall: { open: false },
@@ -232,6 +235,16 @@ export const useBillingStore = create<BillingStore>((set, get) => ({
             });
         } catch {
             // keep defaults
+        }
+        // Channel-aware purchase policy is server-owned (Gatekeeper, ADR-0008).
+        try {
+            const res = await fetch('/api/saas/config');
+            if (res.ok) {
+                const json = await res.json();
+                if (json?.purchasePolicy) set({ purchasePolicy: json.purchasePolicy as PurchasePolicy });
+            }
+        } catch {
+            // keep the conservative default policy
         }
     },
 
@@ -348,4 +361,52 @@ export async function startCheckout(productId: string): Promise<{ url?: string; 
     } catch (e) {
         return { error: 'network' };
     }
+}
+
+/**
+ * Native in-app purchase via RevenueCat (iOS/Android). The RevenueCat webhook
+ * (`/api/webhooks/revenuecat`) is the single crediting authority, so on success
+ * we just refresh the profile. The plugin is imported lazily so it never enters
+ * the web bundle's critical path (ADR-0008, perf). `productId` is the catalog
+ * product id; it must match a RevenueCat product configured in an offering.
+ */
+export async function purchaseNative(productId: string): Promise<{ ok: boolean; error?: string }> {
+    try {
+        track('iap_start', { product: productId });
+        const { Purchases } = await import('@revenuecat/purchases-capacitor');
+        const offerings = await Purchases.getOfferings();
+        const offers = Object.values(offerings.all ?? {});
+        const pkg = offers
+            .flatMap((offering) => offering.availablePackages ?? [])
+            .find((p) => p.product.identifier === productId);
+        if (!pkg) return { ok: false, error: 'product_unavailable' };
+
+        await Purchases.purchasePackage({ aPackage: pkg });
+        await useBillingStore.getState().loadProfile();
+        return { ok: true };
+    } catch (e) {
+        const err = e as { userCancelled?: boolean };
+        if (err?.userCancelled) return { ok: false, error: 'cancelled' };
+        return { ok: false, error: 'purchase_failed' };
+    }
+}
+
+/**
+ * "Save on web" path for native apps in regions that permit external purchase
+ * links (ADR-0008). Opens the discounted Stripe checkout in the device's
+ * default browser (`_system`) — required for store compliance vs an in-app
+ * webview. Caller must first confirm the region allows it via `PaymentRouter`.
+ */
+export async function openWebCheckout(productId: string): Promise<{ ok: boolean; error?: string }> {
+    const { url, error } = await startCheckout(productId);
+    if (!url) return { ok: false, error: error ?? 'no_url' };
+    track('external_web_checkout', { product: productId });
+    window.open(url, '_system');
+    return { ok: true };
+}
+
+/** Open the web Store in the device's default browser (native "save on web"). */
+export function openWebStore(): void {
+    track('external_web_store');
+    window.open('/store', '_system');
 }

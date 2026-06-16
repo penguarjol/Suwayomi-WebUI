@@ -25,7 +25,6 @@ import { AppRoutes } from '@/base/AppRoute.constants.ts';
 import { useNavBarContext } from '@/features/navigation-bar/NavbarContext.tsx';
 import { SearchParam } from '@/base/Base.types.ts';
 import { SplashScreen } from '@/features/authentication/components/SplashScreen.tsx';
-import { ServerAddressSetting } from '@/features/settings/components/ServerAddressSetting.tsx';
 
 export const LoginPage = () => {
     const theme = useTheme();
@@ -137,11 +136,6 @@ export const LoginPage = () => {
                             },
                         },
                     },
-                    serverAddressProps: {
-                        sx: {
-                            display: 'none',
-                        },
-                    },
                 }}
             />
             <Stack
@@ -240,10 +234,6 @@ export const LoginPage = () => {
                     >
                         {isSignUp ? 'Already have an account? Log In' : 'Need access? Sign Up'}
                     </Button>
-                </Stack>
-
-                <Stack sx={{ position: 'absolute', left: 40, bottom: 40, opacity: 0.5 }}>
-                    <ServerAddressSetting />
                 </Stack>
             </Stack>
         </Stack>
