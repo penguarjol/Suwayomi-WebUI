@@ -62,6 +62,7 @@ const { Originals } = loadable(() => import('@/features/originals/screens/Origin
 const { OriginalWork } = loadable(() => import('@/features/originals/screens/OriginalWork.tsx'), lazyLoadFallback);
 const { OriginalReader } = loadable(() => import('@/features/originals/screens/OriginalReader.tsx'), lazyLoadFallback);
 const { CreatorStudio } = loadable(() => import('@/features/originals/screens/CreatorStudio.tsx'), lazyLoadFallback);
+const { CreatorProfile } = loadable(() => import('@/features/originals/screens/CreatorProfile.tsx'), lazyLoadFallback);
 const { WorkEditor } = loadable(() => import('@/features/originals/screens/WorkEditor.tsx'), lazyLoadFallback);
 const { Manga } = loadable(() => import('@/features/manga/screens/Manga.tsx'), lazyLoadFallback);
 const { SearchAll } = loadable(() => import('@/features/global-search/screens/SearchAll.tsx'), lazyLoadFallback);
@@ -311,6 +312,7 @@ const MainApp = () => {
                         <Route path={AppRoutes.originalReader.match} element={<OriginalReader />} />
                         <Route path={AppRoutes.studio.match} element={<CreatorStudio />} />
                         <Route path={AppRoutes.studioWork.match} element={<WorkEditor />} />
+                        <Route path={AppRoutes.creator.match} element={<CreatorProfile />} />
                         <Route path={AppRoutes.updates.match} element={<Updates />} />
                         {!hideHistory && <Route path={AppRoutes.history.match} element={<History />} />}
                         <Route path={AppRoutes.browse.match} element={<Browse />} />

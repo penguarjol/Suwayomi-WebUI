@@ -256,3 +256,100 @@ export async function getMyEarnings(): Promise<{ total: number; recent: Earning[
     const total = recent.reduce((sum, e) => sum + (e.coins ?? 0), 0);
     return { total, recent };
 }
+
+// --- Public creator profile ---
+export async function getCreator(id: string): Promise<Creator | null> {
+    const { data } = await supabase.from('creators').select('*').eq('id', id).maybeSingle();
+    return (data as Creator) ?? null;
+}
+
+export async function listWorksByCreator(creatorId: string): Promise<OriginalWork[]> {
+    const { data } = await supabase
+        .from('original_works')
+        .select('*')
+        .eq('creator_id', creatorId)
+        .eq('status', 'published')
+        .order('created_at', { ascending: false });
+    return (data ?? []) as OriginalWork[];
+}
+
+export interface CreatorStats {
+    follower_count: number;
+    supporter_count: number;
+    work_count: number;
+}
+
+export async function getCreatorStats(creatorId: string): Promise<CreatorStats> {
+    const { data } = await supabase.rpc('creator_stats', { p_creator_id: creatorId });
+    const row = Array.isArray(data) ? data[0] : data;
+    return {
+        follower_count: Number(row?.follower_count ?? 0),
+        supporter_count: Number(row?.supporter_count ?? 0),
+        work_count: Number(row?.work_count ?? 0),
+    };
+}
+
+// --- Creator support tiers (coin-based patronage) ---
+export interface SupportTier {
+    id: string;
+    creator_id: string;
+    name: string;
+    monthly_coins: number;
+    perks: string | null;
+    active: boolean;
+}
+
+export type SupportStatus =
+    | 'supported'
+    | 'insufficient'
+    | 'self'
+    | 'inactive'
+    | 'not_found'
+    | 'unauthenticated'
+    | 'error';
+
+export async function getSupportTiers(creatorId: string): Promise<SupportTier[]> {
+    const { data } = await supabase
+        .from('creator_support_tiers')
+        .select('*')
+        .eq('creator_id', creatorId)
+        .eq('active', true)
+        .order('monthly_coins', { ascending: true });
+    return (data ?? []) as SupportTier[];
+}
+
+export async function supportCreator(tierId: string): Promise<SupportStatus> {
+    const { data, error } = await supabase.rpc('support_creator', { p_tier_id: tierId });
+    if (error) return 'error';
+    return (data ?? 'error') as SupportStatus;
+}
+
+export async function getMySupportedCreatorIds(): Promise<Set<string>> {
+    const nowIso = new Date().toISOString();
+    const { data } = await supabase
+        .from('creator_supporters')
+        .select('creator_id, expires_at')
+        .gt('expires_at', nowIso);
+    return new Set((data ?? []).map((row) => String(row.creator_id)));
+}
+
+// --- Creator-side tier management (Studio) ---
+export async function listMySupportTiers(): Promise<SupportTier[]> {
+    const uid = await currentUserId();
+    const { data } = await supabase
+        .from('creator_support_tiers')
+        .select('*')
+        .eq('creator_id', uid)
+        .order('monthly_coins', { ascending: true });
+    return (data ?? []) as SupportTier[];
+}
+
+export async function createSupportTier(input: { name: string; monthly_coins: number; perks?: string }): Promise<void> {
+    const uid = await currentUserId();
+    const { error } = await supabase.from('creator_support_tiers').insert({ ...input, creator_id: uid });
+    if (error) throw error;
+}
+
+export async function setSupportTierActive(tierId: string, active: boolean): Promise<void> {
+    await supabase.from('creator_support_tiers').update({ active }).eq('id', tierId);
+}

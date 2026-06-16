@@ -138,6 +138,15 @@ export function OriginalWork() {
                         >
                             Tip 10 Coins
                         </Button>
+                        <Button
+                            size="small"
+                            variant="text"
+                            component={Link}
+                            to={AppRoutes.creator.path(work.creator_id)}
+                            sx={{ borderRadius: '50px', textTransform: 'none', fontWeight: 700 }}
+                        >
+                            View creator
+                        </Button>
                         <ShareButton title={work.title} path={AppRoutes.originalWork.path(work.id)} />
                     </Stack>
                 </Stack>

@@ -23,11 +23,15 @@ import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import {
     Creator,
     OriginalWork,
+    SupportTier,
     becomeCreator,
+    createSupportTier,
     createWork,
     getMyCreatorProfile,
     getMyEarnings,
+    listMySupportTiers,
     listMyWorks,
+    setSupportTierActive,
 } from '@/features/originals/Originals.ts';
 import { CREATOR_TERMS, CREATOR_REVENUE_SHARE } from '@/features/originals/CreatorTerms.ts';
 import { useAppTitle } from '@/features/navigation-bar/hooks/useAppTitle.ts';
@@ -114,8 +118,14 @@ export function CreatorStudio() {
     useAppTitle('Creator Studio');
     const [creator, setCreator] = useState<Creator | null>(null);
     const [works, setWorks] = useState<OriginalWork[]>([]);
+    const [tiers, setTiers] = useState<SupportTier[]>([]);
     const [earnings, setEarnings] = useState(0);
     const [loading, setLoading] = useState(true);
+
+    // create-tier form
+    const [tierName, setTierName] = useState('');
+    const [tierCoins, setTierCoins] = useState('50');
+    const [tierPerks, setTierPerks] = useState('');
 
     // create-work form
     const [title, setTitle] = useState('');
@@ -128,11 +138,37 @@ export function CreatorStudio() {
         const profile = await getMyCreatorProfile();
         setCreator(profile);
         if (profile) {
-            const [w, e] = await Promise.all([listMyWorks(), getMyEarnings()]);
+            const [w, e, t] = await Promise.all([listMyWorks(), getMyEarnings(), listMySupportTiers()]);
             setWorks(w);
             setEarnings(e.total);
+            setTiers(t);
         }
         setLoading(false);
+    };
+
+    const submitTier = async () => {
+        const coins = Number(tierCoins);
+        if (!tierName.trim() || !Number.isFinite(coins) || coins <= 0) return;
+        setBusy(true);
+        try {
+            await createSupportTier({
+                name: tierName.trim(),
+                monthly_coins: coins,
+                perks: tierPerks.trim() || undefined,
+            });
+            setTierName('');
+            setTierPerks('');
+            load();
+        } catch (e) {
+            makeToast('Could not create tier', 'error', getErrorMessage(e));
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const toggleTier = async (tier: SupportTier) => {
+        await setSupportTierActive(tier.id, !tier.active);
+        load();
     };
 
     useEffect(() => {
@@ -257,6 +293,93 @@ export function CreatorStudio() {
             </Stack>
 
             <Divider sx={{ my: 3 }} />
+            <Stack sx={{ flexDirection: 'row', alignItems: 'center', gap: 1, mb: 1 }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 800, flexGrow: 1 }}>
+                    Support tiers
+                </Typography>
+                <Button
+                    component={Link}
+                    to={AppRoutes.creator.path(creator.id)}
+                    size="small"
+                    sx={{ textTransform: 'none' }}
+                >
+                    View public page
+                </Button>
+            </Stack>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                Let fans pledge monthly Coins to support you. You keep {creator.revenue_share}% of each pledge.
+            </Typography>
+            <Stack sx={{ gap: 1, mb: 2 }}>
+                {tiers.map((tier) => (
+                    <Stack
+                        key={tier.id}
+                        sx={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            gap: 1,
+                            p: 1.5,
+                            borderRadius: 2,
+                            border: '1px solid rgba(255,255,255,0.06)',
+                        }}
+                    >
+                        <Typography sx={{ fontWeight: 700, flexGrow: 1 }}>
+                            {tier.name} · {tier.monthly_coins} Coins/mo
+                        </Typography>
+                        <Chip
+                            size="small"
+                            label={tier.active ? 'active' : 'hidden'}
+                            color={tier.active ? 'success' : 'default'}
+                        />
+                        <Button size="small" onClick={() => toggleTier(tier)} sx={{ textTransform: 'none' }}>
+                            {tier.active ? 'Hide' : 'Show'}
+                        </Button>
+                    </Stack>
+                ))}
+                {!tiers.length && <Typography color="text.secondary">No tiers yet — add one below.</Typography>}
+            </Stack>
+            <Stack
+                sx={{
+                    flexDirection: 'row',
+                    gap: 1.5,
+                    flexWrap: 'wrap',
+                    alignItems: 'center',
+                    p: 2,
+                    mb: 3,
+                    borderRadius: 3,
+                    border: '1px solid rgba(255,255,255,0.08)',
+                }}
+            >
+                <TextField
+                    size="small"
+                    label="Tier name"
+                    value={tierName}
+                    onChange={(e) => setTierName(e.target.value)}
+                />
+                <TextField
+                    size="small"
+                    label="Coins / month"
+                    type="number"
+                    value={tierCoins}
+                    onChange={(e) => setTierCoins(e.target.value)}
+                    sx={{ width: 130 }}
+                />
+                <TextField
+                    size="small"
+                    label="Perks (optional)"
+                    value={tierPerks}
+                    onChange={(e) => setTierPerks(e.target.value)}
+                    sx={{ flexGrow: 1, minWidth: 180 }}
+                />
+                <Button
+                    variant="contained"
+                    disabled={busy || !tierName.trim()}
+                    onClick={submitTier}
+                    sx={{ textTransform: 'none' }}
+                >
+                    Add tier
+                </Button>
+            </Stack>
+
             <Typography variant="caption" color="text.secondary">
                 Payouts of earned Coins to cash are coming soon; see the Creator Agreement for details.
             </Typography>

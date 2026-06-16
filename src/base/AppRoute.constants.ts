@@ -269,6 +269,10 @@ export const AppRoutes = {
         match: 'studio/work/:id',
         path: (id: string) => `/studio/work/${id}`,
     },
+    creator: {
+        match: 'creator/:id',
+        path: (id: string) => `/creator/${id}`,
+    },
 } as const satisfies TAppRoutes;
 
 type ExtractChildRouteStringPaths<T> = T extends { childRoutes: infer U } ? ExtractStringPaths<U[keyof U]> : never;
