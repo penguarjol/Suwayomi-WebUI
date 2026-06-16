@@ -28,6 +28,8 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import LogoutIcon from '@mui/icons-material/Logout';
 import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
+import EditIcon from '@mui/icons-material/Edit';
+import Tooltip from '@mui/material/Tooltip';
 import { supabase } from '@/lib/SupabaseClient.ts';
 import { requestManager } from '@/lib/requests/RequestManager.ts';
 import { useBillingStore } from '@/features/billing/Billing.ts';
@@ -35,6 +37,16 @@ import { Collection, getMyCollections } from '@/features/marketplace/Marketplace
 import { Thread, getMyThreads } from '@/features/social/Forum.ts';
 import { Creator, getMyCreatorProfile } from '@/features/originals/Originals.ts';
 import { getMyStreak } from '@/features/library/services/UserProgress.ts';
+import {
+    Badge,
+    UserProfile,
+    getBadgeCatalog,
+    getEarnedBadges,
+    getUserProfile,
+    syncMyAchievements,
+} from '@/features/profile/ProfileCustomization.ts';
+import { bannerSx, frameSx, nameEffectSx } from '@/features/profile/ProfileCosmetics.ts';
+import { ProfileCustomizeDialog } from '@/features/profile/components/ProfileCustomizeDialog.tsx';
 import { ListItemLink } from '@/base/components/lists/ListItemLink.tsx';
 import { AppRoutes } from '@/base/AppRoute.constants.ts';
 import { useAppTitle } from '@/features/navigation-bar/hooks/useAppTitle.ts';
@@ -59,13 +71,32 @@ export function Profile() {
     const isAdmin = useBillingStore((state) => state.isAdmin);
 
     const [email, setEmail] = useState('');
+    const [userId, setUserId] = useState('');
     const [creator, setCreator] = useState<Creator | null>(null);
     const [collections, setCollections] = useState<Collection[]>([]);
     const [threads, setThreads] = useState<Thread[]>([]);
     const [streak, setStreak] = useState(0);
+    const [profile, setProfile] = useState<UserProfile | null>(null);
+    const [badgeCatalog, setBadgeCatalog] = useState<Badge[]>([]);
+    const [earnedIds, setEarnedIds] = useState<Set<string>>(new Set());
+    const [customizeOpen, setCustomizeOpen] = useState(false);
+
+    const loadProfileCosmetics = async (uid: string) => {
+        // Auto-award any newly-qualified achievements, then load profile + badges.
+        await syncMyAchievements();
+        const [p, catalog, earned] = await Promise.all([getUserProfile(uid), getBadgeCatalog(), getEarnedBadges(uid)]);
+        setProfile(p);
+        setBadgeCatalog(catalog);
+        setEarnedIds(new Set(earned.map((b) => b.badge_id)));
+    };
 
     useEffect(() => {
-        supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? ''));
+        supabase.auth.getUser().then(({ data }) => {
+            setEmail(data.user?.email ?? '');
+            const uid = data.user?.id ?? '';
+            setUserId(uid);
+            if (uid) loadProfileCosmetics(uid).catch(() => {});
+        });
         getMyStreak()
             .then((s) => setStreak(s.current))
             .catch(() => setStreak(0));
@@ -81,45 +112,121 @@ export function Profile() {
     }, []);
 
     const name = creator?.display_name || (email ? email.split('@')[0] : 'reader');
+    const bannerKey = profile?.banner_key ?? 'default';
+    const frameKey = profile?.avatar_frame_key ?? 'none';
+    const effectKey = profile?.name_effect_key ?? 'none_effect';
+    const accent = profile?.accent_color ?? undefined;
+    const earnedBadges = badgeCatalog.filter((badge) => earnedIds.has(badge.id));
 
     return (
         <Box sx={{ p: { xs: 2, sm: 3 }, maxWidth: 760, mx: 'auto' }}>
-            <Stack sx={{ flexDirection: 'row', alignItems: 'center', gap: 2, mb: 3 }}>
-                <Avatar sx={{ width: 64, height: 64, fontSize: 28, bgcolor: 'primary.main' }}>
+            {/* Customizable banner */}
+            <Box sx={{ position: 'relative', height: 120, borderRadius: 3, ...bannerSx(bannerKey) }}>
+                <Button
+                    onClick={() => setCustomizeOpen(true)}
+                    size="small"
+                    startIcon={<EditIcon />}
+                    sx={{
+                        position: 'absolute',
+                        top: 8,
+                        right: 8,
+                        textTransform: 'none',
+                        fontWeight: 700,
+                        color: '#fff',
+                        backgroundColor: 'rgba(0,0,0,0.35)',
+                        backdropFilter: 'blur(6px)',
+                        '&:hover': { backgroundColor: 'rgba(0,0,0,0.5)' },
+                    }}
+                >
+                    Customize
+                </Button>
+            </Box>
+
+            {/* Avatar + name overlapping the banner */}
+            <Stack sx={{ flexDirection: 'row', alignItems: 'flex-end', gap: 2, mt: -5, mb: 1, px: 1 }}>
+                <Avatar
+                    sx={{
+                        width: 80,
+                        height: 80,
+                        fontSize: 32,
+                        bgcolor: 'primary.main',
+                        boxSizing: 'border-box',
+                        ...frameSx(frameKey),
+                    }}
+                >
                     {name[0]?.toUpperCase()}
                 </Avatar>
-                <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-                    <Typography variant="h5" sx={{ fontWeight: 900 }} noWrap>
+                <Box sx={{ flexGrow: 1, minWidth: 0, pb: 0.5 }}>
+                    <Typography
+                        variant="h5"
+                        noWrap
+                        sx={{ fontWeight: 900, display: 'inline-block', ...nameEffectSx(effectKey, accent) }}
+                    >
                         {name}
                     </Typography>
-                    <Typography variant="caption" color="text.secondary" noWrap>
+                    <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block' }}>
                         {email}
                     </Typography>
-                    <Stack sx={{ flexDirection: 'row', gap: 1, mt: 0.5, flexWrap: 'wrap' }}>
-                        <Chip
-                            size="small"
-                            icon={<MonetizationOnIcon />}
-                            label={`${tokens} Coins`}
-                            color="primary"
-                            sx={{ fontWeight: 700 }}
-                        />
-                        {isPremium && (
-                            <Chip size="small" icon={<WorkspacePremiumIcon />} label="Premium" color="secondary" />
-                        )}
-                        {streak > 0 && (
-                            <Chip
-                                size="small"
-                                icon={<LocalFireDepartmentIcon />}
-                                label={`${streak}-day streak`}
-                                color="warning"
-                                sx={{ fontWeight: 700 }}
-                            />
-                        )}
-                        {creator && <Chip size="small" icon={<BrushIcon />} label="Creator" variant="outlined" />}
-                        {isAdmin && <Chip size="small" label="Admin" variant="outlined" />}
-                    </Stack>
                 </Box>
             </Stack>
+
+            {profile?.bio && (
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                    {profile.bio}
+                </Typography>
+            )}
+
+            <Stack sx={{ flexDirection: 'row', gap: 1, mb: 1.5, flexWrap: 'wrap' }}>
+                <Chip
+                    size="small"
+                    icon={<MonetizationOnIcon />}
+                    label={`${tokens} Coins`}
+                    color="primary"
+                    sx={{ fontWeight: 700 }}
+                />
+                {isPremium && <Chip size="small" icon={<WorkspacePremiumIcon />} label="Premium" color="secondary" />}
+                {streak > 0 && (
+                    <Chip
+                        size="small"
+                        icon={<LocalFireDepartmentIcon />}
+                        label={`${streak}-day streak`}
+                        color="warning"
+                        sx={{ fontWeight: 700 }}
+                    />
+                )}
+                {creator && <Chip size="small" icon={<BrushIcon />} label="Creator" variant="outlined" />}
+                {isAdmin && <Chip size="small" label="Admin" variant="outlined" />}
+            </Stack>
+
+            {earnedBadges.length > 0 && (
+                <Stack sx={{ flexDirection: 'row', gap: 1, mb: 2, flexWrap: 'wrap' }}>
+                    {earnedBadges.map((badge) => (
+                        <Tooltip key={badge.id} title={badge.description ?? badge.name}>
+                            <Chip size="small" variant="outlined" label={`${badge.icon ?? '🏅'} ${badge.name}`} />
+                        </Tooltip>
+                    ))}
+                </Stack>
+            )}
+
+            {customizeOpen && (
+                <ProfileCustomizeDialog
+                    open={customizeOpen}
+                    profile={
+                        profile ?? {
+                            user_id: userId,
+                            bio: null,
+                            accent_color: null,
+                            banner_key: 'default',
+                            avatar_frame_key: 'none',
+                            name_effect_key: 'none_effect',
+                        }
+                    }
+                    onClose={() => setCustomizeOpen(false)}
+                    onSaved={() => {
+                        if (userId) loadProfileCosmetics(userId).catch(() => {});
+                    }}
+                />
+            )}
 
             <List sx={{ mb: 1 }}>
                 <ListItemLink to={AppRoutes.feed.path}>
