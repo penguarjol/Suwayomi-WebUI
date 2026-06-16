@@ -131,8 +131,39 @@ export async function writeUserProgress(
             p_last_page_read: lastPageRead,
             p_is_read: isRead,
         });
+        // A completed chapter counts toward the daily reading streak. Fire-and-
+        // forget — the streak is a retention nicety, never blocks progress.
+        if (isRead) {
+            supabase.rpc('touch_reading_streak').then(undefined, () => {});
+        }
     } catch {
         // Optimistic overlay stands; the engine write (still performed) is the
         // shared fallback. Next fetch reconciles from Supabase.
+    }
+}
+
+export interface ReadingStreak {
+    current: number;
+    longest: number;
+    lastReadDate: string | null;
+}
+
+/** This user's reading streak (own-row read via RLS). */
+export async function getMyStreak(): Promise<ReadingStreak> {
+    try {
+        const uid = (await supabase.auth.getUser()).data.user?.id;
+        if (!uid) return { current: 0, longest: 0, lastReadDate: null };
+        const { data } = await supabase
+            .from('user_streaks')
+            .select('current_streak, longest_streak, last_read_date')
+            .eq('user_id', uid)
+            .maybeSingle();
+        return {
+            current: Number(data?.current_streak ?? 0),
+            longest: Number(data?.longest_streak ?? 0),
+            lastReadDate: (data?.last_read_date as string) ?? null,
+        };
+    } catch {
+        return { current: 0, longest: 0, lastReadDate: null };
     }
 }

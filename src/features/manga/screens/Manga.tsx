@@ -20,6 +20,7 @@ import { requestManager } from '@/lib/requests/RequestManager.ts';
 import { ChapterList } from '@/features/chapter/components/ChapterList.tsx';
 import { useRefreshManga } from '@/features/manga/hooks/useRefreshManga.ts';
 import { MangaDetails } from '@/features/manga/components/details/MangaDetails.tsx';
+import { MangaReviews } from '@/features/manga/components/MangaReviews.tsx';
 import { MangaToolbarMenu } from '@/features/manga/components/MangaToolbarMenu.tsx';
 import { EmptyViewAbsoluteCentered } from '@/base/components/feedback/EmptyViewAbsoluteCentered.tsx';
 import { LoadingPlaceholder } from '@/base/components/feedback/LoadingPlaceholder.tsx';
@@ -102,11 +103,14 @@ export const Manga: React.FC = () => {
         );
     }
     return (
-        <Box sx={{ display: { md: 'flex' }, overflow: 'hidden' }}>
-            {isLoading && <LoadingPlaceholder />}
+        <Box>
+            <Box sx={{ display: { md: 'flex' }, overflow: 'hidden' }}>
+                {isLoading && <LoadingPlaceholder />}
 
-            {manga && <MangaDetails manga={manga} mode={mode} />}
-            {manga && <ChapterList manga={manga} isRefreshing={refreshing} />}
+                {manga && <MangaDetails manga={manga} mode={mode} />}
+                {manga && <ChapterList manga={manga} isRefreshing={refreshing} />}
+            </Box>
+            {manga && <MangaReviews mangaId={manga.id} />}
         </Box>
     );
 };

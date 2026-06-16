@@ -20,6 +20,7 @@ import ListItemText from '@mui/material/ListItemText';
 import Divider from '@mui/material/Divider';
 import BrushIcon from '@mui/icons-material/Brush';
 import RssFeedIcon from '@mui/icons-material/RssFeed';
+import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import StorefrontIcon from '@mui/icons-material/Storefront';
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import RedeemIcon from '@mui/icons-material/Redeem';
@@ -33,6 +34,7 @@ import { useBillingStore } from '@/features/billing/Billing.ts';
 import { Collection, getMyCollections } from '@/features/marketplace/Marketplace.ts';
 import { Thread, getMyThreads } from '@/features/social/Forum.ts';
 import { Creator, getMyCreatorProfile } from '@/features/originals/Originals.ts';
+import { getMyStreak } from '@/features/library/services/UserProgress.ts';
 import { ListItemLink } from '@/base/components/lists/ListItemLink.tsx';
 import { AppRoutes } from '@/base/AppRoute.constants.ts';
 import { useAppTitle } from '@/features/navigation-bar/hooks/useAppTitle.ts';
@@ -60,9 +62,13 @@ export function Profile() {
     const [creator, setCreator] = useState<Creator | null>(null);
     const [collections, setCollections] = useState<Collection[]>([]);
     const [threads, setThreads] = useState<Thread[]>([]);
+    const [streak, setStreak] = useState(0);
 
     useEffect(() => {
         supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? ''));
+        getMyStreak()
+            .then((s) => setStreak(s.current))
+            .catch(() => setStreak(0));
         getMyCreatorProfile()
             .then(setCreator)
             .catch(() => setCreator(null));
@@ -99,6 +105,15 @@ export function Profile() {
                         />
                         {isPremium && (
                             <Chip size="small" icon={<WorkspacePremiumIcon />} label="Premium" color="secondary" />
+                        )}
+                        {streak > 0 && (
+                            <Chip
+                                size="small"
+                                icon={<LocalFireDepartmentIcon />}
+                                label={`${streak}-day streak`}
+                                color="warning"
+                                sx={{ fontWeight: 700 }}
+                            />
                         )}
                         {creator && <Chip size="small" icon={<BrushIcon />} label="Creator" variant="outlined" />}
                         {isAdmin && <Chip size="small" label="Admin" variant="outlined" />}
