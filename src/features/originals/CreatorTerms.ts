@@ -23,7 +23,7 @@ export const CREATOR_TERMS = `Nexus Reads Creator Agreement (summary)
 
 4. Payouts. Earned Coins accrue to your account now. Cash payouts (converting earned Coins to money via a payout provider) are being rolled out; until then, earned Coins are usable in-app. Payout eligibility may require identity/tax verification.
 
-5. License to operate. You grant Nexus Reads a non-exclusive license to host, display, distribute, cache (CDN), and promote your content within the app and its marketing. You can unpublish at any time.
+5. License to operate, distribute & sell. You retain ownership of your work. You grant Nexus Reads a worldwide, non-exclusive, sublicensable, transferable, royalty-bearing license to host, store, reproduce, cache (CDN), publicly display, distribute, promote, and sell or otherwise monetize access to your content through the Service and its associated and successor channels (including web, mobile, and partner distribution). Your revenue share (Section 3) is the royalty for this license. You represent and warrant that you have all rights necessary to grant this license. You may unpublish at any time; doing so ends new distribution, but it does not retroactively revoke access already granted to readers who unlocked your content or affect transactions already completed.
 
 6. Conduct & moderation. You are responsible for your content and creator conduct. We may moderate, feature, or remove content and adjust discovery placement.
 

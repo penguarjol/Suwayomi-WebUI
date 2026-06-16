@@ -142,6 +142,34 @@ export async function writeUserProgress(
     }
 }
 
+export interface HistoryRef {
+    chapterId: number;
+    /** Per-user last-read time as Unix seconds (engine `lastReadAt` format). */
+    lastReadUnix: number;
+}
+
+/**
+ * This user's reading history as engine chapter ids + per-user timestamps,
+ * newest first. The History screen resolves these ids to engine chapter nodes
+ * so it shows THIS user's history, not the engine's global shared read-state.
+ */
+export async function getUserHistoryRefs(limit = 200): Promise<HistoryRef[]> {
+    try {
+        const { data, error } = await supabase
+            .from('user_chapter_progress')
+            .select('chapter_id, updated_at')
+            .order('updated_at', { ascending: false })
+            .limit(limit);
+        if (error) throw error;
+        return (data ?? []).map((row) => ({
+            chapterId: Number(row.chapter_id),
+            lastReadUnix: Math.floor(new Date(row.updated_at as string).getTime() / 1000),
+        }));
+    } catch {
+        return [];
+    }
+}
+
 export interface ReadingStreak {
     current: number;
     longest: number;

@@ -22,36 +22,65 @@ import { useBillingStore } from '@/features/billing/Billing.ts';
 
 const APP_NAME = 'Nexus Reads';
 
-// NOTE: standard protective boilerplate. Have counsel review before launch in
-// any jurisdiction you operate in.
+/** Designated contact for copyright/DMCA notices. Operator: keep this routable
+ *  and register the same agent with the U.S. Copyright Office (see docs/LEGAL.md). */
+export const LEGAL_CONTACT_EMAIL = 'legal@nexusreads.app';
+
+// NOTE: standard protective boilerplate, strengthened for a metadata-index /
+// reader posture + DMCA safe harbor. It is NOT a substitute for legal advice —
+// have counsel review and set governing law before launch (see docs/LEGAL.md).
 export const DISCLAIMER_SECTIONS: { title: string; body: string }[] = [
     {
         title: '1. Acceptance',
-        body: `By creating an account or using ${APP_NAME} (the "Service") you agree to these Terms and our acknowledgements below. If you do not agree, do not use the Service.`,
+        body: `By creating an account or using ${APP_NAME} (the "Service") you agree to these Terms and the acknowledgements below. If you do not agree, do not use the Service.`,
     },
     {
-        title: '2. Third-party content',
-        body: `${APP_NAME} is an aggregator/reader interface. It does not host, own, create, or control the content, catalogs, or sources made available through third-party extensions. All titles, images, and chapters are provided by independent third parties. ${APP_NAME} makes no representation as to the legality, accuracy, availability, or quality of any such content and is not responsible for it.`,
+        title: '2. What the Service is (and is not)',
+        body: `${APP_NAME} is a technology tool: a reader interface and a metadata index. It does NOT host, store for redistribution, upload, own, create, sell, or control any third-party titles, images, or chapters. The catalogs and content available through the Service are selected and configured by users and administrators using independent third-party extensions and sources, and are retrieved directly from those third parties at your direction. ${APP_NAME} stores only metadata necessary to operate the Service (e.g. titles, identifiers, descriptions, ratings, your library and reading progress). Any technical copy made while relaying content to your device is automatic, transient, and incidental to operating the interface — the function of a browser or proxy — and ${APP_NAME} does not curate or claim any rights in that content.`,
     },
     {
-        title: '3. User responsibility',
-        body: `You are solely responsible for your use of the Service and for ensuring that your access to and consumption of any content complies with all applicable laws, regulations, and third-party rights in your jurisdiction. You assume all risk arising from your use of the Service and any third-party content.`,
+        title: '3. Third-party content',
+        body: `All third-party titles, images, and chapters are provided by independent third parties. ${APP_NAME} makes no representation as to the legality, accuracy, availability, ownership, or quality of any such content and is not responsible for it. ${APP_NAME} does not endorse any source or extension. References to titles are for identification and interoperability only.`,
     },
     {
-        title: '4. No warranties',
+        title: '4. User responsibility',
+        body: `You are solely responsible for your use of the Service, for the sources and extensions you choose to enable, and for ensuring that your access to and consumption of any content complies with all applicable laws, regulations, and third-party rights in your jurisdiction. You assume all risk arising from your use of the Service and any third-party content.`,
+    },
+    {
+        title: '5. Copyright & DMCA',
+        body: `${APP_NAME} respects intellectual-property rights and complies with the U.S. Digital Millennium Copyright Act (DMCA) and equivalent laws. Because ${APP_NAME} indexes metadata and relays third-party content rather than hosting it, most claims concern the third-party source; however, if you believe metadata we store or original content we host infringes your rights, send a notice to ${LEGAL_CONTACT_EMAIL} including: (a) your contact info; (b) identification of the work; (c) the specific material and its location; (d) a statement of good-faith belief that the use is unauthorized; (e) a statement, under penalty of perjury, that your notice is accurate and you are authorized to act; and (f) your signature. We act on valid notices, provide counter-notice rights, and terminate repeat infringers.`,
+    },
+    {
+        title: '6. Original creator content & licensing',
+        body: `Works published by creators through ${APP_NAME} Originals are licensed to us by those creators (see the Creator Agreement) and are the only content ${APP_NAME} distributes and sells directly. Creators represent that they own or control all rights in their works. Everything else is third-party content for which ${APP_NAME} acts only as a neutral interface.`,
+    },
+    {
+        title: '7. No warranties',
         body: `The Service is provided "as is" and "as available" without warranties of any kind, whether express, implied, or statutory, including merchantability, fitness for a particular purpose, non-infringement, and uninterrupted or error-free operation.`,
     },
     {
-        title: '5. Limitation of liability',
+        title: '8. Limitation of liability',
         body: `To the maximum extent permitted by law, ${APP_NAME} and its operators shall not be liable for any indirect, incidental, special, consequential, exemplary, or punitive damages, or any loss of data, revenue, or profits, arising out of or related to your use of (or inability to use) the Service or any content, even if advised of the possibility of such damages. Our total aggregate liability shall not exceed the amount you paid us, if any, in the 3 months preceding the claim.`,
     },
     {
-        title: '6. Virtual items (Coins) & payments',
+        title: '9. Virtual items (Coins) & payments',
         body: `Coins and premium entitlements are a limited, revocable, non-transferable license to access certain features. They have no monetary value, are not redeemable for cash, and are non-refundable except where required by law or the rules of the applicable app store / payment processor. Prices and offerings may change at any time.`,
     },
     {
-        title: '7. Indemnification',
-        body: `You agree to indemnify and hold harmless ${APP_NAME} and its operators from any claims, damages, liabilities, and expenses arising from your use of the Service or violation of these Terms.`,
+        title: '10. Acceptable use & termination',
+        body: `You will not: misuse the Service; attempt to access non-public systems; upload unlawful, infringing, or harmful material; or use the Service to violate others' rights. We may suspend or terminate accounts, remove content, and cooperate with law enforcement for violations of these Terms or applicable law, with or without notice.`,
+    },
+    {
+        title: '11. Indemnification',
+        body: `You agree to indemnify and hold harmless ${APP_NAME} and its operators from any claims, damages, liabilities, and expenses (including reasonable legal fees) arising from your use of the Service, your content, or your violation of these Terms or any law or third-party right.`,
+    },
+    {
+        title: '12. Governing law & disputes',
+        body: `These Terms are governed by the laws applicable at the operator's principal place of business, without regard to conflict-of-laws rules. You agree to first attempt to resolve any dispute informally by contacting ${LEGAL_CONTACT_EMAIL}. To the extent permitted by law, you and ${APP_NAME} waive any right to a jury trial and to participate in a class action.`,
+    },
+    {
+        title: '13. Changes & severability',
+        body: `We may update these Terms; continued use after changes constitutes acceptance. If any provision is held unenforceable, the remaining provisions stay in effect. Nothing here is legal advice.`,
     },
 ];
 
@@ -128,6 +157,15 @@ export const LegalFooter = () => {
                 sx={{ textTransform: 'none', fontSize: 12, opacity: 0.8 }}
             >
                 Terms &amp; Disclaimer
+            </Button>
+            <Button
+                variant="text"
+                size="small"
+                component="a"
+                href={`mailto:${LEGAL_CONTACT_EMAIL}?subject=${encodeURIComponent('Copyright / DMCA notice')}`}
+                sx={{ textTransform: 'none', fontSize: 12, opacity: 0.8 }}
+            >
+                Report content (DMCA)
             </Button>
             <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm" scroll="paper">
                 <DialogTitle sx={{ fontWeight: 800 }}>Terms & Disclaimer</DialogTitle>

@@ -7,7 +7,7 @@
  */
 
 import Typography from '@mui/material/Typography';
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { requestManager } from '@/lib/requests/RequestManager.ts';
 import { LoadingPlaceholder } from '@/base/components/feedback/LoadingPlaceholder.tsx';
@@ -15,31 +15,57 @@ import { EmptyViewAbsoluteCentered } from '@/base/components/feedback/EmptyViewA
 import { StyledGroupedVirtuoso } from '@/base/components/virtuoso/StyledGroupedVirtuoso.tsx';
 import { StyledGroupHeader } from '@/base/components/virtuoso/StyledGroupHeader.tsx';
 import { StyledGroupItemWrapper } from '@/base/components/virtuoso/StyledGroupItemWrapper.tsx';
-import { defaultPromiseErrorHandler } from '@/lib/DefaultPromiseErrorHandler.ts';
 import { VirtuosoUtil } from '@/lib/virtuoso/Virtuoso.util.tsx';
-import { getErrorMessage } from '@/lib/HelperFunctions.ts';
 import { ChapterHistoryCard } from '@/features/history/components/ChapterHistoryCard.tsx';
 import { Chapters } from '@/features/chapter/services/Chapters.ts';
 import { useAppTitle } from '@/features/navigation-bar/hooks/useAppTitle.ts';
+import { GET_CHAPTERS_HISTORY } from '@/lib/graphql/queries/ChapterQuery.ts';
+import {
+    ChapterHistoryListFieldsFragment,
+    GetChaptersHistoryQuery,
+    GetChaptersHistoryQueryVariables,
+} from '@/lib/graphql/generated/graphql.ts';
+import { HistoryRef, getUserHistoryRefs } from '@/features/library/services/UserProgress.ts';
 
+/**
+ * Per-user reading history (ADR-0005). The engine's chapter read-state is
+ * GLOBAL, so history is sourced from this user's `user_chapter_progress` rows
+ * (chapter ids + per-user timestamps), then the engine chapter nodes are
+ * resolved by id for rendering. The per-user timestamp overrides the engine's
+ * shared `lastReadAt` so dates reflect THIS user.
+ */
 export const History: React.FC = () => {
     const { t } = useTranslation();
-
     useAppTitle(t('history.title'));
 
-    const {
-        data: chapterHistoryData,
-        loading: isLoading,
-        error,
-        fetchMore,
-        refetch,
-    } = requestManager.useGetRecentlyReadChapters(undefined, {
-        fetchPolicy: 'cache-and-network',
-        notifyOnNetworkStatusChange: true,
-    });
-    const hasNextPage = !!chapterHistoryData?.chapters.pageInfo.hasNextPage;
-    const endCursor = chapterHistoryData?.chapters.pageInfo.endCursor;
-    const readEntries = chapterHistoryData?.chapters.nodes ?? [];
+    const [refs, setRefs] = useState<HistoryRef[] | null>(null);
+    useEffect(() => {
+        getUserHistoryRefs()
+            .then(setRefs)
+            .catch(() => setRefs([]));
+    }, []);
+
+    const chapterIds = useMemo(() => (refs ?? []).map((ref) => ref.chapterId), [refs]);
+
+    const { data, loading } = requestManager.useGetChapters<GetChaptersHistoryQuery, GetChaptersHistoryQueryVariables>(
+        GET_CHAPTERS_HISTORY,
+        { filter: { id: { in: chapterIds } }, first: Math.max(1, chapterIds.length) },
+        { skip: chapterIds.length === 0, fetchPolicy: 'cache-and-network' },
+    );
+
+    // Order engine nodes by the user's most-recent read and overlay the per-user
+    // timestamp so grouping/labels reflect this user, not the shared engine state.
+    const readEntries = useMemo<ChapterHistoryListFieldsFragment[]>(() => {
+        const nodes = data?.chapters.nodes ?? [];
+        const byId = new Map(nodes.map((node) => [node.id, node]));
+        return (refs ?? [])
+            .map((ref) => {
+                const node = byId.get(ref.chapterId);
+                return node ? { ...node, lastReadAt: String(ref.lastReadUnix) } : null;
+            })
+            .filter((node): node is ChapterHistoryListFieldsFragment => node !== null);
+    }, [data, refs]);
+
     const groupedHistory = useMemo(
         () => Object.entries(Chapters.groupByDate(readEntries, 'lastReadAt')),
         [readEntries],
@@ -55,36 +81,20 @@ export const History: React.FC = () => {
         useCallback((index) => readEntries[index].id, [readEntries]),
     );
 
-    const loadMore = useCallback(() => {
-        if (!hasNextPage) {
-            return;
-        }
+    const isLoading = refs === null || (chapterIds.length > 0 && loading && readEntries.length === 0);
 
-        fetchMore({ variables: { offset: readEntries.length } });
-    }, [hasNextPage, endCursor]);
-
-    if (error) {
-        return (
-            <EmptyViewAbsoluteCentered
-                message={t('global.error.label.failed_to_load_data')}
-                messageExtra={getErrorMessage(error)}
-                retry={() => refetch().catch(defaultPromiseErrorHandler('History::refetch'))}
-            />
-        );
+    if (isLoading) {
+        return <LoadingPlaceholder />;
     }
 
-    if (!isLoading && readEntries.length === 0) {
+    if (readEntries.length === 0) {
         return <EmptyViewAbsoluteCentered message={t('history.error.label.no_history_available')} />;
     }
 
     return (
         <StyledGroupedVirtuoso
             persistKey="history"
-            components={{
-                Footer: () => (isLoading ? <LoadingPlaceholder usePadding /> : null),
-            }}
             overscan={window.innerHeight * 0.5}
-            endReached={loadMore}
             groupCounts={groupCounts}
             groupContent={(index) => (
                 <StyledGroupHeader isFirstItem={index === 0}>
