@@ -22,15 +22,18 @@ import BrushIcon from '@mui/icons-material/Brush';
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import {
     Creator,
+    CreatorWorkStats,
     OriginalWork,
     SupportTier,
     becomeCreator,
     createSupportTier,
     createWork,
+    getCreatorDashboard,
     getMyCreatorProfile,
     getMyEarnings,
     listMySupportTiers,
     listMyWorks,
+    publishMyDueChapters,
     setSupportTierActive,
 } from '@/features/originals/Originals.ts';
 import { CREATOR_TERMS, CREATOR_REVENUE_SHARE } from '@/features/originals/CreatorTerms.ts';
@@ -119,6 +122,7 @@ export function CreatorStudio() {
     const [creator, setCreator] = useState<Creator | null>(null);
     const [works, setWorks] = useState<OriginalWork[]>([]);
     const [tiers, setTiers] = useState<SupportTier[]>([]);
+    const [stats, setStats] = useState<CreatorWorkStats[]>([]);
     const [earnings, setEarnings] = useState(0);
     const [loading, setLoading] = useState(true);
 
@@ -138,10 +142,19 @@ export function CreatorStudio() {
         const profile = await getMyCreatorProfile();
         setCreator(profile);
         if (profile) {
-            const [w, e, t] = await Promise.all([listMyWorks(), getMyEarnings(), listMySupportTiers()]);
+            // Publish any due scheduled chapters on visit (fallback when pg_cron
+            // isn't enabled), then load works/earnings/tiers/analytics.
+            await publishMyDueChapters().catch(() => 0);
+            const [w, e, t, d] = await Promise.all([
+                listMyWorks(),
+                getMyEarnings(),
+                listMySupportTiers(),
+                getCreatorDashboard(),
+            ]);
             setWorks(w);
             setEarnings(e.total);
             setTiers(t);
+            setStats(d);
         }
         setLoading(false);
     };
@@ -258,6 +271,44 @@ export function CreatorStudio() {
                     </Button>
                 </Stack>
             </Stack>
+
+            {stats.length > 0 && (
+                <>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1 }}>
+                        Performance
+                    </Typography>
+                    <Stack sx={{ gap: 1, mb: 3 }}>
+                        {stats.map((stat) => (
+                            <Stack
+                                key={stat.work_id}
+                                sx={{
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    gap: 1,
+                                    p: 1.5,
+                                    borderRadius: 2,
+                                    border: '1px solid rgba(255,255,255,0.06)',
+                                    flexWrap: 'wrap',
+                                }}
+                            >
+                                <Typography sx={{ fontWeight: 700, flexGrow: 1, minWidth: 140 }} noWrap>
+                                    {stat.title}
+                                </Typography>
+                                <Chip size="small" variant="outlined" label={`${stat.chapter_count} ch`} />
+                                <Chip size="small" variant="outlined" label={`${stat.unlocks} unlocks`} />
+                                <Chip size="small" variant="outlined" label={`${stat.like_count} likes`} />
+                                <Chip
+                                    size="small"
+                                    color="primary"
+                                    icon={<MonetizationOnIcon />}
+                                    label={`${stat.coins_earned}`}
+                                    sx={{ fontWeight: 700 }}
+                                />
+                            </Stack>
+                        ))}
+                    </Stack>
+                </>
+            )}
 
             <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1 }}>
                 My works

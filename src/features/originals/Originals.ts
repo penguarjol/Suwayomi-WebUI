@@ -16,6 +16,8 @@ export interface Creator {
     status: string;
 }
 
+export type PubStatus = 'ongoing' | 'completed' | 'hiatus';
+
 export interface OriginalWork {
     id: string;
     creator_id: string;
@@ -25,6 +27,8 @@ export interface OriginalWork {
     content_type: 'manga' | 'comic' | 'novel' | 'other';
     is_mature: boolean;
     status: 'draft' | 'published';
+    pub_status: PubStatus;
+    tags: string[];
     like_count: number;
     created_at: string;
 }
@@ -37,6 +41,8 @@ export interface OriginalChapter {
     price_coins: number;
     pages: string[];
     published: boolean;
+    author_note: string | null;
+    publish_at: string | null;
     created_at: string;
 }
 
@@ -149,6 +155,14 @@ export async function setWorkStatus(id: string, status: 'draft' | 'published'): 
     await supabase.from('original_works').update({ status }).eq('id', id);
 }
 
+export async function updateWork(
+    id: string,
+    patch: Partial<Pick<OriginalWork, 'title' | 'description' | 'content_type' | 'is_mature' | 'pub_status' | 'tags'>>,
+): Promise<void> {
+    const { error } = await supabase.from('original_works').update(patch).eq('id', id);
+    if (error) throw error;
+}
+
 export async function uploadCover(workId: string, file: File): Promise<string> {
     const uid = await currentUserId();
     const ext = file.name.split('.').pop() || 'jpg';
@@ -194,6 +208,59 @@ export async function uploadChapterPages(chapterId: string, files: File[]): Prom
 
 export async function setChapterPublished(chapterId: string, published: boolean): Promise<void> {
     await supabase.from('original_chapters').update({ published }).eq('id', chapterId);
+}
+
+export async function updateChapter(
+    chapterId: string,
+    patch: Partial<Pick<OriginalChapter, 'title' | 'number' | 'price_coins' | 'author_note'>>,
+): Promise<void> {
+    const { error } = await supabase.from('original_chapters').update(patch).eq('id', chapterId);
+    if (error) throw error;
+}
+
+/** Schedule (or clear) a chapter's automatic release. Auto-publish requires the
+ *  pg_cron job (see the migration); creators can also force it via the editor. */
+export async function setChapterSchedule(chapterId: string, publishAtIso: string | null): Promise<void> {
+    const { error } = await supabase.from('original_chapters').update({ publish_at: publishAtIso }).eq('id', chapterId);
+    if (error) throw error;
+}
+
+/** Append newly uploaded pages to a chapter (keeps existing order). */
+export async function addChapterPages(chapterId: string, existing: string[], files: File[]): Promise<string[]> {
+    const uid = await currentUserId();
+    const added: string[] = [];
+    const base = existing.length;
+    for (let i = 0; i < files.length; i += 1) {
+        const file = files[i];
+        const ext = file.name.split('.').pop() || 'jpg';
+        const path = `${uid}/${chapterId}/${String(base + i).padStart(4, '0')}-${Date.now()}.${ext}`;
+        // eslint-disable-next-line no-await-in-loop -- sequential keeps page order deterministic
+        const { error } = await supabase.storage.from(PAGES_BUCKET).upload(path, file, { upsert: true });
+        if (error) throw error;
+        added.push(path);
+    }
+    const next = [...existing, ...added];
+    await supabase.from('original_chapters').update({ pages: next }).eq('id', chapterId);
+    return next;
+}
+
+/** Persist a reordered/edited page list (e.g. after move or delete). */
+export async function setChapterPages(chapterId: string, pages: string[]): Promise<void> {
+    const { error } = await supabase.from('original_chapters').update({ pages }).eq('id', chapterId);
+    if (error) throw error;
+}
+
+/** Remove a single page (by index) from a chapter and best-effort delete the file. */
+export async function removeChapterPage(chapterId: string, pages: string[], index: number): Promise<string[]> {
+    const path = pages[index];
+    const next = pages.filter((_, i) => i !== index);
+    await supabase.from('original_chapters').update({ pages: next }).eq('id', chapterId);
+    if (path)
+        await supabase.storage
+            .from(PAGES_BUCKET)
+            .remove([path])
+            .catch(() => undefined);
+    return next;
 }
 
 export async function deleteChapter(chapterId: string): Promise<void> {
@@ -244,6 +311,46 @@ export interface Earning {
     coins: number;
     created_at: string;
     chapter_id: string | null;
+}
+
+export interface CreatorWorkStats {
+    work_id: string;
+    title: string;
+    status: 'draft' | 'published';
+    pub_status: PubStatus;
+    chapter_count: number;
+    unlocks: number;
+    coins_earned: number;
+    like_count: number;
+}
+
+export async function getCreatorDashboard(): Promise<CreatorWorkStats[]> {
+    try {
+        const { data, error } = await supabase.rpc('creator_dashboard');
+        if (error) throw error;
+        return (data ?? []).map((row: Record<string, unknown>) => ({
+            work_id: String(row.work_id),
+            title: String(row.title),
+            status: row.status as 'draft' | 'published',
+            pub_status: row.pub_status as PubStatus,
+            chapter_count: Number(row.chapter_count ?? 0),
+            unlocks: Number(row.unlocks ?? 0),
+            coins_earned: Number(row.coins_earned ?? 0),
+            like_count: Number(row.like_count ?? 0),
+        }));
+    } catch {
+        return [];
+    }
+}
+
+export async function publishMyDueChapters(): Promise<number> {
+    try {
+        const { data, error } = await supabase.rpc('publish_my_due_chapters');
+        if (error) return 0;
+        return Number(data ?? 0);
+    } catch {
+        return 0;
+    }
 }
 
 export async function getMyEarnings(): Promise<{ total: number; recent: Earning[] }> {
