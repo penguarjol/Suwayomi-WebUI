@@ -19,6 +19,7 @@ import FavoriteIcon from '@mui/icons-material/Favorite';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import VolunteerActivismIcon from '@mui/icons-material/VolunteerActivism';
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
+import Tooltip from '@mui/material/Tooltip';
 import {
     Creator,
     CreatorStats,
@@ -36,6 +37,14 @@ import {
     unfollowCreator,
 } from '@/features/originals/Originals.ts';
 import { useBillingStore } from '@/features/billing/Billing.ts';
+import {
+    Badge,
+    UserProfile,
+    getBadgeCatalog,
+    getEarnedBadges,
+    getUserProfile,
+} from '@/features/profile/ProfileCustomization.ts';
+import { bannerSx, frameSx, nameEffectSx } from '@/features/profile/ProfileCosmetics.ts';
 import { AppRoutes } from '@/base/AppRoute.constants.ts';
 import { useAppTitle } from '@/features/navigation-bar/hooks/useAppTitle.ts';
 import { makeToast } from '@/base/utils/Toast.ts';
@@ -101,15 +110,20 @@ export function CreatorProfile() {
     const [supporting, setSupporting] = useState(false);
     const [loading, setLoading] = useState(true);
     const [busy, setBusy] = useState(false);
+    const [cosmetics, setCosmetics] = useState<UserProfile | null>(null);
+    const [badges, setBadges] = useState<Badge[]>([]);
 
     const load = async () => {
-        const [c, s, w, t, follows, supported] = await Promise.all([
+        const [c, s, w, t, follows, supported, profile, catalog, earned] = await Promise.all([
             getCreator(id),
             getCreatorStats(id),
             listWorksByCreator(id),
             getSupportTiers(id),
             getMyFollowedCreatorIds(),
             getMySupportedCreatorIds(),
+            getUserProfile(id),
+            getBadgeCatalog(),
+            getEarnedBadges(id),
         ]);
         setCreator(c);
         setStats(s);
@@ -117,6 +131,9 @@ export function CreatorProfile() {
         setTiers(t);
         setFollowing(follows.has(id));
         setSupporting(supported.has(id));
+        setCosmetics(profile);
+        const earnedIds = new Set(earned.map((b) => b.badge_id));
+        setBadges(catalog.filter((b) => earnedIds.has(b.id)));
         setLoading(false);
     };
 
@@ -179,20 +196,52 @@ export function CreatorProfile() {
         );
     }
 
+    const bannerKey = cosmetics?.banner_key ?? 'default';
+    const frameKey = cosmetics?.avatar_frame_key ?? 'none';
+    const effectKey = cosmetics?.name_effect_key ?? 'none_effect';
+    const accent = cosmetics?.accent_color ?? undefined;
+
     return (
         <Box sx={{ p: { xs: 2, sm: 3 }, maxWidth: 880, mx: 'auto' }}>
-            <Stack sx={{ flexDirection: 'row', alignItems: 'center', gap: 2, mb: 2 }}>
-                <Avatar sx={{ width: 64, height: 64, fontSize: 28, fontWeight: 800 }}>
+            <Box sx={{ position: 'relative', height: 120, borderRadius: 3, mb: 1, ...bannerSx(bannerKey) }} />
+            <Stack sx={{ flexDirection: 'row', alignItems: 'flex-end', gap: 2, mt: -5, mb: 2, px: 1 }}>
+                <Avatar
+                    sx={{
+                        width: 80,
+                        height: 80,
+                        fontSize: 32,
+                        fontWeight: 800,
+                        boxSizing: 'border-box',
+                        ...frameSx(frameKey),
+                    }}
+                >
                     {creator.display_name.charAt(0).toUpperCase()}
                 </Avatar>
-                <Stack sx={{ flexGrow: 1, minWidth: 0 }}>
-                    <Typography variant="h5" sx={{ fontWeight: 900 }} noWrap>
+                <Stack sx={{ flexGrow: 1, minWidth: 0, pb: 0.5 }}>
+                    <Typography
+                        variant="h5"
+                        noWrap
+                        sx={{ fontWeight: 900, display: 'inline-block', ...nameEffectSx(effectKey, accent) }}
+                    >
                         {creator.display_name}
                     </Typography>
                     {stats && (
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
                             {`${stats.follower_count} followers · ${stats.supporter_count} supporters · ${stats.work_count} works`}
                         </Typography>
+                    )}
+                    {badges.length > 0 && (
+                        <Stack sx={{ flexDirection: 'row', gap: 0.5, mt: 0.75, flexWrap: 'wrap' }}>
+                            {badges.map((badge) => (
+                                <Tooltip key={badge.id} title={badge.description ?? badge.name}>
+                                    <Chip
+                                        size="small"
+                                        variant="outlined"
+                                        label={`${badge.icon ?? '🏅'} ${badge.name}`}
+                                    />
+                                </Tooltip>
+                            ))}
+                        </Stack>
                     )}
                 </Stack>
                 <Button

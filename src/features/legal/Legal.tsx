@@ -19,12 +19,10 @@ import Checkbox from '@mui/material/Checkbox';
 import Box from '@mui/material/Box';
 import { AuthManager } from '@/features/authentication/AuthManager.ts';
 import { useBillingStore } from '@/features/billing/Billing.ts';
+import { DmcaReportDialog } from '@/features/legal/DmcaReportDialog.tsx';
+import { APP_NAME, LEGAL_CONTACT_EMAIL } from '@/features/legal/Legal.constants.ts';
 
-const APP_NAME = 'Nexus Reads';
-
-/** Designated contact for copyright/DMCA notices. Operator: keep this routable
- *  and register the same agent with the U.S. Copyright Office (see docs/LEGAL.md). */
-export const LEGAL_CONTACT_EMAIL = 'legal@nexusreads.app';
+export { LEGAL_CONTACT_EMAIL } from '@/features/legal/Legal.constants.ts';
 
 // NOTE: standard protective boilerplate, strengthened for a metadata-index /
 // reader posture + DMCA safe harbor. It is NOT a substitute for legal advice —
@@ -136,6 +134,7 @@ export const LegalGate = () => {
 /** Compact legal footer shown on non-reader screens. */
 export const LegalFooter = () => {
     const [open, setOpen] = useState(false);
+    const [dmcaOpen, setDmcaOpen] = useState(false);
     return (
         <Box
             component="footer"
@@ -161,12 +160,12 @@ export const LegalFooter = () => {
             <Button
                 variant="text"
                 size="small"
-                component="a"
-                href={`mailto:${LEGAL_CONTACT_EMAIL}?subject=${encodeURIComponent('Copyright / DMCA notice')}`}
+                onClick={() => setDmcaOpen(true)}
                 sx={{ textTransform: 'none', fontSize: 12, opacity: 0.8 }}
             >
                 Report content (DMCA)
             </Button>
+            <DmcaReportDialog open={dmcaOpen} onClose={() => setDmcaOpen(false)} />
             <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm" scroll="paper">
                 <DialogTitle sx={{ fontWeight: 800 }}>Terms & Disclaimer</DialogTitle>
                 <DialogContent dividers>

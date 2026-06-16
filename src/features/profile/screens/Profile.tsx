@@ -275,6 +275,55 @@ export function Profile() {
                 </ListItemLink>
             </List>
 
+            {badgeCatalog.length > 0 && (
+                <Box sx={{ mb: 3 }}>
+                    <Stack sx={{ flexDirection: 'row', alignItems: 'baseline', gap: 1, mb: 1.5 }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
+                            Achievements
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                            {`${earnedBadges.length} / ${badgeCatalog.length}`}
+                        </Typography>
+                    </Stack>
+                    <Box
+                        sx={{
+                            display: 'grid',
+                            gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)' },
+                            gap: 1,
+                        }}
+                    >
+                        {badgeCatalog.map((badge) => {
+                            const earned = earnedIds.has(badge.id);
+                            return (
+                                <Stack
+                                    key={badge.id}
+                                    sx={{
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        gap: 1,
+                                        p: 1.25,
+                                        borderRadius: 2,
+                                        border: '1px solid rgba(255,255,255,0.06)',
+                                        opacity: earned ? 1 : 0.45,
+                                        filter: earned ? 'none' : 'grayscale(1)',
+                                    }}
+                                >
+                                    <Box sx={{ fontSize: 22, lineHeight: 1 }}>{badge.icon ?? '🏅'}</Box>
+                                    <Box sx={{ minWidth: 0 }}>
+                                        <Typography variant="body2" sx={{ fontWeight: 700 }} noWrap>
+                                            {badge.name}
+                                        </Typography>
+                                        <Typography variant="caption" color="text.secondary" noWrap>
+                                            {earned ? 'Unlocked' : (badge.description ?? 'Locked')}
+                                        </Typography>
+                                    </Box>
+                                </Stack>
+                            );
+                        })}
+                    </Box>
+                </Box>
+            )}
+
             {collections.length > 0 && (
                 <Box sx={{ mb: 2 }}>
                     <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1 }}>

@@ -36,6 +36,7 @@ import {
 } from '@/features/admin/services/Admin.ts';
 import { Extensions } from '@/features/browse/extensions/Extensions.tsx';
 import { FeedbackItem, getFeedback, setFeedbackStatus } from '@/features/feedback/Feedback.ts';
+import { DmcaAction, DmcaReport, DmcaStatus, listDmcaReports, resolveDmcaReport } from '@/features/legal/Dmca.ts';
 import {
     Campaign,
     createCampaign,
@@ -1081,6 +1082,127 @@ const ExtensionManager = () => (
     </Stack>
 );
 
+const DmcaQueue = () => {
+    const [reports, setReports] = useState<DmcaReport[]>([]);
+    const [filter, setFilter] = useState<DmcaStatus | 'all'>('pending');
+    const [busy, setBusy] = useState(false);
+
+    const load = () => {
+        listDmcaReports(filter === 'all' ? undefined : filter).then(setReports);
+    };
+
+    useEffect(() => {
+        load();
+    }, [filter]);
+
+    const resolve = async (id: string, action: DmcaAction) => {
+        setBusy(true);
+        try {
+            const result = await resolveDmcaReport(id, action, `Resolved: ${action}`);
+            if (result === 'resolved') {
+                makeToast(
+                    action === 'takedown'
+                        ? 'Content taken down; creator struck (suspended at 3).'
+                        : `Notice marked ${action}.`,
+                    'success',
+                );
+                load();
+            } else if (result === 'forbidden') {
+                makeToast('Admin access required.', 'error');
+            } else {
+                makeToast('Could not resolve the notice.', 'error');
+            }
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const STATUS_COLOR: Record<DmcaStatus, 'warning' | 'success' | 'default' | 'info'> = {
+        pending: 'warning',
+        actioned: 'success',
+        rejected: 'default',
+        counter: 'info',
+    };
+
+    return (
+        <Stack sx={{ gap: 1.5 }}>
+            <ToggleButtonGroup
+                size="small"
+                exclusive
+                value={filter}
+                onChange={(_, v) => v && setFilter(v)}
+                sx={{ alignSelf: 'flex-start' }}
+            >
+                <ToggleButton value="pending" sx={{ textTransform: 'none' }}>
+                    Pending
+                </ToggleButton>
+                <ToggleButton value="actioned" sx={{ textTransform: 'none' }}>
+                    Actioned
+                </ToggleButton>
+                <ToggleButton value="all" sx={{ textTransform: 'none' }}>
+                    All
+                </ToggleButton>
+            </ToggleButtonGroup>
+
+            {reports.length === 0 && (
+                <Typography variant="body2" color="text.secondary">
+                    No notices.
+                </Typography>
+            )}
+
+            {reports.map((report) => (
+                <Stack
+                    key={report.id}
+                    sx={{ gap: 0.75, p: 1.5, borderRadius: 2, border: '1px solid rgba(255,255,255,0.08)' }}
+                >
+                    <Stack sx={{ flexDirection: 'row', alignItems: 'center', gap: 1 }}>
+                        <Typography sx={{ fontWeight: 700, flexGrow: 1 }} noWrap>
+                            {report.subject}
+                        </Typography>
+                        <Chip size="small" label={report.status} color={STATUS_COLOR[report.status]} />
+                    </Stack>
+                    <Typography variant="body2" color="text.secondary">
+                        {report.description}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                        {`${report.target_type}${report.reporter_email ? ` · ${report.reporter_email}` : ''} · ${new Date(report.created_at).toLocaleDateString()}`}
+                    </Typography>
+                    {report.status === 'pending' && (
+                        <Stack sx={{ flexDirection: 'row', gap: 1, mt: 0.5 }}>
+                            <Button
+                                size="small"
+                                variant="contained"
+                                color="error"
+                                disabled={busy}
+                                onClick={() => resolve(report.id, 'takedown')}
+                                sx={{ textTransform: 'none' }}
+                            >
+                                Take down
+                            </Button>
+                            <Button
+                                size="small"
+                                disabled={busy}
+                                onClick={() => resolve(report.id, 'reject')}
+                                sx={{ textTransform: 'none' }}
+                            >
+                                Reject
+                            </Button>
+                            <Button
+                                size="small"
+                                disabled={busy}
+                                onClick={() => resolve(report.id, 'counter')}
+                                sx={{ textTransform: 'none' }}
+                            >
+                                Counter
+                            </Button>
+                        </Stack>
+                    )}
+                </Stack>
+            ))}
+        </Stack>
+    );
+};
+
 const TABS = [
     { label: 'Users', render: () => <UsersPanel /> },
     { label: 'Activity', render: () => <ActivityPanel /> },
@@ -1094,6 +1216,7 @@ const TABS = [
     { label: 'Campaigns', render: () => <CampaignManager /> },
     { label: 'Analytics', render: () => <Analytics /> },
     { label: 'Feedback', render: () => <FeedbackInbox /> },
+    { label: 'DMCA', render: () => <DmcaQueue /> },
 ];
 
 export function AdminConsole() {
