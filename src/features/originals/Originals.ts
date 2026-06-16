@@ -7,6 +7,7 @@
  */
 
 import { supabase } from '@/lib/SupabaseClient.ts';
+import { optimizeBatch } from '@/features/originals/imageOptimize.ts';
 
 export interface Creator {
     id: string;
@@ -29,6 +30,7 @@ export interface OriginalWork {
     status: 'draft' | 'published';
     pub_status: PubStatus;
     tags: string[];
+    language: string;
     like_count: number;
     created_at: string;
 }
@@ -157,10 +159,61 @@ export async function setWorkStatus(id: string, status: 'draft' | 'published'): 
 
 export async function updateWork(
     id: string,
-    patch: Partial<Pick<OriginalWork, 'title' | 'description' | 'content_type' | 'is_mature' | 'pub_status' | 'tags'>>,
+    patch: Partial<
+        Pick<OriginalWork, 'title' | 'description' | 'content_type' | 'is_mature' | 'pub_status' | 'tags' | 'language'>
+    >,
 ): Promise<void> {
     const { error } = await supabase.from('original_works').update(patch).eq('id', id);
     if (error) throw error;
+}
+
+// --- Collaboration ---
+export interface WorkCollaborator {
+    user_id: string;
+    email: string;
+    role: 'artist' | 'writer' | 'translator' | 'editor';
+}
+
+export async function listWorkCollaborators(workId: string): Promise<WorkCollaborator[]> {
+    try {
+        const { data } = await supabase.rpc('list_work_collaborators', { p_work_id: workId });
+        return (data ?? []) as WorkCollaborator[];
+    } catch {
+        return [];
+    }
+}
+
+export async function addWorkCollaborator(workId: string, email: string, role: string): Promise<string> {
+    const { data, error } = await supabase.rpc('add_work_collaborator', {
+        p_work_id: workId,
+        p_email: email,
+        p_role: role,
+    });
+    if (error) return 'error';
+    return (data ?? 'error') as string;
+}
+
+export async function removeWorkCollaborator(workId: string, userId: string): Promise<void> {
+    await supabase.rpc('remove_work_collaborator', { p_work_id: workId, p_user_id: userId });
+}
+
+// --- Cash payouts (ADR-0009 foundation) ---
+export async function getCreatorCashBalance(): Promise<number> {
+    try {
+        const { data, error } = await supabase.rpc('creator_cash_balance');
+        if (error) return 0;
+        return Number(data ?? 0);
+    } catch {
+        return 0;
+    }
+}
+
+export type PayoutStatus = 'requested' | 'below_min' | 'insufficient' | 'invalid' | 'unauthenticated' | 'error';
+
+export async function requestPayout(amountCents: number): Promise<PayoutStatus> {
+    const { data, error } = await supabase.rpc('request_payout', { p_amount_cents: amountCents });
+    if (error) return 'error';
+    return (data ?? 'error') as PayoutStatus;
 }
 
 export async function uploadCover(workId: string, file: File): Promise<string> {
@@ -225,13 +278,15 @@ export async function setChapterSchedule(chapterId: string, publishAtIso: string
     if (error) throw error;
 }
 
-/** Append newly uploaded pages to a chapter (keeps existing order). */
+/** Append newly uploaded pages to a chapter (keeps existing order). Images are
+ *  downscaled/re-encoded and long strips sliced client-side before upload. */
 export async function addChapterPages(chapterId: string, existing: string[], files: File[]): Promise<string[]> {
     const uid = await currentUserId();
+    const optimized = await optimizeBatch(files);
     const added: string[] = [];
     const base = existing.length;
-    for (let i = 0; i < files.length; i += 1) {
-        const file = files[i];
+    for (let i = 0; i < optimized.length; i += 1) {
+        const file = optimized[i];
         const ext = file.name.split('.').pop() || 'jpg';
         const path = `${uid}/${chapterId}/${String(base + i).padStart(4, '0')}-${Date.now()}.${ext}`;
         // eslint-disable-next-line no-await-in-loop -- sequential keeps page order deterministic
@@ -270,6 +325,11 @@ export async function deleteChapter(chapterId: string): Promise<void> {
 export async function getOriginalChapter(chapterId: string): Promise<OriginalChapter | null> {
     const { data } = await supabase.from('original_chapters').select('*').eq('id', chapterId).maybeSingle();
     return (data as OriginalChapter) ?? null;
+}
+
+export async function getWorkCreatorId(workId: string): Promise<string | null> {
+    const { data } = await supabase.from('original_works').select('creator_id').eq('id', workId).maybeSingle();
+    return (data?.creator_id as string) ?? null;
 }
 
 // --- Reading / unlock ---
@@ -337,6 +397,65 @@ export async function getCreatorDashboard(): Promise<CreatorWorkStats[]> {
             unlocks: Number(row.unlocks ?? 0),
             coins_earned: Number(row.coins_earned ?? 0),
             like_count: Number(row.like_count ?? 0),
+        }));
+    } catch {
+        return [];
+    }
+}
+
+export interface ChapterAnalytics {
+    chapter_id: string;
+    title: string;
+    chapter_number: number;
+    views: number;
+    completions: number;
+}
+
+export async function recordOriginalRead(workId: string, chapterId: string): Promise<string | null> {
+    try {
+        const uid = (await supabase.auth.getUser()).data.user?.id;
+        if (!uid) return null;
+        const { data, error } = await supabase
+            .from('original_read_events')
+            .insert({ user_id: uid, work_id: workId, chapter_id: chapterId })
+            .select('id')
+            .single();
+        if (error) return null;
+        return data.id as string;
+    } catch {
+        return null;
+    }
+}
+
+export async function markReadCompleted(eventId: string): Promise<void> {
+    try {
+        await supabase.from('original_read_events').update({ completed: true }).eq('id', eventId);
+    } catch {
+        /* best-effort analytics */
+    }
+}
+
+export async function getWorkChapterAnalytics(workId: string): Promise<ChapterAnalytics[]> {
+    try {
+        const { data } = await supabase.rpc('work_chapter_analytics', { p_work_id: workId });
+        return (data ?? []).map((row: Record<string, unknown>) => ({
+            chapter_id: String(row.chapter_id),
+            title: String(row.title),
+            chapter_number: Number(row.chapter_number ?? 0),
+            views: Number(row.views ?? 0),
+            completions: Number(row.completions ?? 0),
+        }));
+    } catch {
+        return [];
+    }
+}
+
+export async function getWorkReadsTimeseries(workId: string, days = 14): Promise<{ day: string; reads: number }[]> {
+    try {
+        const { data } = await supabase.rpc('work_reads_timeseries', { p_work_id: workId, p_days: days });
+        return (data ?? []).map((row: Record<string, unknown>) => ({
+            day: String(row.day),
+            reads: Number(row.reads ?? 0),
         }));
     } catch {
         return [];

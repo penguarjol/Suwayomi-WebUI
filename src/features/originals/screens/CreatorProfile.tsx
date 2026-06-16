@@ -45,6 +45,7 @@ import {
     getUserProfile,
 } from '@/features/profile/ProfileCustomization.ts';
 import { bannerSx, frameSx, nameEffectSx } from '@/features/profile/ProfileCosmetics.ts';
+import { CreatorPost, listCreatorPosts } from '@/features/originals/OriginalComments.ts';
 import { AppRoutes } from '@/base/AppRoute.constants.ts';
 import { useAppTitle } from '@/features/navigation-bar/hooks/useAppTitle.ts';
 import { makeToast } from '@/base/utils/Toast.ts';
@@ -112,9 +113,10 @@ export function CreatorProfile() {
     const [busy, setBusy] = useState(false);
     const [cosmetics, setCosmetics] = useState<UserProfile | null>(null);
     const [badges, setBadges] = useState<Badge[]>([]);
+    const [posts, setPosts] = useState<CreatorPost[]>([]);
 
     const load = async () => {
-        const [c, s, w, t, follows, supported, profile, catalog, earned] = await Promise.all([
+        const [c, s, w, t, follows, supported, profile, catalog, earned, p] = await Promise.all([
             getCreator(id),
             getCreatorStats(id),
             listWorksByCreator(id),
@@ -124,6 +126,7 @@ export function CreatorProfile() {
             getUserProfile(id),
             getBadgeCatalog(),
             getEarnedBadges(id),
+            listCreatorPosts(id),
         ]);
         setCreator(c);
         setStats(s);
@@ -134,6 +137,7 @@ export function CreatorProfile() {
         setCosmetics(profile);
         const earnedIds = new Set(earned.map((b) => b.badge_id));
         setBadges(catalog.filter((b) => earnedIds.has(b.id)));
+        setPosts(p);
         setLoading(false);
     };
 
@@ -284,6 +288,29 @@ export function CreatorProfile() {
                             />
                         ))}
                     </Box>
+                </>
+            )}
+
+            {posts.length > 0 && (
+                <>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1.5 }}>
+                        Announcements
+                    </Typography>
+                    <Stack sx={{ gap: 1, mb: 4 }}>
+                        {posts.map((post) => (
+                            <Stack
+                                key={post.id}
+                                sx={{ p: 1.5, borderRadius: 2, border: '1px solid rgba(255,255,255,0.06)' }}
+                            >
+                                <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                                    {post.body}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                    {new Date(post.created_at).toLocaleDateString()}
+                                </Typography>
+                            </Stack>
+                        ))}
+                    </Stack>
                 </>
             )}
 

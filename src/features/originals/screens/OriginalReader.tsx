@@ -18,8 +18,12 @@ import {
     fetchOriginalPage,
     getMyUnlockedChapterIds,
     getOriginalChapter,
+    getWorkCreatorId,
+    markReadCompleted,
+    recordOriginalRead,
     unlockOriginalChapter,
 } from '@/features/originals/Originals.ts';
+import { OriginalComments } from '@/features/originals/components/OriginalComments.tsx';
 import { useBillingStore } from '@/features/billing/Billing.ts';
 import { LoadingPlaceholder } from '@/base/components/feedback/LoadingPlaceholder.tsx';
 import { EmptyViewAbsoluteCentered } from '@/base/components/feedback/EmptyViewAbsoluteCentered.tsx';
@@ -32,7 +36,10 @@ export function OriginalReader() {
     const [loading, setLoading] = useState(true);
     const [locked, setLocked] = useState(false);
     const [unlocking, setUnlocking] = useState(false);
+    const [creatorId, setCreatorId] = useState<string | null>(null);
     const objectUrls = useRef<string[]>([]);
+    const readEventId = useRef<string | null>(null);
+    const completed = useRef(false);
     const tokens = useBillingStore((state) => state.tokens);
 
     const loadPages = async (ch: OriginalChapter) => {
@@ -49,16 +56,23 @@ export function OriginalReader() {
         objectUrls.current = urls;
         setPageUrls(urls);
         setLocked(false);
+        // Record a read (view) for creator analytics once pages are accessible.
+        recordOriginalRead(ch.work_id, ch.id).then((id) => {
+            readEventId.current = id;
+        });
     };
 
     const init = async () => {
         setLoading(true);
+        readEventId.current = null;
+        completed.current = false;
         const ch = await getOriginalChapter(chapterId);
         setChapter(ch);
         if (!ch) {
             setLoading(false);
             return;
         }
+        getWorkCreatorId(ch.work_id).then(setCreatorId);
         const entitled = ch.price_coins === 0 || (await getMyUnlockedChapterIds()).has(ch.id);
         if (entitled) {
             await loadPages(ch);
@@ -75,6 +89,21 @@ export function OriginalReader() {
             objectUrls.current = [];
         };
     }, [chapterId]);
+
+    // Mark the read complete (drop-off analytics) once the reader scrolls to the
+    // end of the chapter. Fires at most once per chapter view.
+    useEffect(() => {
+        if (!pageUrls.length) return undefined;
+        const onScroll = () => {
+            if (completed.current || !readEventId.current) return;
+            if (window.scrollY + window.innerHeight >= document.body.scrollHeight - 300) {
+                completed.current = true;
+                markReadCompleted(readEventId.current);
+            }
+        };
+        window.addEventListener('scroll', onScroll, { passive: true });
+        return () => window.removeEventListener('scroll', onScroll);
+    }, [pageUrls.length]);
 
     const unlock = async () => {
         if (!chapter) return;
@@ -158,6 +187,28 @@ export function OriginalReader() {
                     </Typography>
                 )}
             </Stack>
+
+            {chapter.author_note && (
+                <Box
+                    sx={{
+                        mx: { xs: 2, sm: 0 },
+                        mt: 3,
+                        p: 2,
+                        borderRadius: 2,
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        background: 'rgba(255,255,255,0.03)',
+                    }}
+                >
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
+                        Author&apos;s note
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-wrap' }}>
+                        {chapter.author_note}
+                    </Typography>
+                </Box>
+            )}
+
+            {creatorId && <OriginalComments chapterId={chapter.id} creatorId={creatorId} />}
         </Box>
     );
 }

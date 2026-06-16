@@ -28,14 +28,17 @@ import {
     becomeCreator,
     createSupportTier,
     createWork,
+    getCreatorCashBalance,
     getCreatorDashboard,
     getMyCreatorProfile,
     getMyEarnings,
     listMySupportTiers,
     listMyWorks,
     publishMyDueChapters,
+    requestPayout,
     setSupportTierActive,
 } from '@/features/originals/Originals.ts';
+import { createCreatorPost } from '@/features/originals/OriginalComments.ts';
 import { CREATOR_TERMS, CREATOR_REVENUE_SHARE } from '@/features/originals/CreatorTerms.ts';
 import { useAppTitle } from '@/features/navigation-bar/hooks/useAppTitle.ts';
 import { AppRoutes } from '@/base/AppRoute.constants.ts';
@@ -124,12 +127,14 @@ export function CreatorStudio() {
     const [tiers, setTiers] = useState<SupportTier[]>([]);
     const [stats, setStats] = useState<CreatorWorkStats[]>([]);
     const [earnings, setEarnings] = useState(0);
+    const [cashCents, setCashCents] = useState(0);
     const [loading, setLoading] = useState(true);
 
     // create-tier form
     const [tierName, setTierName] = useState('');
     const [tierCoins, setTierCoins] = useState('50');
     const [tierPerks, setTierPerks] = useState('');
+    const [announcement, setAnnouncement] = useState('');
 
     // create-work form
     const [title, setTitle] = useState('');
@@ -138,6 +143,22 @@ export function CreatorStudio() {
     const [isMature, setIsMature] = useState(false);
     const [busy, setBusy] = useState(false);
 
+    const postAnnouncement = async () => {
+        if (!announcement.trim()) return;
+        setBusy(true);
+        try {
+            const ok = await createCreatorPost(announcement);
+            if (ok) {
+                setAnnouncement('');
+                makeToast('Announcement posted to your followers.', 'success');
+            } else {
+                makeToast('Could not post announcement.', 'error');
+            }
+        } finally {
+            setBusy(false);
+        }
+    };
+
     const load = async () => {
         const profile = await getMyCreatorProfile();
         setCreator(profile);
@@ -145,18 +166,39 @@ export function CreatorStudio() {
             // Publish any due scheduled chapters on visit (fallback when pg_cron
             // isn't enabled), then load works/earnings/tiers/analytics.
             await publishMyDueChapters().catch(() => 0);
-            const [w, e, t, d] = await Promise.all([
+            const [w, e, t, d, cash] = await Promise.all([
                 listMyWorks(),
                 getMyEarnings(),
                 listMySupportTiers(),
                 getCreatorDashboard(),
+                getCreatorCashBalance(),
             ]);
             setWorks(w);
             setEarnings(e.total);
             setTiers(t);
             setStats(d);
+            setCashCents(cash);
         }
         setLoading(false);
+    };
+
+    const payout = async () => {
+        setBusy(true);
+        try {
+            const status = await requestPayout(cashCents);
+            if (status === 'requested') {
+                makeToast('Payout requested. We will process it to your connected account.', 'success');
+                getCreatorCashBalance().then(setCashCents);
+            } else if (status === 'below_min') {
+                makeToast('Minimum payout is $5.00.', 'info');
+            } else if (status === 'insufficient') {
+                makeToast('Insufficient cash balance.', 'warning');
+            } else {
+                makeToast('Could not request a payout.', 'error');
+            }
+        } finally {
+            setBusy(false);
+        }
     };
 
     const submitTier = async () => {
@@ -225,10 +267,44 @@ export function CreatorStudio() {
                     sx={{ fontWeight: 700 }}
                 />
             </Stack>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                 {creator.display_name} · {creator.revenue_share}% revenue share. Earnings are credited to your Coin
                 balance.
             </Typography>
+
+            <Stack
+                sx={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 1.5,
+                    p: 2,
+                    mb: 3,
+                    borderRadius: 3,
+                    border: '1px solid rgba(255,255,255,0.10)',
+                    background: 'rgba(255,255,255,0.03)',
+                    flexWrap: 'wrap',
+                }}
+            >
+                <Stack sx={{ flexGrow: 1 }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
+                        Cash balance
+                    </Typography>
+                    <Typography variant="h6" sx={{ fontWeight: 900 }}>
+                        ${(cashCents / 100).toFixed(2)}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                        Real-money earnings (ad-revenue share &amp; bonuses), separate from Coins. Min payout $5.
+                    </Typography>
+                </Stack>
+                <Button
+                    variant="contained"
+                    disabled={busy || cashCents < 500}
+                    onClick={payout}
+                    sx={{ borderRadius: '50px', textTransform: 'none', fontWeight: 700 }}
+                >
+                    Request payout
+                </Button>
+            </Stack>
 
             <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1 }}>
                 New work
@@ -341,6 +417,28 @@ export function CreatorStudio() {
                 {!works.length && (
                     <Typography color="text.secondary">No works yet — create your first above.</Typography>
                 )}
+            </Stack>
+
+            <Divider sx={{ my: 3 }} />
+            <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1 }}>
+                Announce to followers
+            </Typography>
+            <Stack sx={{ flexDirection: 'row', gap: 1, mb: 3 }}>
+                <TextField
+                    fullWidth
+                    size="small"
+                    placeholder="Share an update — new episode, hiatus, behind-the-scenes…"
+                    value={announcement}
+                    onChange={(e) => setAnnouncement(e.target.value)}
+                />
+                <Button
+                    variant="contained"
+                    disabled={busy || !announcement.trim()}
+                    onClick={postAnnouncement}
+                    sx={{ textTransform: 'none', fontWeight: 700, flexShrink: 0 }}
+                >
+                    Post
+                </Button>
             </Stack>
 
             <Divider sx={{ my: 3 }} />

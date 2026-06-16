@@ -14,17 +14,18 @@ import { supabase } from '@/lib/SupabaseClient.ts';
  * strictly to the caller's own follow graph (see the migration).
  */
 
-export type ActivityKind = 'work_published' | 'chapter_published';
+export type ActivityKind = 'work_published' | 'chapter_published' | 'creator_post';
 
 export interface ActivityItem {
     kind: ActivityKind;
     creator_id: string;
     creator_name: string;
-    work_id: string;
-    work_title: string;
+    work_id: string | null;
+    work_title: string | null;
     cover_path: string | null;
     chapter_id: string | null;
     chapter_title: string | null;
+    body: string | null;
     event_at: string;
 }
 

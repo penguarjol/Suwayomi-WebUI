@@ -28,15 +28,22 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import {
+    ChapterAnalytics,
     OriginalChapter,
     OriginalWork,
     PubStatus,
+    WorkCollaborator,
     addChapterPages,
+    addWorkCollaborator,
     coverUrl,
     createChapter,
     deleteChapter,
     getWork,
+    getWorkChapterAnalytics,
+    getWorkReadsTimeseries,
+    listWorkCollaborators,
     removeChapterPage,
+    removeWorkCollaborator,
     setChapterPages,
     setChapterPublished,
     setChapterSchedule,
@@ -301,6 +308,8 @@ export function WorkEditor() {
     const { id = '' } = useParams<{ id: string }>();
     const [work, setWork] = useState<OriginalWork | null>(null);
     const [chapters, setChapters] = useState<OriginalChapter[]>([]);
+    const [analytics, setAnalytics] = useState<ChapterAnalytics[]>([]);
+    const [timeseries, setTimeseries] = useState<{ day: string; reads: number }[]>([]);
     const [loading, setLoading] = useState(true);
 
     // work-details form
@@ -310,6 +319,12 @@ export function WorkEditor() {
     const [mature, setMature] = useState(false);
     const [pubStatus, setPubStatus] = useState<PubStatus>('ongoing');
     const [tags, setTags] = useState('');
+    const [language, setLanguage] = useState('en');
+
+    // collaborators
+    const [collaborators, setCollaborators] = useState<WorkCollaborator[]>([]);
+    const [collabEmail, setCollabEmail] = useState('');
+    const [collabRole, setCollabRole] = useState('artist');
 
     // add-chapter form
     const [chTitle, setChTitle] = useState('');
@@ -326,6 +341,7 @@ export function WorkEditor() {
         setMature(w.is_mature);
         setPubStatus(w.pub_status);
         setTags((w.tags ?? []).join(', '));
+        setLanguage(w.language ?? 'en');
     };
 
     const load = async () => {
@@ -334,6 +350,30 @@ export function WorkEditor() {
         setChapters(c);
         if (w) hydrate(w);
         setLoading(false);
+        getWorkChapterAnalytics(id).then(setAnalytics);
+        getWorkReadsTimeseries(id, 14).then(setTimeseries);
+        listWorkCollaborators(id).then(setCollaborators);
+    };
+
+    const addCollaborator = async () => {
+        if (!collabEmail.trim()) return;
+        const result = await addWorkCollaborator(id, collabEmail.trim(), collabRole);
+        if (result === 'added') {
+            setCollabEmail('');
+            makeToast('Collaborator added.', 'success');
+            listWorkCollaborators(id).then(setCollaborators);
+        } else if (result === 'user_not_found') {
+            makeToast('No account with that email.', 'warning');
+        } else if (result === 'forbidden') {
+            makeToast('Only the owner can add collaborators.', 'error');
+        } else {
+            makeToast('Could not add collaborator.', 'error');
+        }
+    };
+
+    const removeCollaborator = async (userId: string) => {
+        await removeWorkCollaborator(id, userId);
+        listWorkCollaborators(id).then(setCollaborators);
     };
 
     useEffect(() => {
@@ -349,6 +389,7 @@ export function WorkEditor() {
                 content_type: contentType,
                 is_mature: mature,
                 pub_status: pubStatus,
+                language,
                 tags: tags
                     .split(',')
                     .map((t) => t.trim().toLowerCase())
@@ -456,6 +497,23 @@ export function WorkEditor() {
                             <MenuItem value="completed">Completed</MenuItem>
                             <MenuItem value="hiatus">Hiatus</MenuItem>
                         </TextField>
+                        <TextField
+                            size="small"
+                            select
+                            label="Language"
+                            value={language}
+                            onChange={(e) => setLanguage(e.target.value)}
+                            sx={{ width: 130 }}
+                        >
+                            <MenuItem value="en">English</MenuItem>
+                            <MenuItem value="es">Español</MenuItem>
+                            <MenuItem value="pt">Português</MenuItem>
+                            <MenuItem value="fr">Français</MenuItem>
+                            <MenuItem value="ja">日本語</MenuItem>
+                            <MenuItem value="ko">한국어</MenuItem>
+                            <MenuItem value="zh">中文</MenuItem>
+                            <MenuItem value="id">Bahasa</MenuItem>
+                        </TextField>
                         <FormControlLabel
                             control={<Checkbox checked={mature} onChange={(e) => setMature(e.target.checked)} />}
                             label="Mature (18+)"
@@ -491,6 +549,64 @@ export function WorkEditor() {
                     </Stack>
                 </Stack>
             </Stack>
+
+            {analytics.some((a) => a.views > 0) && (
+                <>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1 }}>
+                        Analytics
+                    </Typography>
+                    {(() => {
+                        const maxReads = Math.max(1, ...timeseries.map((t) => t.reads));
+                        return (
+                            <Stack sx={{ gap: 1.5, mb: 3 }}>
+                                <Box>
+                                    <Typography variant="caption" color="text.secondary">
+                                        Reads · last 14 days
+                                    </Typography>
+                                    <Stack sx={{ flexDirection: 'row', alignItems: 'flex-end', gap: 0.5, height: 60 }}>
+                                        {timeseries.map((t) => (
+                                            <Box
+                                                key={t.day}
+                                                title={`${t.day}: ${t.reads}`}
+                                                sx={{
+                                                    flex: 1,
+                                                    height: `${Math.round((t.reads / maxReads) * 100)}%`,
+                                                    minHeight: 2,
+                                                    borderRadius: 0.5,
+                                                    backgroundColor: 'primary.main',
+                                                    opacity: t.reads ? 0.85 : 0.2,
+                                                }}
+                                            />
+                                        ))}
+                                    </Stack>
+                                </Box>
+                                <Stack sx={{ gap: 0.5 }}>
+                                    {analytics.map((a) => {
+                                        const dropOff = a.views ? Math.round((1 - a.completions / a.views) * 100) : 0;
+                                        return (
+                                            <Stack
+                                                key={a.chapter_id}
+                                                sx={{ flexDirection: 'row', alignItems: 'center', gap: 1 }}
+                                            >
+                                                <Typography variant="body2" sx={{ flexGrow: 1 }} noWrap>
+                                                    #{a.chapter_number} {a.title}
+                                                </Typography>
+                                                <Chip size="small" variant="outlined" label={`${a.views} views`} />
+                                                <Chip
+                                                    size="small"
+                                                    variant="outlined"
+                                                    label={`${dropOff}% drop-off`}
+                                                    color={dropOff > 50 ? 'warning' : 'default'}
+                                                />
+                                            </Stack>
+                                        );
+                                    })}
+                                </Stack>
+                            </Stack>
+                        );
+                    })()}
+                </>
+            )}
 
             <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1 }}>
                 Add chapter
@@ -535,6 +651,63 @@ export function WorkEditor() {
                     />
                 ))}
                 {!chapters.length && <Typography color="text.secondary">No chapters yet.</Typography>}
+            </Stack>
+
+            <Divider sx={{ my: 3 }} />
+            <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1 }}>
+                Collaborators
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                Invite an artist, writer, translator, or editor (by their account email) to co-edit this work.
+            </Typography>
+            <Stack sx={{ gap: 1, mb: 1.5 }}>
+                {collaborators.map((collab) => (
+                    <Stack
+                        key={collab.user_id}
+                        sx={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            gap: 1,
+                            p: 1.25,
+                            borderRadius: 2,
+                            border: '1px solid rgba(255,255,255,0.06)',
+                        }}
+                    >
+                        <Typography sx={{ flexGrow: 1 }} noWrap>
+                            {collab.email}
+                        </Typography>
+                        <Chip size="small" variant="outlined" label={collab.role} />
+                        <IconButton size="small" onClick={() => removeCollaborator(collab.user_id)}>
+                            <DeleteIcon fontSize="small" />
+                        </IconButton>
+                    </Stack>
+                ))}
+                {!collaborators.length && <Typography color="text.secondary">No collaborators yet.</Typography>}
+            </Stack>
+            <Stack sx={{ flexDirection: 'row', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+                <TextField
+                    size="small"
+                    label="Collaborator email"
+                    value={collabEmail}
+                    onChange={(e) => setCollabEmail(e.target.value)}
+                    sx={{ flexGrow: 1, minWidth: 180 }}
+                />
+                <TextField
+                    size="small"
+                    select
+                    label="Role"
+                    value={collabRole}
+                    onChange={(e) => setCollabRole(e.target.value)}
+                    sx={{ width: 130 }}
+                >
+                    <MenuItem value="artist">Artist</MenuItem>
+                    <MenuItem value="writer">Writer</MenuItem>
+                    <MenuItem value="translator">Translator</MenuItem>
+                    <MenuItem value="editor">Editor</MenuItem>
+                </TextField>
+                <Button variant="contained" onClick={addCollaborator} sx={{ textTransform: 'none' }}>
+                    Invite
+                </Button>
             </Stack>
         </Box>
     );

@@ -32,12 +32,18 @@ function relativeTime(iso: string): string {
 }
 
 const FeedRow = ({ item }: { item: ActivityItem }) => {
-    const to =
-        item.kind === 'chapter_published' && item.chapter_id
-            ? AppRoutes.originalReader.path(item.chapter_id)
-            : AppRoutes.originalWork.path(item.work_id);
-    const headline =
-        item.kind === 'chapter_published' ? `New chapter: ${item.chapter_title ?? ''}` : 'New work published';
+    const linkFor = () => {
+        if (item.kind === 'creator_post') return AppRoutes.creator.path(item.creator_id);
+        if (item.kind === 'chapter_published' && item.chapter_id) return AppRoutes.originalReader.path(item.chapter_id);
+        return item.work_id ? AppRoutes.originalWork.path(item.work_id) : AppRoutes.creator.path(item.creator_id);
+    };
+    const to = linkFor();
+    const title = item.kind === 'creator_post' ? item.creator_name : (item.work_title ?? item.creator_name);
+    const headline = (() => {
+        if (item.kind === 'creator_post') return item.body ?? 'Announcement';
+        if (item.kind === 'chapter_published') return `New chapter: ${item.chapter_title ?? ''}`;
+        return 'New work published';
+    })();
 
     return (
         <Stack
@@ -59,13 +65,13 @@ const FeedRow = ({ item }: { item: ActivityItem }) => {
             <Box
                 component="img"
                 src={coverUrl(item.cover_path) || undefined}
-                alt={item.work_title}
+                alt={title ?? ''}
                 loading="lazy"
                 sx={{ width: 48, height: 64, objectFit: 'cover', borderRadius: 1.5, backgroundColor: 'action.hover' }}
             />
             <Stack sx={{ flexGrow: 1, minWidth: 0, justifyContent: 'center' }}>
                 <Typography variant="body2" sx={{ fontWeight: 700 }} noWrap>
-                    {item.work_title}
+                    {title}
                 </Typography>
                 <Typography variant="caption" color="text.secondary" noWrap>
                     {headline}
