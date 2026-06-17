@@ -8,6 +8,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import Button from '@mui/material/Button';
@@ -27,34 +28,39 @@ import InputAdornment from '@mui/material/InputAdornment';
 import CircularProgress from '@mui/material/CircularProgress';
 import SearchIcon from '@mui/icons-material/Search';
 import AutoStoriesIcon from '@mui/icons-material/AutoStories';
-import { useTheme } from '@mui/material/styles';
-import useMediaQuery from '@mui/material/useMediaQuery';
 import { requestManager } from '@/lib/requests/RequestManager.ts';
+import { AuthManager } from '@/features/authentication/AuthManager.ts';
 import { useBillingStore } from '@/features/billing/Billing.ts';
 import { useSourcePrefs } from '@/features/source/services/SourcePreferences.ts';
 import { useSaasSourceAccess } from '@/features/source/services/SourceAccess.ts';
 
 /**
- * First-run source setup. Nexus is a reader, not a content provider: the user
- * must explicitly choose which independent third-party sources to enable, with a
- * consent acknowledgement, before any are shown (ADR-0011). NSFW and
- * non-allow-listed sources are already excluded by `useSaasSourceAccess`. Admins
- * skip this (they curate the allow-list via the console).
+ * First-run source setup — a compact, unskippable modal shown once after login.
+ * Nexus is a reader, not a content provider: the user explicitly chooses which
+ * independent third-party sources to enable, with a consent acknowledgement,
+ * before any are shown (ADR-0011). NSFW and non-allow-listed sources are excluded
+ * by `useSaasSourceAccess`. Admins skip this (they curate the allow-list).
+ *
+ * The confirm action is gated ONLY on the consent checkbox, never on the source
+ * list finishing loading, so a slow/failed source fetch can never trap the user.
  */
 export const SourceSetupWizard = () => {
-    const theme = useTheme();
-    const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
-
+    const isAuthenticated = AuthManager.useIsAuthenticated();
     const isAdmin = useBillingStore((state) => state.isAdmin);
     const profileLoaded = useBillingStore((state) => state.loaded);
     const setupComplete = useSourcePrefs((state) => state.setupComplete);
     const completeSetup = useSourcePrefs((state) => state.completeSetup);
 
-    const needsSetup = profileLoaded && !isAdmin && !setupComplete;
+    const needsSetup = isAuthenticated && profileLoaded && !isAdmin && !setupComplete;
 
     const { ready, isAllowed } = useSaasSourceAccess();
-    // Only fetch the source list when the wizard actually needs to run.
-    const { data, loading } = requestManager.useGetSourceList({ skip: !needsSetup });
+    // Fetch the source list once (cache-first) only while the wizard is open, so
+    // it never loops on re-render.
+    const { data, loading } = requestManager.useGetSourceList({
+        skip: !needsSetup,
+        fetchPolicy: 'cache-first',
+        notifyOnNetworkStatusChange: false,
+    });
 
     const selectable = useMemo(() => {
         const nodes = data?.sources?.nodes ?? [];
@@ -80,13 +86,12 @@ export const SourceSetupWizard = () => {
     const [consented, setConsented] = useState(false);
     const [query, setQuery] = useState('');
 
-    // Default to all selectable enabled once the list is ready; the user can
-    // deselect. The explicit consent + finish is the recorded user action.
+    // Default to all selectable enabled once the list arrives; the user can deselect.
     useEffect(() => {
-        if (selected === null && ready && !loading && selectable.length > 0) {
+        if (selected === null && selectable.length > 0) {
             setSelected(new Set(selectable.map((source) => source.id)));
         }
-    }, [ready, loading, selectable, selected]);
+    }, [selectable, selected]);
 
     const allIds = useMemo(() => selectable.map((source) => source.id), [selectable]);
     const filtered = useMemo(() => {
@@ -96,10 +101,8 @@ export const SourceSetupWizard = () => {
     }, [selectable, query]);
 
     if (!needsSetup) return null;
-    // Nothing to choose (no allow-listed, non-NSFW sources yet): don't trap the user.
-    if (ready && !loading && selectable.length === 0) return null;
 
-    const isLoadingList = !ready || loading || selected === null;
+    const listLoading = (!ready || loading) && selectable.length === 0;
     const selectedCount = selected?.size ?? 0;
 
     const toggle = (id: string) =>
@@ -111,176 +114,141 @@ export const SourceSetupWizard = () => {
         });
 
     const finish = () => completeSetup([...(selected ?? new Set<string>())], allIds);
-    const skip = () => completeSetup([], allIds);
+
+    let listContent: JSX.Element;
+    if (listLoading) {
+        listContent = (
+            <Stack sx={{ alignItems: 'center', gap: 1, py: 3 }}>
+                <CircularProgress size={24} />
+                <Typography variant="caption" color="text.secondary">
+                    Loading sources… you can continue below either way.
+                </Typography>
+            </Stack>
+        );
+    } else if (selectable.length === 0) {
+        listContent = (
+            <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
+                No sources are available to pick yet. You can continue and enable sources later under Manage sources.
+            </Typography>
+        );
+    } else {
+        listContent = (
+            <List dense sx={{ maxHeight: 300, overflowY: 'auto', py: 0 }}>
+                {filtered.map((source) => {
+                    const checked = selected?.has(source.id) ?? false;
+                    return (
+                        <ListItemButton
+                            key={source.id}
+                            onClick={() => toggle(source.id)}
+                            selected={checked}
+                            sx={{ borderRadius: 1.5, mb: 0.25 }}
+                        >
+                            <Checkbox edge="start" tabIndex={-1} disableRipple checked={checked} />
+                            <ListItemAvatar sx={{ minWidth: 42 }}>
+                                <Avatar src={source.iconUrl} variant="rounded" sx={{ width: 28, height: 28 }}>
+                                    <AutoStoriesIcon fontSize="small" />
+                                </Avatar>
+                            </ListItemAvatar>
+                            <ListItemText
+                                primary={source.name}
+                                secondary={source.lang?.toUpperCase()}
+                                primaryTypographyProps={{ fontWeight: 600, noWrap: true }}
+                            />
+                        </ListItemButton>
+                    );
+                })}
+                {!filtered.length && (
+                    <Typography color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
+                        No sources match “{query}”.
+                    </Typography>
+                )}
+            </List>
+        );
+    }
 
     return (
-        <Dialog
-            open
-            fullWidth
-            maxWidth="sm"
-            fullScreen={fullScreen}
-            disableEscapeKeyDown
-            PaperProps={{
-                sx: {
-                    borderRadius: fullScreen ? 0 : 4,
-                    overflow: 'hidden',
-                    backgroundImage: 'none',
-                },
-            }}
-        >
-            {/* Branded header */}
-            <Box
-                sx={{
-                    p: 3,
-                    pb: 2.5,
-                    textAlign: 'center',
-                    color: '#fff',
-                    background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                }}
-            >
-                <Box
-                    component="img"
-                    src="/favicon.svg"
-                    alt=""
-                    sx={{
-                        width: 56,
-                        height: 56,
-                        borderRadius: '16px',
-                        boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
-                        mb: 1.5,
-                    }}
-                />
-                <Typography variant="h5" sx={{ fontWeight: 900, letterSpacing: '-0.5px' }}>
-                    Welcome to Nexus
-                </Typography>
-                <Typography variant="body2" sx={{ opacity: 0.92, mt: 0.5, maxWidth: 420, mx: 'auto' }}>
-                    Pick where you would like to read from. You can change this anytime under Manage sources.
-                </Typography>
-            </Box>
-
-            <DialogContent sx={{ p: 0 }}>
-                <Stack
-                    sx={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: 1,
-                        px: 2.5,
-                        pt: 2,
-                        pb: 1,
-                        flexWrap: 'wrap',
-                    }}
-                >
-                    <Chip
-                        size="small"
-                        color="primary"
-                        variant="outlined"
-                        label={`${selectedCount} selected`}
-                        sx={{ fontWeight: 700 }}
+        <Dialog open fullWidth maxWidth="sm" disableEscapeKeyDown PaperProps={{ sx: { borderRadius: 3 } }}>
+            <DialogTitle>
+                <Stack sx={{ flexDirection: 'row', alignItems: 'center', gap: 1 }}>
+                    <Box
+                        component="img"
+                        src="/favicon.svg"
+                        alt=""
+                        sx={{ width: 26, height: 26, borderRadius: '8px' }}
                     />
-                    <Box sx={{ flexGrow: 1 }} />
-                    <Button size="small" onClick={() => setSelected(new Set(allIds))} sx={{ textTransform: 'none' }}>
-                        Select all
-                    </Button>
-                    <Button
-                        size="small"
-                        color="inherit"
-                        onClick={() => setSelected(new Set())}
-                        sx={{ textTransform: 'none' }}
-                    >
-                        Clear
-                    </Button>
+                    <Typography component="span" variant="h6" sx={{ fontWeight: 800 }}>
+                        Choose your sources
+                    </Typography>
                 </Stack>
+            </DialogTitle>
+            <DialogContent dividers>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                    Nexus is a reader. Pick the independent third-party sources you want to read from — you can change
+                    this anytime under Manage sources.
+                </Typography>
+
+                {selectable.length > 0 && (
+                    <Stack sx={{ flexDirection: 'row', alignItems: 'center', gap: 1, mb: 1 }}>
+                        <Chip size="small" color="primary" variant="outlined" label={`${selectedCount} selected`} />
+                        <Box sx={{ flexGrow: 1 }} />
+                        <Button
+                            size="small"
+                            onClick={() => setSelected(new Set(allIds))}
+                            sx={{ textTransform: 'none' }}
+                        >
+                            All
+                        </Button>
+                        <Button
+                            size="small"
+                            color="inherit"
+                            onClick={() => setSelected(new Set())}
+                            sx={{ textTransform: 'none' }}
+                        >
+                            Clear
+                        </Button>
+                    </Stack>
+                )}
 
                 {selectable.length > 6 && (
-                    <Box sx={{ px: 2.5, pb: 1 }}>
-                        <TextField
-                            fullWidth
-                            size="small"
-                            placeholder="Search sources"
-                            value={query}
-                            onChange={(e) => setQuery(e.target.value)}
-                            InputProps={{
-                                startAdornment: (
-                                    <InputAdornment position="start">
-                                        <SearchIcon fontSize="small" />
-                                    </InputAdornment>
-                                ),
-                            }}
-                        />
-                    </Box>
-                )}
-
-                {isLoadingList ? (
-                    <Stack sx={{ alignItems: 'center', justifyContent: 'center', py: 6, gap: 1.5 }}>
-                        <CircularProgress />
-                        <Typography variant="body2" color="text.secondary">
-                            Finding sources…
-                        </Typography>
-                    </Stack>
-                ) : (
-                    <List dense sx={{ px: 1.5, maxHeight: fullScreen ? 'unset' : 360, overflowY: 'auto' }}>
-                        {filtered.map((source) => {
-                            const checked = selected?.has(source.id) ?? false;
-                            return (
-                                <ListItemButton
-                                    key={source.id}
-                                    onClick={() => toggle(source.id)}
-                                    selected={checked}
-                                    sx={{ borderRadius: 2, mb: 0.5 }}
-                                >
-                                    <Checkbox edge="start" tabIndex={-1} disableRipple checked={checked} />
-                                    <ListItemAvatar sx={{ minWidth: 44 }}>
-                                        <Avatar src={source.iconUrl} variant="rounded" sx={{ width: 32, height: 32 }}>
-                                            <AutoStoriesIcon fontSize="small" />
-                                        </Avatar>
-                                    </ListItemAvatar>
-                                    <ListItemText
-                                        primary={source.name}
-                                        secondary={source.lang?.toUpperCase()}
-                                        primaryTypographyProps={{ fontWeight: 600 }}
-                                    />
-                                </ListItemButton>
-                            );
-                        })}
-                        {!filtered.length && (
-                            <Typography color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
-                                No sources match “{query}”.
-                            </Typography>
-                        )}
-                    </List>
-                )}
-
-                <Box sx={{ px: 2.5, pt: 1, pb: 0.5 }}>
-                    <FormControlLabel
-                        control={<Checkbox checked={consented} onChange={(e) => setConsented(e.target.checked)} />}
-                        label={
-                            <Typography variant="caption" color="text.secondary">
-                                I understand these are independent third-party sources and that I am choosing to
-                                retrieve content from them. Nexus is a reader and does not host or provide that content.
-                            </Typography>
-                        }
+                    <TextField
+                        fullWidth
+                        size="small"
+                        placeholder="Search sources"
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        sx={{ mb: 1 }}
+                        InputProps={{
+                            startAdornment: (
+                                <InputAdornment position="start">
+                                    <SearchIcon fontSize="small" />
+                                </InputAdornment>
+                            ),
+                        }}
                     />
-                </Box>
-            </DialogContent>
+                )}
 
-            <DialogActions sx={{ px: 2.5, pb: 2, pt: 1 }}>
-                <Button onClick={skip} color="inherit" sx={{ textTransform: 'none' }}>
-                    Skip for now
-                </Button>
-                <Box sx={{ flexGrow: 1 }} />
+                {listContent}
+
+                <FormControlLabel
+                    sx={{ mt: 1, alignItems: 'flex-start' }}
+                    control={<Checkbox checked={consented} onChange={(e) => setConsented(e.target.checked)} />}
+                    label={
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                            I understand these are independent third-party sources and that I am choosing to retrieve
+                            content from them. Nexus is a reader and does not host or provide that content.
+                        </Typography>
+                    }
+                />
+            </DialogContent>
+            <DialogActions sx={{ px: 3, pb: 2 }}>
                 <Button
                     onClick={finish}
                     variant="contained"
-                    disabled={!consented || isLoadingList}
-                    sx={{
-                        textTransform: 'none',
-                        fontWeight: 800,
-                        borderRadius: '50px',
-                        px: 3,
-                        background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                    }}
+                    disabled={!consented}
+                    fullWidth
+                    sx={{ textTransform: 'none', fontWeight: 800, borderRadius: '50px' }}
                 >
-                    {selectedCount > 0 ? `Start reading (${selectedCount})` : 'Continue'}
+                    {selectedCount > 0 ? `Start reading (${selectedCount})` : 'Start reading'}
                 </Button>
             </DialogActions>
         </Dialog>

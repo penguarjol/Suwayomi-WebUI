@@ -123,9 +123,9 @@ export function Profile() {
     const earnedBadges = badgeCatalog.filter((badge) => earnedIds.has(badge.id));
 
     return (
-        <Box sx={{ p: { xs: 2, sm: 3 }, maxWidth: 760, mx: 'auto' }}>
+        <Box sx={{ p: { xs: 2, sm: 3 }, maxWidth: 760, mx: 'auto', overflowX: 'hidden' }}>
             {/* Customizable banner */}
-            <Box sx={{ position: 'relative', height: 120, borderRadius: 3, ...bannerSx(bannerKey) }}>
+            <Box sx={{ position: 'relative', height: { xs: 104, sm: 120 }, borderRadius: 3, ...bannerSx(bannerKey) }}>
                 <Button
                     onClick={() => setCustomizeOpen(true)}
                     size="small"
@@ -139,20 +139,35 @@ export function Profile() {
                         color: '#fff',
                         backgroundColor: 'rgba(0,0,0,0.35)',
                         backdropFilter: 'blur(6px)',
+                        minWidth: { xs: 0, sm: 64 },
+                        px: { xs: 1, sm: 2 },
+                        '& .MuiButton-startIcon': { mr: { xs: 0, sm: 1 } },
                         '&:hover': { backgroundColor: 'rgba(0,0,0,0.5)' },
                     }}
                 >
-                    Customize
+                    <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                        Customize
+                    </Box>
                 </Button>
             </Box>
 
             {/* Avatar + name overlapping the banner */}
-            <Stack sx={{ flexDirection: 'row', alignItems: 'flex-end', gap: 2, mt: -5, mb: 1, px: 1 }}>
+            <Stack
+                sx={{
+                    flexDirection: 'row',
+                    alignItems: 'flex-end',
+                    gap: { xs: 1.5, sm: 2 },
+                    mt: { xs: -4, sm: -5 },
+                    mb: 1,
+                    px: 1,
+                }}
+            >
                 <Avatar
                     sx={{
-                        width: 80,
-                        height: 80,
-                        fontSize: 32,
+                        width: { xs: 64, sm: 80 },
+                        height: { xs: 64, sm: 80 },
+                        fontSize: { xs: 26, sm: 32 },
+                        flexShrink: 0,
                         bgcolor: 'primary.main',
                         boxSizing: 'border-box',
                         ...frameSx(frameKey),
@@ -164,7 +179,13 @@ export function Profile() {
                     <Typography
                         variant="h5"
                         noWrap
-                        sx={{ fontWeight: 900, display: 'inline-block', ...nameEffectSx(effectKey, accent) }}
+                        sx={{
+                            fontWeight: 900,
+                            fontSize: { xs: '1.25rem', sm: '1.5rem' },
+                            display: 'block',
+                            maxWidth: '100%',
+                            ...nameEffectSx(effectKey, accent),
+                        }}
                     >
                         {name}
                     </Typography>

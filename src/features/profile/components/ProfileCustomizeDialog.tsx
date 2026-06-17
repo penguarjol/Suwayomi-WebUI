@@ -137,7 +137,13 @@ export const ProfileCustomizeDialog = ({
                         <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
                             Banner
                         </Typography>
-                        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 1 }}>
+                        <Box
+                            sx={{
+                                display: 'grid',
+                                gridTemplateColumns: { xs: 'repeat(3, 1fr)', sm: 'repeat(4, 1fr)' },
+                                gap: 1,
+                            }}
+                        >
                             {banners.map((c) => (
                                 <Swatch
                                     key={c.key}
