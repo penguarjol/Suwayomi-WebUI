@@ -21,6 +21,7 @@ import Divider from '@mui/material/Divider';
 import ForumIcon from '@mui/icons-material/Forum';
 import BrushIcon from '@mui/icons-material/Brush';
 import RssFeedIcon from '@mui/icons-material/RssFeed';
+import GroupIcon from '@mui/icons-material/Group';
 import LeaderboardIcon from '@mui/icons-material/Leaderboard';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
@@ -268,7 +269,13 @@ export function Profile() {
                     <ListItemIcon>
                         <RssFeedIcon />
                     </ListItemIcon>
-                    <ListItemText primary="Following" secondary="New chapters from creators you follow" />
+                    <ListItemText primary="New chapters" secondary="From creators you follow" />
+                </ListItemLink>
+                <ListItemLink to={AppRoutes.following.path}>
+                    <ListItemIcon>
+                        <GroupIcon />
+                    </ListItemIcon>
+                    <ListItemText primary="Following" secondary="Activity from readers you follow" />
                 </ListItemLink>
                 <ListItemLink to={AppRoutes.leaderboard.path}>
                     <ListItemIcon>

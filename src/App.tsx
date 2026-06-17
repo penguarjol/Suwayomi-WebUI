@@ -56,6 +56,7 @@ const { ThreadDetail } = loadable(() => import('@/features/social/screens/Thread
 const { ActivityFeed } = loadable(() => import('@/features/social/screens/ActivityFeed.tsx'), lazyLoadFallback);
 const { Leaderboard } = loadable(() => import('@/features/social/screens/Leaderboard.tsx'), lazyLoadFallback);
 const { Challenges } = loadable(() => import('@/features/social/screens/Challenges.tsx'), lazyLoadFallback);
+const { FollowingFeed } = loadable(() => import('@/features/social/screens/FollowingFeed.tsx'), lazyLoadFallback);
 const { EarnCoins } = loadable(() => import('@/features/campaigns/screens/EarnCoins.tsx'), lazyLoadFallback);
 const { Marketplace } = loadable(() => import('@/features/marketplace/screens/Marketplace.tsx'), lazyLoadFallback);
 const { CollectionDetail } = loadable(
@@ -309,6 +310,7 @@ const MainApp = () => {
                         <Route path={AppRoutes.feed.match} element={<ActivityFeed />} />
                         <Route path={AppRoutes.leaderboard.match} element={<Leaderboard />} />
                         <Route path={AppRoutes.challenges.match} element={<Challenges />} />
+                        <Route path={AppRoutes.following.match} element={<FollowingFeed />} />
                         <Route path={AppRoutes.thread.match} element={<ThreadDetail />} />
                         <Route path={AppRoutes.earn.match} element={<EarnCoins />} />
                         <Route path={AppRoutes.marketplace.match} element={<Marketplace />} />

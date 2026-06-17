@@ -6,7 +6,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
@@ -46,6 +46,13 @@ import {
     listAdCampaigns,
     setAdCampaignActive,
 } from '@/features/ads/InternalAds.ts';
+import {
+    AvatarReport,
+    adminRemoveAvatar,
+    dismissAvatarReport,
+    getAvatarReports,
+} from '@/features/profile/PublicProfile.ts';
+import { UserAvatar } from '@/features/profile/components/UserAvatar.tsx';
 import {
     Campaign,
     createCampaign,
@@ -1416,6 +1423,75 @@ const DmcaQueue = () => {
     );
 };
 
+const AvatarModeration = () => {
+    const [reports, setReports] = useState<AvatarReport[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    const load = useCallback(async () => {
+        setLoading(true);
+        setReports(await getAvatarReports());
+        setLoading(false);
+    }, []);
+
+    useEffect(() => {
+        load();
+    }, [load]);
+
+    const remove = async (userId: string) => {
+        if (await adminRemoveAvatar(userId)) {
+            makeToast('Avatar removed.', 'success');
+            load();
+        } else {
+            makeToast('Could not remove avatar.', 'error');
+        }
+    };
+
+    const dismiss = async (id: string) => {
+        if (await dismissAvatarReport(id)) setReports((prev) => prev.filter((r) => r.id !== id));
+    };
+
+    if (loading) return <LoadingPlaceholder />;
+
+    return (
+        <Box>
+            <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1 }}>
+                Reported avatars
+            </Typography>
+            {reports.length === 0 ? (
+                <Typography color="text.secondary">No open reports.</Typography>
+            ) : (
+                <Stack sx={{ gap: 1.5 }}>
+                    {reports.map((r) => (
+                        <Stack key={r.id} sx={{ flexDirection: 'row', alignItems: 'center', gap: 1.5 }}>
+                            <UserAvatar userId={r.reported_user_id} size={48} showOverlays={false} />
+                            <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                                <Typography variant="body2" sx={{ fontWeight: 700 }} noWrap>
+                                    {r.reported_user_id}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                    {`${r.reason ?? 'reported'} · ${new Date(r.created_at).toLocaleDateString()}`}
+                                </Typography>
+                            </Box>
+                            <Button
+                                size="small"
+                                color="error"
+                                variant="contained"
+                                onClick={() => remove(r.reported_user_id)}
+                                sx={{ textTransform: 'none' }}
+                            >
+                                Remove avatar
+                            </Button>
+                            <Button size="small" onClick={() => dismiss(r.id)} sx={{ textTransform: 'none' }}>
+                                Dismiss
+                            </Button>
+                        </Stack>
+                    ))}
+                </Stack>
+            )}
+        </Box>
+    );
+};
+
 const TABS = [
     { label: 'Users', render: () => <UsersPanel /> },
     { label: 'Activity', render: () => <ActivityPanel /> },
@@ -1431,6 +1507,7 @@ const TABS = [
     { label: 'Feedback', render: () => <FeedbackInbox /> },
     { label: 'DMCA', render: () => <DmcaQueue /> },
     { label: 'Ads', render: () => <AdManager /> },
+    { label: 'Avatars', render: () => <AvatarModeration /> },
 ];
 
 export function AdminConsole() {

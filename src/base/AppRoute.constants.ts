@@ -233,6 +233,10 @@ export const AppRoutes = {
         match: 'leaderboard',
         path: '/leaderboard',
     },
+    following: {
+        match: 'following',
+        path: '/following',
+    },
     challenges: {
         match: 'challenges',
         path: '/challenges',

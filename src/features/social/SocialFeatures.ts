@@ -200,7 +200,7 @@ export async function claimChallenge(challengeId: string): Promise<string> {
 // --- Gifting -----------------------------------------------------------------
 export async function sendGift(
     recipientId: string,
-    kind: 'coins' | 'sticker',
+    kind: 'coins' | 'sticker' | 'premium',
     opts: { amount?: number; stickerId?: string; message?: string },
 ): Promise<string> {
     const { data, error } = await supabase.rpc('send_gift', {

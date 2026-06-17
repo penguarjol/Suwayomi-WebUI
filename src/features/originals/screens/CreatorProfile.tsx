@@ -209,7 +209,7 @@ export function CreatorProfile() {
         <Box sx={{ p: { xs: 2, sm: 3 }, maxWidth: 880, mx: 'auto' }}>
             <Box sx={{ position: 'relative', height: 120, borderRadius: 3, mb: 1, ...bannerSx(bannerKey) }} />
             <Stack sx={{ flexDirection: 'row', alignItems: 'flex-end', gap: 2, mt: -5, mb: 2, px: 1 }}>
-                <UserAvatar userId={creator.id} name={creator.display_name} size={80} />
+                <UserAvatar userId={creator.id} name={creator.display_name} size={80} enableReport />
                 <Stack sx={{ flexGrow: 1, minWidth: 0, pb: 0.5 }}>
                     <Typography
                         variant="h5"

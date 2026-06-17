@@ -6,19 +6,25 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+import { useState } from 'react';
 import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
 import Tooltip from '@mui/material/Tooltip';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
 import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import { frameSx } from '@/features/profile/ProfileCosmetics.ts';
 import {
     avatarUrlFromPath,
     PublicProfile,
+    reportAvatar,
     useAvatarPresetMap,
     useFlairMap,
+    useMyUserId,
     usePublicProfile,
 } from '@/features/profile/PublicProfile.ts';
+import { makeToast } from '@/base/utils/Toast.ts';
 
 interface UserAvatarProps {
     /** Resolve identity from this user id (batched/cached). */
@@ -31,6 +37,8 @@ interface UserAvatarProps {
     showFrame?: boolean;
     /** Premium crown / admin badge / achievement flair overlays. */
     showOverlays?: boolean;
+    /** Allow reporting another user's uploaded photo (click → "Report picture"). */
+    enableReport?: boolean;
 }
 
 /**
@@ -46,11 +54,14 @@ export const UserAvatar = ({
     size = 40,
     showFrame = true,
     showOverlays = true,
+    enableReport = false,
 }: UserAvatarProps) => {
     const resolved = usePublicProfile(profileProp ? null : userId);
     const profile = profileProp ?? resolved;
     const presetMap = useAvatarPresetMap();
     const flairMap = useFlairMap();
+    const myId = useMyUserId();
+    const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
 
     const displayName = profile?.display_name || name || '';
     const initial = (displayName || '?').charAt(0).toUpperCase();
@@ -60,11 +71,29 @@ export const UserAvatar = ({
     const flair = profile?.flair_key ? flairMap.get(profile.flair_key) : undefined;
     const isAdmin = !!profile?.is_admin;
     const isPremium = !!profile?.is_premium;
+    // Only an uploaded photo (not a preset/initial) of another user is reportable.
+    const reportable = enableReport && !!userId && userId !== myId && !!profile?.avatar_path;
 
     const overlay = Math.max(14, Math.round(size * 0.42));
 
+    const report = async () => {
+        setMenuAnchor(null);
+        if (!userId) return;
+        await reportAvatar(userId, 'reported from avatar');
+        makeToast('Thanks — our team will review this picture.', 'success');
+    };
+
     return (
-        <Box sx={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
+        <Box
+            sx={{
+                position: 'relative',
+                width: size,
+                height: size,
+                flexShrink: 0,
+                cursor: reportable ? 'pointer' : 'default',
+            }}
+            onClick={reportable ? (e) => setMenuAnchor(e.currentTarget) : undefined}
+        >
             <Avatar
                 src={photoUrl || undefined}
                 sx={{
@@ -120,6 +149,12 @@ export const UserAvatar = ({
                         {flair.icon}
                     </Box>
                 </Tooltip>
+            )}
+
+            {reportable && (
+                <Menu anchorEl={menuAnchor} open={!!menuAnchor} onClose={() => setMenuAnchor(null)}>
+                    <MenuItem onClick={report}>Report picture</MenuItem>
+                </Menu>
             )}
         </Box>
     );

@@ -163,6 +163,60 @@ export async function reportAvatar(userId: string, reason: string): Promise<void
     }
 }
 
+export interface AvatarReport {
+    id: string;
+    reported_user_id: string;
+    reporter_id: string;
+    reason: string | null;
+    status: string;
+    created_at: string;
+}
+
+/** Admin: open avatar reports (RLS restricts SELECT to admins). */
+export async function getAvatarReports(): Promise<AvatarReport[]> {
+    try {
+        const { data } = await supabase
+            .from('avatar_reports')
+            .select('*')
+            .eq('status', 'open')
+            .order('created_at', { ascending: false });
+        return (data ?? []) as AvatarReport[];
+    } catch {
+        return [];
+    }
+}
+
+/** Admin: remove a user's avatar + resolve their open reports. */
+export async function adminRemoveAvatar(userId: string): Promise<boolean> {
+    const { data, error } = await supabase.rpc('admin_remove_avatar', { p_user_id: userId });
+    if (!error) invalidatePublicProfile(userId);
+    return !error && data === 'removed';
+}
+
+/** Admin: dismiss a report without removing the avatar. */
+export async function dismissAvatarReport(id: string): Promise<boolean> {
+    const { error } = await supabase.from('avatar_reports').update({ status: 'resolved' }).eq('id', id);
+    return !error;
+}
+
+let myIdPromise: Promise<string | null> | null = null;
+
+/** Cached current-user id (for hiding self-actions like "report your own avatar"). */
+export function useMyUserId(): string | null {
+    const [id, setId] = useState<string | null>(null);
+    useEffect(() => {
+        let active = true;
+        if (!myIdPromise) myIdPromise = supabase.auth.getUser().then(({ data }) => data.user?.id ?? null);
+        myIdPromise.then((value) => {
+            if (active) setId(value);
+        });
+        return () => {
+            active = false;
+        };
+    }, []);
+    return id;
+}
+
 export interface AvatarPreset {
     key: string;
     name: string;

@@ -61,7 +61,7 @@ const CommentBody = ({
     const isCreator = comment.user_id === creatorId;
     return (
         <Stack sx={{ flexDirection: 'row', gap: 1.5, ml: nested ? 5 : 0 }}>
-            <UserAvatar userId={comment.user_id} name={comment.authorName} size={32} />
+            <UserAvatar userId={comment.user_id} name={comment.authorName} size={32} enableReport />
             <Box sx={{ flexGrow: 1, minWidth: 0 }}>
                 <Stack sx={{ flexDirection: 'row', alignItems: 'center', gap: 0.75 }}>
                     <Typography variant="body2" sx={{ fontWeight: 700 }}>
