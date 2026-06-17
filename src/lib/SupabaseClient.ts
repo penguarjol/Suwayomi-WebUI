@@ -16,4 +16,20 @@ if (!supabaseUrl || !supabaseKey) {
     console.error('Supabase URL or Key not found in environment variables!');
 }
 
+// Warm the DNS/TLS connection to Supabase before the first auth/RPC round-trip.
+if (supabaseUrl && typeof document !== 'undefined') {
+    try {
+        const { origin } = new URL(supabaseUrl);
+        for (const rel of ['preconnect', 'dns-prefetch']) {
+            const link = document.createElement('link');
+            link.rel = rel;
+            link.href = origin;
+            link.crossOrigin = 'anonymous';
+            document.head.appendChild(link);
+        }
+    } catch {
+        // malformed URL — skip the hint, the client still works
+    }
+}
+
 export const supabase = createClient(supabaseUrl || '', supabaseKey || '');

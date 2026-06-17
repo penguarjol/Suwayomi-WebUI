@@ -22,6 +22,22 @@ export default defineConfig(({ command }) => ({
     base: command === 'serve' ? process.env.VITE_SUBPATH || '/' : '/',
     build: {
         outDir: 'build',
+        chunkSizeWarningLimit: 1500,
+        rollupOptions: {
+            output: {
+                // Split large, stable vendors into their own chunks so they stay
+                // cached across deploys and download in parallel (faster first paint).
+                manualChunks(id: string) {
+                    if (!id.includes('node_modules')) return undefined;
+                    if (/node_modules\/(react|react-dom|react-router|react-router-dom|scheduler)\//.test(id)) {
+                        return 'react-vendor';
+                    }
+                    if (id.includes('node_modules/@mui/') || id.includes('node_modules/@emotion/')) return 'mui';
+                    if (id.includes('node_modules/@apollo/') || id.includes('node_modules/graphql')) return 'apollo';
+                    return 'vendor';
+                },
+            },
+        },
     },
     server: {
         port: Number(process.env.PORT),
@@ -58,7 +74,13 @@ export default defineConfig(({ command }) => ({
                 enabled: true,
             },
             workbox: {
-                globPatterns: [],
+                // Precache the app shell (JS/CSS/HTML/fonts) so repeat loads boot
+                // instantly and work offline. autoUpdate swaps it on each deploy.
+                globPatterns: ['**/*.{js,css,html,svg,woff,woff2}'],
+                navigateFallback: 'index.html',
+                navigateFallbackDenylist: [/^\/api\//],
+                cleanupOutdatedCaches: true,
+                maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
                 runtimeCaching: [
                     {
                         urlPattern: ({ request, url }) => {
@@ -83,6 +105,17 @@ export default defineConfig(({ command }) => ({
                             cacheableResponse: {
                                 statuses: [0, 200],
                             },
+                        },
+                    },
+                    {
+                        // Public SaaS config (tiers/sources/payments flag): serve from
+                        // cache instantly, refresh in the background.
+                        urlPattern: ({ url }) => url.pathname === '/api/saas/config',
+                        handler: 'StaleWhileRevalidate',
+                        options: {
+                            cacheName: 'saas-config-cache',
+                            expiration: { maxEntries: 4, maxAgeSeconds: 60 * 60 },
+                            cacheableResponse: { statuses: [0, 200] },
                         },
                     },
                 ],

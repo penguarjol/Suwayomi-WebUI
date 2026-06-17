@@ -532,7 +532,9 @@ export const isSpreadPage = (image: HTMLImageElement): boolean => {
 };
 
 const MIN_PREVIOUS_NEXT_CHAPTER_IMAGE_LOAD_AMOUNT = 0;
-const MAX_PREVIOUS_NEXT_CHAPTER_IMAGE_LOAD_AMOUNT = 1;
+// Preload the first few pages of the adjacent chapter (bounded by the user's
+// imagePreLoadAmount) so chapter transitions show content immediately.
+const MAX_PREVIOUS_NEXT_CHAPTER_IMAGE_LOAD_AMOUNT = 3;
 const getImagePreLoadAmount = (
     isCurrentChapter: boolean,
     isPreviousChapter: boolean,

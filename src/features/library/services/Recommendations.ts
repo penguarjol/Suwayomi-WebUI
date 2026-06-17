@@ -8,24 +8,29 @@
 
 import { supabase } from '@/lib/SupabaseClient.ts';
 
-/** Collaborative recommendations: titles favorited by readers who share yours. */
-export async function getRecommendedMangaIds(limit = 12): Promise<number[]> {
+// Recommendation/trending RPCs change slowly; cache in-memory so revisiting
+// Discover within a session is instant rather than re-querying Supabase.
+const ID_TTL_MS = 5 * 60 * 1000;
+const idCache = new Map<string, { value: number[]; expires: number }>();
+
+async function cachedIds(fn: string, args: Record<string, unknown>): Promise<number[]> {
+    const key = `${fn}:${JSON.stringify(args)}`;
+    const cached = idCache.get(key);
+    if (cached && cached.expires > Date.now()) return cached.value;
     try {
-        const { data, error } = await supabase.rpc('recommend_for_me', { p_limit: limit });
+        const { data, error } = await supabase.rpc(fn, args);
         if (error) throw error;
-        return (data ?? []).map((row: { manga_id: number }) => Number(row.manga_id));
+        const value = (data ?? []).map((row: { manga_id: number }) => Number(row.manga_id));
+        idCache.set(key, { value, expires: Date.now() + ID_TTL_MS });
+        return value;
     } catch {
         return [];
     }
 }
 
+/** Collaborative recommendations: titles favorited by readers who share yours. */
+export const getRecommendedMangaIds = (limit = 12): Promise<number[]> =>
+    cachedIds('recommend_for_me', { p_limit: limit });
+
 /** Globally most-favorited titles. */
-export async function getTrendingMangaIds(limit = 12): Promise<number[]> {
-    try {
-        const { data, error } = await supabase.rpc('trending_manga', { p_limit: limit });
-        if (error) throw error;
-        return (data ?? []).map((row: { manga_id: number }) => Number(row.manga_id));
-    } catch {
-        return [];
-    }
-}
+export const getTrendingMangaIds = (limit = 12): Promise<number[]> => cachedIds('trending_manga', { p_limit: limit });

@@ -26,11 +26,19 @@ function sinceFor(window: TrendingWindow): string | null {
     return d.toISOString();
 }
 
+// Ranking RPCs change slowly; cache results in-memory so revisiting Discover
+// within a session is instant instead of re-hitting Supabase on every mount.
+const RANK_TTL_MS = 5 * 60 * 1000;
+const rankCache = new Map<string, { value: DiscoverMangaRank[]; expires: number }>();
+
 async function rpcRanks(fn: string, args: Record<string, unknown>): Promise<DiscoverMangaRank[]> {
+    const key = `${fn}:${JSON.stringify(args)}`;
+    const cached = rankCache.get(key);
+    if (cached && cached.expires > Date.now()) return cached.value;
     try {
         const { data, error } = await supabase.rpc(fn, args);
         if (error) throw error;
-        return (data ?? []).map(
+        const value = (data ?? []).map(
             (
                 row: { manga_id: number; rank?: number; readers?: number; chapters_read?: number; score?: number },
                 index: number,
@@ -42,6 +50,8 @@ async function rpcRanks(fn: string, args: Record<string, unknown>): Promise<Disc
                 score: row.score == null ? undefined : Number(row.score),
             }),
         );
+        rankCache.set(key, { value, expires: Date.now() + RANK_TTL_MS });
+        return value;
     } catch {
         return [];
     }
