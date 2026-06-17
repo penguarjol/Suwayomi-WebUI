@@ -229,6 +229,14 @@ export const AppRoutes = {
         match: 'feed',
         path: '/feed',
     },
+    leaderboard: {
+        match: 'leaderboard',
+        path: '/leaderboard',
+    },
+    challenges: {
+        match: 'challenges',
+        path: '/challenges',
+    },
     thread: {
         match: 'community/thread/:id',
         path: (id: string) => `/community/thread/${id}`,

@@ -22,6 +22,7 @@ import { supabase } from '@/lib/SupabaseClient.ts';
 import { hasProfanity } from '@/features/social/Social.ts';
 import { StickerText } from '@/features/stickers/components/StickerText.tsx';
 import { UserAvatar } from '@/features/profile/components/UserAvatar.tsx';
+import { CommentReactions } from '@/features/social/components/CommentReactions.tsx';
 import { useBillingStore } from '@/features/billing/Billing.ts';
 import {
     OriginalComment,
@@ -104,6 +105,7 @@ const CommentBody = ({
                         </IconButton>
                     )}
                 </Stack>
+                <CommentReactions targetId={comment.id} currentUserId={currentUserId} />
             </Box>
         </Stack>
     );

@@ -21,6 +21,8 @@ import Divider from '@mui/material/Divider';
 import ForumIcon from '@mui/icons-material/Forum';
 import BrushIcon from '@mui/icons-material/Brush';
 import RssFeedIcon from '@mui/icons-material/RssFeed';
+import LeaderboardIcon from '@mui/icons-material/Leaderboard';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import StorefrontIcon from '@mui/icons-material/Storefront';
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
@@ -267,6 +269,18 @@ export function Profile() {
                         <RssFeedIcon />
                     </ListItemIcon>
                     <ListItemText primary="Following" secondary="New chapters from creators you follow" />
+                </ListItemLink>
+                <ListItemLink to={AppRoutes.leaderboard.path}>
+                    <ListItemIcon>
+                        <LeaderboardIcon />
+                    </ListItemIcon>
+                    <ListItemText primary="Leaderboard" secondary="Top readers this week" />
+                </ListItemLink>
+                <ListItemLink to={AppRoutes.challenges.path}>
+                    <ListItemIcon>
+                        <EmojiEventsIcon />
+                    </ListItemIcon>
+                    <ListItemText primary="Challenges" secondary="Goals with rewards" />
                 </ListItemLink>
                 <ListItemButton component="a" href={DISCORD_INVITE} target="_blank" rel="noopener noreferrer">
                     <ListItemIcon>

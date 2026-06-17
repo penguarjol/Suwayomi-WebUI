@@ -45,6 +45,7 @@ import {
 } from '@/features/profile/ProfileCustomization.ts';
 import { bannerSx, nameEffectSx } from '@/features/profile/ProfileCosmetics.ts';
 import { UserAvatar } from '@/features/profile/components/UserAvatar.tsx';
+import { Guestbook } from '@/features/social/components/Guestbook.tsx';
 import { CreatorPost, listCreatorPosts } from '@/features/originals/OriginalComments.ts';
 import { AppRoutes } from '@/base/AppRoute.constants.ts';
 import { useAppTitle } from '@/features/navigation-bar/hooks/useAppTitle.ts';
@@ -344,6 +345,8 @@ export function CreatorProfile() {
                     ))}
                 </Box>
             )}
+
+            <Guestbook wallUserId={creator.id} />
         </Box>
     );
 }
