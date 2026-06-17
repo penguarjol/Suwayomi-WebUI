@@ -51,6 +51,12 @@ export const DEFAULT_SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
 export const DEFAULT_GATED_COUNT = 3;
 export const DEFAULT_UNLOCK_COST = 5;
 
+/**
+ * Optional voluntary tip link (Ko-fi / Buy Me a Coffee / PayPal.me). Undefined
+ * when unset so callers can hide the tip UI rather than render a dead link.
+ */
+export const TIP_URL = (import.meta.env.VITE_TIP_URL as string | undefined)?.trim() || undefined;
+
 export interface LockChapter {
     id: number;
     chapterNumber: number;

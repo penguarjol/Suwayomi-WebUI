@@ -32,6 +32,7 @@ import {
     useBillingStore,
     TokenPack,
     SubscriptionPlan,
+    TIP_URL,
 } from '@/features/billing/Billing.ts';
 import { resolvePurchaseOptions, webDiscountedPrice } from '@/features/billing/PaymentRouter.ts';
 import { detectPlatform, detectRegion } from '@/features/billing/Platform.ts';
@@ -39,11 +40,6 @@ import { useAppTitle } from '@/features/navigation-bar/hooks/useAppTitle.ts';
 import { makeToast } from '@/base/utils/Toast.ts';
 
 const fmt = (n: number) => `$${n.toFixed(2)}`;
-
-// Optional voluntary "support the project" link (Ko-fi / Buy Me a Coffee /
-// PayPal.me). Rendered only when configured so we never show a dead button.
-// This is a tip, NOT a purchase — it grants no Coins or entitlement.
-const TIP_URL = (import.meta.env.VITE_TIP_URL as string | undefined)?.trim() || undefined;
 
 const PackCard = ({
     pack,
