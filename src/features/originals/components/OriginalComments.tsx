@@ -12,7 +12,6 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
-import Avatar from '@mui/material/Avatar';
 import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
 import FavoriteIcon from '@mui/icons-material/Favorite';
@@ -22,6 +21,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { supabase } from '@/lib/SupabaseClient.ts';
 import { hasProfanity } from '@/features/social/Social.ts';
 import { StickerText } from '@/features/stickers/components/StickerText.tsx';
+import { UserAvatar } from '@/features/profile/components/UserAvatar.tsx';
 import { useBillingStore } from '@/features/billing/Billing.ts';
 import {
     OriginalComment,
@@ -60,9 +60,7 @@ const CommentBody = ({
     const isCreator = comment.user_id === creatorId;
     return (
         <Stack sx={{ flexDirection: 'row', gap: 1.5, ml: nested ? 5 : 0 }}>
-            <Avatar sx={{ width: 32, height: 32, bgcolor: isCreator ? 'primary.main' : 'action.hover' }}>
-                {comment.authorName.charAt(0).toUpperCase()}
-            </Avatar>
+            <UserAvatar userId={comment.user_id} name={comment.authorName} size={32} />
             <Box sx={{ flexGrow: 1, minWidth: 0 }}>
                 <Stack sx={{ flexDirection: 'row', alignItems: 'center', gap: 0.75 }}>
                     <Typography variant="body2" sx={{ fontWeight: 700 }}>

@@ -6,7 +6,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useEffect, useRef, useState } from 'react';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -18,7 +18,21 @@ import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
 import LockIcon from '@mui/icons-material/Lock';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import { Cosmetic, UserProfile, getCosmetics, saveCustomization } from '@/features/profile/ProfileCustomization.ts';
+import {
+    Cosmetic,
+    UserProfile,
+    getBadgeCatalog,
+    getCosmetics,
+    getEarnedBadges,
+    saveCustomization,
+} from '@/features/profile/ProfileCustomization.ts';
+import {
+    AvatarPreset,
+    clearMyAvatar,
+    getAvatarPresets,
+    invalidatePublicProfile,
+    uploadAvatar,
+} from '@/features/profile/PublicProfile.ts';
 import { bannerSx, frameSx, nameEffectSx } from '@/features/profile/ProfileCosmetics.ts';
 import { useBillingStore, ensurePremium } from '@/features/billing/Billing.ts';
 import { makeToast } from '@/base/utils/Toast.ts';
@@ -71,16 +85,27 @@ export const ProfileCustomizeDialog = ({
     const entitled = isPremium || isAdmin;
 
     const [cosmetics, setCosmetics] = useState<Cosmetic[]>([]);
+    const [presets, setPresets] = useState<AvatarPreset[]>([]);
+    const [earnedKeys, setEarnedKeys] = useState<Set<string>>(new Set());
     const [bio, setBio] = useState(profile.bio ?? '');
     const [accent, setAccent] = useState(profile.accent_color ?? ACCENTS[0]);
     const [banner, setBanner] = useState(profile.banner_key);
     const [frame, setFrame] = useState(profile.avatar_frame_key);
     const [nameEffect, setNameEffect] = useState(profile.name_effect_key);
+    const [preset, setPreset] = useState<string | null>(profile.avatar_preset ?? null);
+    const [flair, setFlair] = useState<string | null>(profile.flair_key ?? null);
+    const [hasPhoto, setHasPhoto] = useState(!!profile.avatar_path);
     const [busy, setBusy] = useState(false);
+    const fileRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         getCosmetics().then(setCosmetics);
-    }, []);
+        getAvatarPresets().then(setPresets);
+        Promise.all([getBadgeCatalog(), getEarnedBadges(profile.user_id)]).then(([catalog, earned]) => {
+            const earnedIds = new Set(earned.map((e) => e.badge_id));
+            setEarnedKeys(new Set(catalog.filter((b) => earnedIds.has(b.id)).map((b) => b.key)));
+        });
+    }, [profile.user_id]);
 
     const pick = (cosmetic: Cosmetic, setter: (k: string) => void) => {
         if (cosmetic.premium && !entitled) {
@@ -93,6 +118,39 @@ export const ProfileCustomizeDialog = ({
     const banners = cosmetics.filter((c) => c.type === 'banner');
     const frames = cosmetics.filter((c) => c.type === 'frame');
     const effects = cosmetics.filter((c) => c.type === 'name_effect');
+    const flairs = cosmetics.filter((c) => c.type === 'flair');
+
+    const flairUnlocked = (c: Cosmetic) => !c.required_badge_key || earnedKeys.has(c.required_badge_key);
+
+    const onPickPhoto = async (file: File | undefined) => {
+        if (!file) return;
+        setBusy(true);
+        try {
+            const status = await uploadAvatar(file);
+            if (status === 'saved') {
+                setHasPhoto(true);
+                setPreset(null);
+                makeToast('Profile picture updated.', 'success');
+                onSaved();
+            } else {
+                makeToast('Could not upload that image.', 'error');
+            }
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const onRemovePhoto = async () => {
+        setBusy(true);
+        try {
+            await clearMyAvatar();
+            setHasPhoto(false);
+            makeToast('Profile picture removed.', 'info');
+            onSaved();
+        } finally {
+            setBusy(false);
+        }
+    };
 
     const save = async () => {
         setBusy(true);
@@ -103,13 +161,18 @@ export const ProfileCustomizeDialog = ({
                 bannerKey: banner,
                 avatarFrameKey: frame,
                 nameEffectKey: nameEffect,
+                avatarPreset: preset,
+                flairKey: flair,
             });
             if (status === 'saved') {
+                invalidatePublicProfile(profile.user_id);
                 makeToast('Profile updated.', 'success');
                 onSaved();
                 onClose();
             } else if (status === 'premium_required') {
                 ensurePremium('profile customization');
+            } else if (status === 'locked') {
+                makeToast('Earn the achievement to use that flair.', 'warning');
             } else {
                 makeToast('Could not save your profile.', 'error');
             }
@@ -123,6 +186,89 @@ export const ProfileCustomizeDialog = ({
             <DialogTitle sx={{ fontWeight: 800 }}>Customize profile</DialogTitle>
             <DialogContent dividers>
                 <Stack sx={{ gap: 2.5 }}>
+                    <Box>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
+                            Profile picture
+                        </Typography>
+                        <Stack sx={{ flexDirection: 'row', alignItems: 'center', gap: 1, mb: 1 }}>
+                            <input
+                                ref={fileRef}
+                                type="file"
+                                accept="image/*"
+                                hidden
+                                onChange={(e) => onPickPhoto(e.target.files?.[0])}
+                            />
+                            <Button
+                                size="small"
+                                variant="outlined"
+                                disabled={busy}
+                                onClick={() => fileRef.current?.click()}
+                                sx={{ textTransform: 'none' }}
+                            >
+                                {hasPhoto ? 'Change photo' : 'Upload photo'}
+                            </Button>
+                            {hasPhoto && (
+                                <Button
+                                    size="small"
+                                    color="inherit"
+                                    disabled={busy}
+                                    onClick={onRemovePhoto}
+                                    sx={{ textTransform: 'none' }}
+                                >
+                                    Remove
+                                </Button>
+                            )}
+                        </Stack>
+                        {!hasPhoto && (
+                            <Stack sx={{ flexDirection: 'row', gap: 1, flexWrap: 'wrap' }}>
+                                <Swatch selected={!preset} locked={false} onClick={() => setPreset(null)}>
+                                    <Box
+                                        sx={{
+                                            width: 40,
+                                            height: 40,
+                                            borderRadius: '50%',
+                                            display: 'grid',
+                                            placeItems: 'center',
+                                            backgroundColor: 'primary.main',
+                                            color: '#fff',
+                                            fontWeight: 800,
+                                        }}
+                                    >
+                                        A
+                                    </Box>
+                                </Swatch>
+                                {presets.map((p) => (
+                                    <Swatch
+                                        key={p.key}
+                                        selected={preset === p.key}
+                                        locked={p.premium && !entitled}
+                                        onClick={() => {
+                                            if (p.premium && !entitled) {
+                                                ensurePremium('preset avatars');
+                                                return;
+                                            }
+                                            setPreset(p.key);
+                                        }}
+                                    >
+                                        <Box
+                                            sx={{
+                                                width: 40,
+                                                height: 40,
+                                                borderRadius: '50%',
+                                                display: 'grid',
+                                                placeItems: 'center',
+                                                fontSize: 22,
+                                                background: p.bg,
+                                            }}
+                                        >
+                                            {p.emoji}
+                                        </Box>
+                                    </Swatch>
+                                ))}
+                            </Stack>
+                        )}
+                    </Box>
+
                     <TextField
                         label="Bio"
                         value={bio}
@@ -220,6 +366,65 @@ export const ProfileCustomizeDialog = ({
                             ))}
                         </Stack>
                     </Box>
+
+                    {flairs.length > 0 && (
+                        <Box>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
+                                Achievement flair
+                            </Typography>
+                            <Stack sx={{ flexDirection: 'row', gap: 1, flexWrap: 'wrap' }}>
+                                <Swatch selected={!flair} locked={false} onClick={() => setFlair(null)}>
+                                    <Box
+                                        sx={{
+                                            width: 40,
+                                            height: 40,
+                                            borderRadius: '50%',
+                                            display: 'grid',
+                                            placeItems: 'center',
+                                            backgroundColor: 'action.hover',
+                                            fontSize: 12,
+                                        }}
+                                    >
+                                        None
+                                    </Box>
+                                </Swatch>
+                                {flairs.map((c) => {
+                                    const unlocked = flairUnlocked(c);
+                                    return (
+                                        <Swatch
+                                            key={c.key}
+                                            selected={flair === c.key}
+                                            locked={!unlocked}
+                                            onClick={() => {
+                                                if (!unlocked) {
+                                                    makeToast('Earn the achievement to unlock this flair.', 'info');
+                                                    return;
+                                                }
+                                                setFlair(c.key);
+                                            }}
+                                        >
+                                            <Box
+                                                sx={{
+                                                    width: 40,
+                                                    height: 40,
+                                                    borderRadius: '50%',
+                                                    display: 'grid',
+                                                    placeItems: 'center',
+                                                    backgroundColor: 'action.hover',
+                                                    fontSize: 22,
+                                                }}
+                                            >
+                                                {c.icon ?? '⭐'}
+                                            </Box>
+                                        </Swatch>
+                                    );
+                                })}
+                            </Stack>
+                            <Typography variant="caption" color="text.secondary">
+                                Flair appears on your avatar across the app. Unlock more by earning achievements.
+                            </Typography>
+                        </Box>
+                    )}
 
                     {!entitled && (
                         <Typography variant="caption" color="text.secondary">

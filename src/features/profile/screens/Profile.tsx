@@ -11,7 +11,6 @@ import { Link } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import Avatar from '@mui/material/Avatar';
 import Chip from '@mui/material/Chip';
 import Button from '@mui/material/Button';
 import List from '@mui/material/List';
@@ -47,8 +46,10 @@ import {
     getUserProfile,
     syncMyAchievements,
 } from '@/features/profile/ProfileCustomization.ts';
-import { bannerSx, frameSx, nameEffectSx } from '@/features/profile/ProfileCosmetics.ts';
+import { bannerSx, nameEffectSx } from '@/features/profile/ProfileCosmetics.ts';
 import { ProfileCustomizeDialog } from '@/features/profile/components/ProfileCustomizeDialog.tsx';
+import { UserAvatar } from '@/features/profile/components/UserAvatar.tsx';
+import { PublicProfile } from '@/features/profile/PublicProfile.ts';
 import { ListItemLink } from '@/base/components/lists/ListItemLink.tsx';
 import { AppRoutes } from '@/base/AppRoute.constants.ts';
 import { useAppTitle } from '@/features/navigation-bar/hooks/useAppTitle.ts';
@@ -122,6 +123,22 @@ export function Profile() {
     const accent = profile?.accent_color ?? undefined;
     const earnedBadges = badgeCatalog.filter((badge) => earnedIds.has(badge.id));
 
+    // Build the caller's public identity locally (premium/admin from the billing
+    // store) so the avatar shows the crown/admin badge/flair without a fetch.
+    const ownPublic: PublicProfile = {
+        user_id: '',
+        display_name: name,
+        avatar_path: profile?.avatar_path ?? null,
+        avatar_preset: profile?.avatar_preset ?? null,
+        avatar_frame_key: frameKey,
+        name_effect_key: effectKey,
+        accent_color: accent ?? null,
+        flair_key: profile?.flair_key ?? null,
+        title: isAdmin ? 'Admin' : null,
+        is_premium: isPremium,
+        is_admin: isAdmin,
+    };
+
     return (
         <Box sx={{ p: { xs: 2, sm: 3 }, maxWidth: 760, mx: 'auto', overflowX: 'hidden' }}>
             {/* Customizable banner */}
@@ -162,19 +179,7 @@ export function Profile() {
                     px: 1,
                 }}
             >
-                <Avatar
-                    sx={{
-                        width: { xs: 64, sm: 80 },
-                        height: { xs: 64, sm: 80 },
-                        fontSize: { xs: 26, sm: 32 },
-                        flexShrink: 0,
-                        bgcolor: 'primary.main',
-                        boxSizing: 'border-box',
-                        ...frameSx(frameKey),
-                    }}
-                >
-                    {name[0]?.toUpperCase()}
-                </Avatar>
+                <UserAvatar profile={ownPublic} name={name} size={76} />
                 <Box sx={{ flexGrow: 1, minWidth: 0, pb: 0.5 }}>
                     <Typography
                         variant="h5"
@@ -244,6 +249,9 @@ export function Profile() {
                             banner_key: 'default',
                             avatar_frame_key: 'none',
                             name_effect_key: 'none_effect',
+                            avatar_path: null,
+                            avatar_preset: null,
+                            flair_key: null,
                         }
                     }
                     onClose={() => setCustomizeOpen(false)}

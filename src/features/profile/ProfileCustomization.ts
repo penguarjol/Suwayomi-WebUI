@@ -21,14 +21,19 @@ export interface UserProfile {
     banner_key: string;
     avatar_frame_key: string;
     name_effect_key: string;
+    avatar_path: string | null;
+    avatar_preset: string | null;
+    flair_key: string | null;
 }
 
 export interface Cosmetic {
     key: string;
-    type: 'banner' | 'frame' | 'name_effect';
+    type: 'banner' | 'frame' | 'name_effect' | 'flair';
     name: string;
     premium: boolean;
     sort: number;
+    icon?: string | null;
+    required_badge_key?: string | null;
 }
 
 export interface Badge {
@@ -53,6 +58,9 @@ const DEFAULT_PROFILE: Omit<UserProfile, 'user_id'> = {
     banner_key: 'default',
     avatar_frame_key: 'none',
     name_effect_key: 'none_effect',
+    avatar_path: null,
+    avatar_preset: null,
+    flair_key: null,
 };
 
 export async function getUserProfile(userId: string): Promise<UserProfile> {
@@ -74,7 +82,7 @@ export async function getCosmetics(): Promise<Cosmetic[]> {
     }
 }
 
-export type SaveCustomizationStatus = 'saved' | 'premium_required' | 'unauthenticated' | 'error';
+export type SaveCustomizationStatus = 'saved' | 'premium_required' | 'locked' | 'unauthenticated' | 'error';
 
 export async function saveCustomization(input: {
     bio: string | null;
@@ -82,6 +90,8 @@ export async function saveCustomization(input: {
     bannerKey: string;
     avatarFrameKey: string;
     nameEffectKey: string;
+    avatarPreset?: string | null;
+    flairKey?: string | null;
 }): Promise<SaveCustomizationStatus> {
     const { data, error } = await supabase.rpc('set_profile_customization', {
         p_bio: input.bio,
@@ -89,6 +99,8 @@ export async function saveCustomization(input: {
         p_banner_key: input.bannerKey,
         p_avatar_frame_key: input.avatarFrameKey,
         p_name_effect_key: input.nameEffectKey,
+        p_avatar_preset: input.avatarPreset ?? null,
+        p_flair_key: input.flairKey ?? null,
     });
     if (error) return 'error';
     return (data ?? 'error') as SaveCustomizationStatus;

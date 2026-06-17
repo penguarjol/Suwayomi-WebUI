@@ -12,7 +12,6 @@ import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
-import Avatar from '@mui/material/Avatar';
 import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
 import FavoriteIcon from '@mui/icons-material/Favorite';
@@ -44,7 +43,8 @@ import {
     getEarnedBadges,
     getUserProfile,
 } from '@/features/profile/ProfileCustomization.ts';
-import { bannerSx, frameSx, nameEffectSx } from '@/features/profile/ProfileCosmetics.ts';
+import { bannerSx, nameEffectSx } from '@/features/profile/ProfileCosmetics.ts';
+import { UserAvatar } from '@/features/profile/components/UserAvatar.tsx';
 import { CreatorPost, listCreatorPosts } from '@/features/originals/OriginalComments.ts';
 import { AppRoutes } from '@/base/AppRoute.constants.ts';
 import { useAppTitle } from '@/features/navigation-bar/hooks/useAppTitle.ts';
@@ -201,7 +201,6 @@ export function CreatorProfile() {
     }
 
     const bannerKey = cosmetics?.banner_key ?? 'default';
-    const frameKey = cosmetics?.avatar_frame_key ?? 'none';
     const effectKey = cosmetics?.name_effect_key ?? 'none_effect';
     const accent = cosmetics?.accent_color ?? undefined;
 
@@ -209,18 +208,7 @@ export function CreatorProfile() {
         <Box sx={{ p: { xs: 2, sm: 3 }, maxWidth: 880, mx: 'auto' }}>
             <Box sx={{ position: 'relative', height: 120, borderRadius: 3, mb: 1, ...bannerSx(bannerKey) }} />
             <Stack sx={{ flexDirection: 'row', alignItems: 'flex-end', gap: 2, mt: -5, mb: 2, px: 1 }}>
-                <Avatar
-                    sx={{
-                        width: 80,
-                        height: 80,
-                        fontSize: 32,
-                        fontWeight: 800,
-                        boxSizing: 'border-box',
-                        ...frameSx(frameKey),
-                    }}
-                >
-                    {creator.display_name.charAt(0).toUpperCase()}
-                </Avatar>
+                <UserAvatar userId={creator.id} name={creator.display_name} size={80} />
                 <Stack sx={{ flexGrow: 1, minWidth: 0, pb: 0.5 }}>
                     <Typography
                         variant="h5"
