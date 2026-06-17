@@ -25,6 +25,7 @@ interface ImportMetaEnv {
     readonly VITE_ANALYTICS_DOMAIN?: string;
     readonly VITE_ANALYTICS_SRC?: string;
     readonly VITE_DISCORD_INVITE?: string;
+    readonly VITE_TIP_URL?: string;
     // more env variables...
 }
 

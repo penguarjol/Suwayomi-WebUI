@@ -17,6 +17,7 @@ import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
 import RedeemIcon from '@mui/icons-material/Redeem';
 import LanguageIcon from '@mui/icons-material/Language';
+import VolunteerActivismIcon from '@mui/icons-material/VolunteerActivism';
 import { Link } from 'react-router-dom';
 import { AppRoutes } from '@/base/AppRoute.constants.ts';
 import {
@@ -38,6 +39,11 @@ import { useAppTitle } from '@/features/navigation-bar/hooks/useAppTitle.ts';
 import { makeToast } from '@/base/utils/Toast.ts';
 
 const fmt = (n: number) => `$${n.toFixed(2)}`;
+
+// Optional voluntary "support the project" link (Ko-fi / Buy Me a Coffee /
+// PayPal.me). Rendered only when configured so we never show a dead button.
+// This is a tip, NOT a purchase — it grants no Coins or entitlement.
+const TIP_URL = (import.meta.env.VITE_TIP_URL as string | undefined)?.trim() || undefined;
 
 const PackCard = ({
     pack,
@@ -328,6 +334,44 @@ export function Store() {
                     Earn free Coins
                 </Button>
             </Box>
+
+            {/* Voluntary tip — separate from purchases, grants no Coins. Only
+                shown when VITE_TIP_URL is configured (Ko-fi / BMC / PayPal.me). */}
+            {TIP_URL && (
+                <Stack
+                    sx={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 1.5,
+                        p: 2,
+                        mt: 4,
+                        borderRadius: 3,
+                        border: '1px solid rgba(255,255,255,0.10)',
+                        background: 'rgba(255,255,255,0.03)',
+                    }}
+                >
+                    <VolunteerActivismIcon color="secondary" />
+                    <Stack sx={{ flexGrow: 1, minWidth: 0 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                            Support the project
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                            Enjoying Nexus? Leave a tip to keep it growing. This is a voluntary tip and adds no Coins.
+                        </Typography>
+                    </Stack>
+                    <Button
+                        href={TIP_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        variant="outlined"
+                        color="secondary"
+                        size="small"
+                        sx={{ borderRadius: '50px', textTransform: 'none', fontWeight: 700, flexShrink: 0 }}
+                    >
+                        Leave a tip
+                    </Button>
+                </Stack>
+            )}
 
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 3, textAlign: 'center' }}>
                 5 Coins unlock one Fast Pass chapter. Older chapters are always free.
