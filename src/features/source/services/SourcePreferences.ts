@@ -15,7 +15,21 @@ import { create } from 'zustand';
  * limit, so this is safe to persist client-side.
  */
 const STORAGE_KEY = 'nexus-hidden-sources';
-const SETUP_KEY = 'nexus-source-setup';
+const SETUP_PREFIX = 'nexus-source-setup';
+
+// Setup completion is tracked PER USER so a new account on a shared browser is
+// not treated as already-onboarded (and so each user consents to the source
+// model individually). The visibility filter (`hidden`) stays a single
+// client-side preference and is overwritten when a user completes setup.
+const setupKey = (userId: string) => `${SETUP_PREFIX}:${userId}`;
+
+export function isSetupComplete(userId: string): boolean {
+    try {
+        return localStorage.getItem(setupKey(userId)) === '1';
+    } catch {
+        return false;
+    }
+}
 
 function loadHidden(): string[] {
     try {
@@ -24,14 +38,6 @@ function loadHidden(): string[] {
         return Array.isArray(parsed) ? parsed.map(String) : [];
     } catch {
         return [];
-    }
-}
-
-function loadSetupComplete(): boolean {
-    try {
-        return localStorage.getItem(SETUP_KEY) === '1';
-    } catch {
-        return false;
     }
 }
 
@@ -45,22 +51,19 @@ function persist(hidden: Set<string>): void {
 
 interface SourcePrefsState {
     hidden: Set<string>;
-    setupComplete: boolean;
     toggle: (id: string | number) => void;
     setEnabled: (id: string | number, enabled: boolean) => void;
     isHidden: (id: string | number) => boolean;
     /**
-     * Record the user's first-run source choice: the chosen sources become
-     * visible and everything else selectable is hidden. Marks setup complete so
-     * the wizard does not show again. `allSelectableIds` is the allow-listed,
-     * non-NSFW set presented in the wizard.
+     * Record a user's first-run source choice: chosen sources become visible,
+     * everything else selectable is hidden, and setup is marked complete for that
+     * user. `allSelectableIds` is the allow-listed, non-NSFW set from the wizard.
      */
-    completeSetup: (selectedIds: (string | number)[], allSelectableIds: (string | number)[]) => void;
+    completeSetup: (userId: string, selectedIds: (string | number)[], allSelectableIds: (string | number)[]) => void;
 }
 
 export const useSourcePrefs = create<SourcePrefsState>((set, get) => ({
     hidden: new Set(loadHidden()),
-    setupComplete: loadSetupComplete(),
     toggle: (id) =>
         set((state) => {
             const next = new Set(state.hidden);
@@ -80,16 +83,16 @@ export const useSourcePrefs = create<SourcePrefsState>((set, get) => ({
             return { hidden: next };
         }),
     isHidden: (id) => get().hidden.has(String(id)),
-    completeSetup: (selectedIds, allSelectableIds) =>
+    completeSetup: (userId, selectedIds, allSelectableIds) =>
         set(() => {
             const selected = new Set(selectedIds.map(String));
             const hidden = new Set(allSelectableIds.map(String).filter((id) => !selected.has(id)));
             persist(hidden);
             try {
-                localStorage.setItem(SETUP_KEY, '1');
+                if (userId) localStorage.setItem(setupKey(userId), '1');
             } catch {
                 /* ignore storage errors */
             }
-            return { hidden, setupComplete: true };
+            return { hidden };
         }),
 }));

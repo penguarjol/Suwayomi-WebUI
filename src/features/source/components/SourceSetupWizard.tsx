@@ -30,8 +30,9 @@ import SearchIcon from '@mui/icons-material/Search';
 import AutoStoriesIcon from '@mui/icons-material/AutoStories';
 import { requestManager } from '@/lib/requests/RequestManager.ts';
 import { AuthManager } from '@/features/authentication/AuthManager.ts';
+import { supabase } from '@/lib/SupabaseClient.ts';
 import { useBillingStore } from '@/features/billing/Billing.ts';
-import { useSourcePrefs } from '@/features/source/services/SourcePreferences.ts';
+import { isSetupComplete, useSourcePrefs } from '@/features/source/services/SourcePreferences.ts';
 import { useSaasSourceAccess } from '@/features/source/services/SourceAccess.ts';
 
 /**
@@ -48,10 +49,26 @@ export const SourceSetupWizard = () => {
     const isAuthenticated = AuthManager.useIsAuthenticated();
     const isAdmin = useBillingStore((state) => state.isAdmin);
     const profileLoaded = useBillingStore((state) => state.loaded);
-    const setupComplete = useSourcePrefs((state) => state.setupComplete);
     const completeSetup = useSourcePrefs((state) => state.completeSetup);
 
-    const needsSetup = isAuthenticated && profileLoaded && !isAdmin && !setupComplete;
+    // Resolve the current user fresh (handles account switches in the same tab)
+    // and check PER-USER setup state, so a new account always sees the wizard.
+    const [uid, setUid] = useState<string | null>(null);
+    const [done, setDone] = useState(true);
+    useEffect(() => {
+        let active = true;
+        supabase.auth.getUser().then(({ data }) => {
+            if (!active) return;
+            const id = data.user?.id ?? null;
+            setUid(id);
+            setDone(id ? isSetupComplete(id) : true);
+        });
+        return () => {
+            active = false;
+        };
+    }, [isAuthenticated]);
+
+    const needsSetup = isAuthenticated && profileLoaded && !isAdmin && !!uid && !done;
 
     const { ready, isAllowed } = useSaasSourceAccess();
     // Fetch the source list once (cache-first) only while the wizard is open, so
@@ -113,7 +130,10 @@ export const SourceSetupWizard = () => {
             return next;
         });
 
-    const finish = () => completeSetup([...(selected ?? new Set<string>())], allIds);
+    const finish = () => {
+        if (uid) completeSetup(uid, [...(selected ?? new Set<string>())], allIds);
+        setDone(true);
+    };
 
     let listContent: JSX.Element;
     if (listLoading) {
