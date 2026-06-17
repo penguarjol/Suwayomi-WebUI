@@ -15,6 +15,7 @@ import Tabs from '@mui/material/Tabs';
 import Typography from '@mui/material/Typography';
 import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
+import MenuItem from '@mui/material/MenuItem';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import Avatar from '@mui/material/Avatar';
@@ -38,6 +39,14 @@ import { Extensions } from '@/features/browse/extensions/Extensions.tsx';
 import { FeedbackItem, getFeedback, setFeedbackStatus } from '@/features/feedback/Feedback.ts';
 import { DmcaAction, DmcaReport, DmcaStatus, listDmcaReports, resolveDmcaReport } from '@/features/legal/Dmca.ts';
 import {
+    AdCampaign,
+    AdPlacement,
+    createAdCampaign,
+    deleteAdCampaign,
+    listAdCampaigns,
+    setAdCampaignActive,
+} from '@/features/ads/InternalAds.ts';
+import {
     Campaign,
     createCampaign,
     deleteCampaign,
@@ -50,7 +59,7 @@ import { AppRoutes } from '@/base/AppRoute.constants.ts';
 import { makeToast } from '@/base/utils/Toast.ts';
 import { getErrorMessage } from '@/lib/HelperFunctions.ts';
 
-type SourceState = { enabled: boolean; hidden: boolean; name: string | null };
+type SourceState = { enabled: boolean; hidden: boolean; name: string | null; featured?: boolean };
 
 type SourceFilter = 'all' | 'visible' | 'admin' | 'off';
 const SOURCE_PAGE_SIZE = 20;
@@ -67,7 +76,12 @@ const SourceManager = () => {
             .then((rows: GlobalSource[]) => {
                 const next: Record<string, SourceState> = {};
                 rows.forEach((row) => {
-                    next[row.source_id] = { enabled: row.enabled, hidden: row.hidden, name: row.name };
+                    next[row.source_id] = {
+                        enabled: row.enabled,
+                        hidden: row.hidden,
+                        name: row.name,
+                        featured: row.featured,
+                    };
                 });
                 setState(next);
             })
@@ -109,7 +123,7 @@ const SourceManager = () => {
         const next = { ...current, ...patch, name };
         setState((prev) => ({ ...prev, [id]: next })); // optimistic
         try {
-            await Admin.upsertGlobalSource(id, name, next.enabled, next.hidden, isNsfw);
+            await Admin.upsertGlobalSource(id, name, next.enabled, next.hidden, isNsfw, !!next.featured);
         } catch (e) {
             setState((prev) => ({ ...prev, [id]: current })); // revert
             makeToast('Failed to update source', 'error', getErrorMessage(e));
@@ -219,6 +233,18 @@ const SourceManager = () => {
                                             }
                                         />
                                         <Typography variant="caption">Admin-only</Typography>
+                                    </Stack>
+                                    <Stack sx={{ alignItems: 'center' }}>
+                                        <Switch
+                                            color="primary"
+                                            checked={!!s.featured}
+                                            onChange={(e) =>
+                                                update(source.id, source.displayName, false, {
+                                                    featured: e.target.checked,
+                                                })
+                                            }
+                                        />
+                                        <Typography variant="caption">Featured</Typography>
                                     </Stack>
                                 </Stack>
                             )}
@@ -1082,6 +1108,193 @@ const ExtensionManager = () => (
     </Stack>
 );
 
+const AdManager = () => {
+    const [campaigns, setCampaigns] = useState<AdCampaign[]>([]);
+    const [title, setTitle] = useState('');
+    const [body, setBody] = useState('');
+    const [imageUrl, setImageUrl] = useState('');
+    const [ctaUrl, setCtaUrl] = useState('');
+    const [ctaLabel, setCtaLabel] = useState('Learn more');
+    const [placement, setPlacement] = useState<AdPlacement>('reader');
+    const [kind, setKind] = useState<'house' | 'sponsor'>('house');
+    const [advertiser, setAdvertiser] = useState('');
+    const [weight, setWeight] = useState('1');
+    const [busy, setBusy] = useState(false);
+
+    const load = () => {
+        listAdCampaigns().then(setCampaigns);
+    };
+
+    useEffect(() => {
+        load();
+    }, []);
+
+    const create = async () => {
+        if (!title.trim() || !ctaUrl.trim()) {
+            makeToast('Title and link are required.', 'info');
+            return;
+        }
+        setBusy(true);
+        try {
+            const ok = await createAdCampaign({
+                title: title.trim(),
+                body: body.trim() || undefined,
+                image_url: imageUrl.trim() || undefined,
+                cta_url: ctaUrl.trim(),
+                cta_label: ctaLabel.trim() || 'Learn more',
+                placement,
+                kind,
+                advertiser: advertiser.trim() || undefined,
+                weight: Math.max(0, Number(weight) || 1),
+            });
+            if (ok) {
+                setTitle('');
+                setBody('');
+                setImageUrl('');
+                setCtaUrl('');
+                setAdvertiser('');
+                makeToast('Campaign created.', 'success');
+                load();
+            } else {
+                makeToast('Could not create campaign.', 'error');
+            }
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    return (
+        <Stack sx={{ gap: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+                Your own ad inventory: house promos and direct-sold sponsorships (100% yours, no network cut). These are
+                served before the AdSense fallback. Free users see ads; Premium/admin do not.
+            </Typography>
+
+            <Stack sx={{ gap: 1, p: 2, borderRadius: 2, border: '1px solid rgba(255,255,255,0.08)' }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
+                    New campaign
+                </Typography>
+                <TextField size="small" label="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
+                <TextField
+                    size="small"
+                    label="Body (optional)"
+                    value={body}
+                    onChange={(e) => setBody(e.target.value)}
+                    multiline
+                    minRows={2}
+                />
+                <TextField
+                    size="small"
+                    label="Image URL (optional)"
+                    value={imageUrl}
+                    onChange={(e) => setImageUrl(e.target.value)}
+                />
+                <Stack sx={{ flexDirection: 'row', gap: 1, flexWrap: 'wrap' }}>
+                    <TextField
+                        size="small"
+                        label="Link (CTA URL)"
+                        value={ctaUrl}
+                        onChange={(e) => setCtaUrl(e.target.value)}
+                        sx={{ flexGrow: 1, minWidth: 200 }}
+                    />
+                    <TextField
+                        size="small"
+                        label="Button label"
+                        value={ctaLabel}
+                        onChange={(e) => setCtaLabel(e.target.value)}
+                        sx={{ width: 150 }}
+                    />
+                </Stack>
+                <Stack sx={{ flexDirection: 'row', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <TextField
+                        size="small"
+                        select
+                        label="Placement"
+                        value={placement}
+                        onChange={(e) => setPlacement(e.target.value as AdPlacement)}
+                        sx={{ width: 130 }}
+                    >
+                        <MenuItem value="reader">Reader</MenuItem>
+                        <MenuItem value="home">Home</MenuItem>
+                        <MenuItem value="library">Library</MenuItem>
+                        <MenuItem value="any">Any</MenuItem>
+                    </TextField>
+                    <TextField
+                        size="small"
+                        select
+                        label="Kind"
+                        value={kind}
+                        onChange={(e) => setKind(e.target.value as 'house' | 'sponsor')}
+                        sx={{ width: 130 }}
+                    >
+                        <MenuItem value="house">House</MenuItem>
+                        <MenuItem value="sponsor">Sponsor</MenuItem>
+                    </TextField>
+                    <TextField
+                        size="small"
+                        label="Advertiser"
+                        value={advertiser}
+                        onChange={(e) => setAdvertiser(e.target.value)}
+                        sx={{ width: 150 }}
+                    />
+                    <TextField
+                        size="small"
+                        label="Weight"
+                        type="number"
+                        value={weight}
+                        onChange={(e) => setWeight(e.target.value)}
+                        sx={{ width: 90 }}
+                    />
+                    <Button variant="contained" disabled={busy} onClick={create} sx={{ textTransform: 'none' }}>
+                        Create
+                    </Button>
+                </Stack>
+            </Stack>
+
+            <Stack sx={{ gap: 1 }}>
+                {campaigns.map((c) => (
+                    <Stack
+                        key={c.id}
+                        sx={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            gap: 1,
+                            p: 1.5,
+                            borderRadius: 2,
+                            border: '1px solid rgba(255,255,255,0.06)',
+                            flexWrap: 'wrap',
+                        }}
+                    >
+                        <Typography sx={{ fontWeight: 700, flexGrow: 1, minWidth: 160 }} noWrap>
+                            {c.title}
+                        </Typography>
+                        <Chip size="small" variant="outlined" label={c.kind} />
+                        <Chip size="small" variant="outlined" label={c.placement} />
+                        <Chip size="small" variant="outlined" label={`${c.impressions} imp · ${c.clicks} clk`} />
+                        <Switch
+                            checked={c.active}
+                            onChange={async (_, v) => {
+                                await setAdCampaignActive(c.id, v);
+                                load();
+                            }}
+                        />
+                        <IconButton
+                            size="small"
+                            onClick={async () => {
+                                await deleteAdCampaign(c.id);
+                                load();
+                            }}
+                        >
+                            <DeleteIcon fontSize="small" />
+                        </IconButton>
+                    </Stack>
+                ))}
+                {!campaigns.length && <Typography color="text.secondary">No campaigns yet.</Typography>}
+            </Stack>
+        </Stack>
+    );
+};
+
 const DmcaQueue = () => {
     const [reports, setReports] = useState<DmcaReport[]>([]);
     const [filter, setFilter] = useState<DmcaStatus | 'all'>('pending');
@@ -1217,6 +1430,7 @@ const TABS = [
     { label: 'Analytics', render: () => <Analytics /> },
     { label: 'Feedback', render: () => <FeedbackInbox /> },
     { label: 'DMCA', render: () => <DmcaQueue /> },
+    { label: 'Ads', render: () => <AdManager /> },
 ];
 
 export function AdminConsole() {

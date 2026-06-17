@@ -27,6 +27,7 @@ describe('isSourceAllowedByConfig', () => {
         const config: SaasSourceConfig = {
             allowedExtensions: ['pkg.b'],
             allowedSourceIds: ['source-a'],
+            featuredSourceIds: [],
             usesGlobalSourceAllowList: true,
         };
 
@@ -38,6 +39,7 @@ describe('isSourceAllowedByConfig', () => {
         const config: SaasSourceConfig = {
             allowedExtensions: ['pkg.a'],
             allowedSourceIds: [],
+            featuredSourceIds: [],
             usesGlobalSourceAllowList: false,
         };
 

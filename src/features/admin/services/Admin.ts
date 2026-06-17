@@ -21,6 +21,7 @@ export interface GlobalSource {
     enabled: boolean;
     hidden: boolean;
     is_nsfw?: boolean;
+    featured?: boolean;
 }
 
 export interface ChapterSchedule {
@@ -77,7 +78,7 @@ export const Admin = {
     async getGlobalSources(): Promise<GlobalSource[]> {
         const { data, error } = await supabase
             .from('global_sources')
-            .select('source_id, name, enabled, hidden, is_nsfw');
+            .select('source_id, name, enabled, hidden, is_nsfw, featured');
         if (error) throw error;
         return (data ?? []) as GlobalSource[];
     },
@@ -88,6 +89,7 @@ export const Admin = {
         enabled: boolean,
         hidden: boolean,
         isNsfw = false,
+        featured = false,
     ): Promise<void> {
         const { data: userData } = await supabase.auth.getUser();
         const { error } = await supabase.from('global_sources').upsert(
@@ -98,6 +100,8 @@ export const Admin = {
                 enabled: isNsfw ? false : enabled,
                 hidden: isNsfw ? true : hidden,
                 is_nsfw: isNsfw,
+                // Featured only makes sense for a visible source.
+                featured: isNsfw ? false : featured,
                 added_by: userData.user?.id ?? null,
                 updated_at: new Date().toISOString(),
             },

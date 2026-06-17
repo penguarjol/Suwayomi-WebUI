@@ -18,12 +18,14 @@ type SourceAccessInfo = {
 export interface SaasSourceConfig {
     allowedExtensions: string[];
     allowedSourceIds: string[];
+    featuredSourceIds: string[];
     usesGlobalSourceAllowList: boolean;
 }
 
 const EMPTY_CONFIG: SaasSourceConfig = {
     allowedExtensions: [],
     allowedSourceIds: [],
+    featuredSourceIds: [],
     usesGlobalSourceAllowList: false,
 };
 
@@ -31,6 +33,7 @@ function normalizeConfig(raw: Partial<SaasSourceConfig> | null | undefined): Saa
     return {
         allowedExtensions: Array.isArray(raw?.allowedExtensions) ? raw.allowedExtensions.map(String) : [],
         allowedSourceIds: Array.isArray(raw?.allowedSourceIds) ? raw.allowedSourceIds.map(String) : [],
+        featuredSourceIds: Array.isArray(raw?.featuredSourceIds) ? raw.featuredSourceIds.map(String) : [],
         usesGlobalSourceAllowList: !!raw?.usesGlobalSourceAllowList,
     };
 }
