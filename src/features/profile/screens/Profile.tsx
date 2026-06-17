@@ -46,6 +46,7 @@ import {
     UserProfile,
     getBadgeCatalog,
     getEarnedBadges,
+    getMyUsername,
     getUserProfile,
     syncMyAchievements,
 } from '@/features/profile/ProfileCustomization.ts';
@@ -85,6 +86,7 @@ export function Profile() {
     const [threads, setThreads] = useState<Thread[]>([]);
     const [streak, setStreak] = useState(0);
     const [profile, setProfile] = useState<UserProfile | null>(null);
+    const [username, setUsername] = useState<string | null>(null);
     const [badgeCatalog, setBadgeCatalog] = useState<Badge[]>([]);
     const [earnedIds, setEarnedIds] = useState<Set<string>>(new Set());
     const [customizeOpen, setCustomizeOpen] = useState(false);
@@ -92,10 +94,16 @@ export function Profile() {
     const loadProfileCosmetics = async (uid: string) => {
         // Auto-award any newly-qualified achievements, then load profile + badges.
         await syncMyAchievements();
-        const [p, catalog, earned] = await Promise.all([getUserProfile(uid), getBadgeCatalog(), getEarnedBadges(uid)]);
+        const [p, catalog, earned, uname] = await Promise.all([
+            getUserProfile(uid),
+            getBadgeCatalog(),
+            getEarnedBadges(uid),
+            getMyUsername(),
+        ]);
         setProfile(p);
         setBadgeCatalog(catalog);
         setEarnedIds(new Set(earned.map((b) => b.badge_id)));
+        setUsername(uname);
     };
 
     useEffect(() => {
@@ -119,7 +127,7 @@ export function Profile() {
             .catch(() => setThreads([]));
     }, []);
 
-    const name = creator?.display_name || (email ? email.split('@')[0] : 'reader');
+    const name = username || creator?.display_name || (email ? email.split('@')[0] : 'reader');
     const bannerKey = profile?.banner_key ?? 'default';
     const frameKey = profile?.avatar_frame_key ?? 'none';
     const effectKey = profile?.name_effect_key ?? 'none_effect';

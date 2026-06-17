@@ -52,10 +52,10 @@ export const DEFAULT_GATED_COUNT = 3;
 export const DEFAULT_UNLOCK_COST = 5;
 
 /**
- * Optional voluntary tip link (Ko-fi / Buy Me a Coffee / PayPal.me). Undefined
- * when unset so callers can hide the tip UI rather than render a dead link.
+ * Voluntary tip link (Ko-fi). Overridable per-deploy via VITE_TIP_URL; defaults
+ * to the project Ko-fi so the tip UI works without extra config.
  */
-export const TIP_URL = (import.meta.env.VITE_TIP_URL as string | undefined)?.trim() || undefined;
+export const TIP_URL = (import.meta.env.VITE_TIP_URL as string | undefined)?.trim() || 'https://ko-fi.com/nexusreads';
 
 export interface LockChapter {
     id: number;

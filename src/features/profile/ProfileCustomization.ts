@@ -127,6 +127,35 @@ export async function getEarnedBadges(userId: string): Promise<EarnedBadge[]> {
     }
 }
 
+export async function getMyUsername(): Promise<string | null> {
+    try {
+        const { data: userData } = await supabase.auth.getUser();
+        const uid = userData.user?.id;
+        if (!uid) return null;
+        const { data } = await supabase.from('profiles').select('username').eq('id', uid).maybeSingle();
+        return (data?.username as string | null) ?? null;
+    } catch {
+        return null;
+    }
+}
+
+export type SetUsernameStatus = 'saved' | 'taken' | 'invalid' | 'unauthenticated' | 'error';
+
+export async function setUsername(name: string): Promise<SetUsernameStatus> {
+    const { data, error } = await supabase.rpc('set_username', { p_username: name });
+    if (error) return 'error';
+    return (data ?? 'error') as SetUsernameStatus;
+}
+
+export async function checkUsernameAvailable(name: string): Promise<boolean> {
+    try {
+        const { data } = await supabase.rpc('username_available', { p_username: name });
+        return !!data;
+    } catch {
+        return false;
+    }
+}
+
 /** Auto-award any newly-qualified achievements for the current user. */
 export async function syncMyAchievements(): Promise<number> {
     try {

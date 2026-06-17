@@ -21,10 +21,13 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import {
     Cosmetic,
     UserProfile,
+    checkUsernameAvailable,
     getBadgeCatalog,
     getCosmetics,
     getEarnedBadges,
+    getMyUsername,
     saveCustomization,
+    setUsername as saveUsername,
 } from '@/features/profile/ProfileCustomization.ts';
 import {
     AvatarPreset,
@@ -38,6 +41,7 @@ import { useBillingStore, ensurePremium } from '@/features/billing/Billing.ts';
 import { makeToast } from '@/base/utils/Toast.ts';
 
 const ACCENTS = ['#ec4899', '#7367f0', '#00e5ff', '#38ef7d', '#ffae00', '#ff5252', '#ffffff'];
+const USERNAME_RE = /^[A-Za-z0-9_]{3,20}$/;
 
 const Swatch = ({
     selected,
@@ -87,6 +91,9 @@ export const ProfileCustomizeDialog = ({
     const [cosmetics, setCosmetics] = useState<Cosmetic[]>([]);
     const [presets, setPresets] = useState<AvatarPreset[]>([]);
     const [earnedKeys, setEarnedKeys] = useState<Set<string>>(new Set());
+    const [username, setUsernameVal] = useState('');
+    const [originalUsername, setOriginalUsername] = useState('');
+    const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
     const [bio, setBio] = useState(profile.bio ?? '');
     const [accent, setAccent] = useState(profile.accent_color ?? ACCENTS[0]);
     const [banner, setBanner] = useState(profile.banner_key);
@@ -101,11 +108,38 @@ export const ProfileCustomizeDialog = ({
     useEffect(() => {
         getCosmetics().then(setCosmetics);
         getAvatarPresets().then(setPresets);
+        getMyUsername().then((u) => {
+            setUsernameVal(u ?? '');
+            setOriginalUsername(u ?? '');
+        });
         Promise.all([getBadgeCatalog(), getEarnedBadges(profile.user_id)]).then(([catalog, earned]) => {
             const earnedIds = new Set(earned.map((e) => e.badge_id));
             setEarnedKeys(new Set(catalog.filter((b) => earnedIds.has(b.id)).map((b) => b.key)));
         });
     }, [profile.user_id]);
+
+    // Debounced username availability check.
+    useEffect(() => {
+        const v = username.trim();
+        if (!v || v === originalUsername) {
+            setUsernameAvailable(null);
+            return undefined;
+        }
+        if (!USERNAME_RE.test(v)) {
+            setUsernameAvailable(false);
+            return undefined;
+        }
+        let active = true;
+        const timer = setTimeout(() => {
+            checkUsernameAvailable(v).then((ok) => {
+                if (active) setUsernameAvailable(ok);
+            });
+        }, 350);
+        return () => {
+            active = false;
+            clearTimeout(timer);
+        };
+    }, [username, originalUsername]);
 
     const pick = (cosmetic: Cosmetic, setter: (k: string) => void) => {
         if (cosmetic.premium && !entitled) {
@@ -121,6 +155,14 @@ export const ProfileCustomizeDialog = ({
     const flairs = cosmetics.filter((c) => c.type === 'flair');
 
     const flairUnlocked = (c: Cosmetic) => !c.required_badge_key || earnedKeys.has(c.required_badge_key);
+
+    const usernameUnchanged = username.trim() === originalUsername;
+    let usernameHelp = '3–20 letters, numbers, or underscores. Unique across Nexus.';
+    if (!usernameUnchanged) {
+        if (usernameAvailable === false) usernameHelp = 'Not available';
+        else if (usernameAvailable) usernameHelp = 'Available';
+        else usernameHelp = 'Checking…';
+    }
 
     const onPickPhoto = async (file: File | undefined) => {
         if (!file) return;
@@ -155,6 +197,23 @@ export const ProfileCustomizeDialog = ({
     const save = async () => {
         setBusy(true);
         try {
+            const wantUsername = username.trim();
+            if (wantUsername && wantUsername !== originalUsername) {
+                const us = await saveUsername(wantUsername);
+                if (us === 'taken') {
+                    makeToast('That username is taken.', 'error');
+                    return;
+                }
+                if (us === 'invalid') {
+                    makeToast('Username must be 3–20 letters, numbers, or underscores.', 'error');
+                    return;
+                }
+                if (us !== 'saved') {
+                    makeToast('Could not save username.', 'error');
+                    return;
+                }
+                setOriginalUsername(wantUsername);
+            }
             const status = await saveCustomization({
                 bio: bio.trim() || null,
                 accentColor: accent,
@@ -186,6 +245,16 @@ export const ProfileCustomizeDialog = ({
             <DialogTitle sx={{ fontWeight: 800 }}>Customize profile</DialogTitle>
             <DialogContent dividers>
                 <Stack sx={{ gap: 2.5 }}>
+                    <TextField
+                        label="Username"
+                        value={username}
+                        onChange={(e) => setUsernameVal(e.target.value)}
+                        size="small"
+                        fullWidth
+                        error={!usernameUnchanged && usernameAvailable === false}
+                        helperText={usernameHelp}
+                    />
+
                     <Box>
                         <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
                             Profile picture
