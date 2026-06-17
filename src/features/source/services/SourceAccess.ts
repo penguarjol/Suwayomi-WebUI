@@ -53,6 +53,9 @@ export function isSourceAllowedByConfig(
 ): boolean {
     if (isAdmin) return true;
     if (!config) return false;
+    // NSFW sources are not selectable by regular users (legal posture, ADR-0011):
+    // we do not curate adult third-party content into the user-facing catalog.
+    if (source.isNsfw) return false;
 
     if (config.usesGlobalSourceAllowList) {
         return config.allowedSourceIds.includes(String(source.id));

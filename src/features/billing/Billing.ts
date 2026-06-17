@@ -69,8 +69,10 @@ export function computeLockedChapters(
     chapters: LockChapter[],
     futureSchedules: { chapter_id: string | number; token_cost: number | null }[],
     unlockedChapterIds: (string | number)[],
-    opts: { isPremium: boolean; isAdmin: boolean; gatedCount: number; unlockCost: number },
+    opts: { isPremium: boolean; isAdmin: boolean; gatedCount: number; unlockCost: number; paymentsEnabled?: boolean },
 ): { lockedChapterIds: number[]; chapterCosts: Record<number, number> } {
+    // Soft launch (payments off): nothing is gated, so all chapters read free.
+    if (opts.paymentsEnabled === false) return { lockedChapterIds: [], chapterCosts: {} };
     if (opts.isPremium || opts.isAdmin) return { lockedChapterIds: [], chapterCosts: {} };
 
     const unlocked = new Set(unlockedChapterIds.map(String));
@@ -130,6 +132,7 @@ interface BillingStore {
     busy: boolean;
     gatedCount: number;
     unlockCost: number;
+    paymentsEnabled: boolean;
     purchasePolicy: PurchasePolicy;
     lockedChapterIds: number[];
     chapterCosts: Record<number, number>;
@@ -156,6 +159,9 @@ export const useBillingStore = create<BillingStore>((set, get) => ({
     busy: false,
     gatedCount: DEFAULT_GATED_COUNT,
     unlockCost: DEFAULT_UNLOCK_COST,
+    // Default OFF (soft launch + fail-safe): never show a paywall or Store
+    // purchases until the server config confirms payments are enabled.
+    paymentsEnabled: false,
     purchasePolicy: DEFAULT_PURCHASE_POLICY,
     lockedChapterIds: [],
     chapterCosts: {},
@@ -236,15 +242,17 @@ export const useBillingStore = create<BillingStore>((set, get) => ({
         } catch {
             // keep defaults
         }
-        // Channel-aware purchase policy is server-owned (Gatekeeper, ADR-0008).
+        // Channel-aware purchase policy + master payments switch are server-owned
+        // (Gatekeeper, ADR-0008/0011).
         try {
             const res = await fetch('/api/saas/config');
             if (res.ok) {
                 const json = await res.json();
                 if (json?.purchasePolicy) set({ purchasePolicy: json.purchasePolicy as PurchasePolicy });
+                set({ paymentsEnabled: !!json?.paymentsEnabled });
             }
         } catch {
-            // keep the conservative default policy
+            // keep the conservative defaults (payments off, conservative policy)
         }
     },
 
@@ -264,8 +272,8 @@ export const useBillingStore = create<BillingStore>((set, get) => ({
     },
 
     loadLocksForChapters: async (chapters) => {
-        const { isPremium, isAdmin, gatedCount, unlockCost } = get();
-        if (isPremium || isAdmin || chapters.length === 0) {
+        const { isPremium, isAdmin, gatedCount, unlockCost, paymentsEnabled } = get();
+        if (!paymentsEnabled || isPremium || isAdmin || chapters.length === 0) {
             set({ lockedChapterIds: [], chapterCosts: {} });
             return;
         }
@@ -285,7 +293,7 @@ export const useBillingStore = create<BillingStore>((set, get) => ({
                 chapters,
                 schedules ?? [],
                 (unlocks ?? []).map((row) => row.chapter_id),
-                { isPremium, isAdmin, gatedCount, unlockCost },
+                { isPremium, isAdmin, gatedCount, unlockCost, paymentsEnabled },
             );
             set({ lockedChapterIds, chapterCosts });
         } catch {

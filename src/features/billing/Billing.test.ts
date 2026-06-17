@@ -59,6 +59,15 @@ describe('computeLockedChapters', () => {
         const result = computeLockedChapters(chapters, [], [], { ...opts, gatedCount: 1 });
         expect(result.lockedChapterIds).toEqual([5]);
     });
+
+    it('locks nothing when payments are disabled (soft launch)', () => {
+        const result = computeLockedChapters(chapters, [{ chapter_id: '1', token_cost: 12 }], [], {
+            ...opts,
+            paymentsEnabled: false,
+        });
+        expect(result.lockedChapterIds).toEqual([]);
+        expect(result.chapterCosts).toEqual({});
+    });
 });
 
 describe('billing catalog', () => {

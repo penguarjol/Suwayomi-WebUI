@@ -41,6 +41,7 @@ import { LegalGate, LegalFooter } from '@/features/legal/Legal.tsx';
 import { FeedbackFab } from '@/features/feedback/components/FeedbackFab.tsx';
 import { CampaignLoginDialog } from '@/features/campaigns/components/CampaignLoginDialog.tsx';
 import { InstallPrompt } from '@/features/pwa/InstallPrompt.tsx';
+import { SourceSetupWizard } from '@/features/source/components/SourceSetupWizard.tsx';
 
 const { Browse } = loadable(() => import('@/features/browse/screens/Browse.tsx'), lazyLoadFallback);
 const { DownloadQueue } = loadable(() => import('@/features/downloads/screens/DownloadQueue.tsx'), lazyLoadFallback);
@@ -323,6 +324,7 @@ const MainApp = () => {
             <LegalFooter />
             <FeedbackFab />
             <InstallPrompt />
+            <SourceSetupWizard />
         </Box>
     );
 };

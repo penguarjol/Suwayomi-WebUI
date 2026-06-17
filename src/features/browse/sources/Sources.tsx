@@ -52,8 +52,7 @@ export function Sources({ tabsMenuHeight }: { tabsMenuHeight: number }) {
         refetch,
     } = requestManager.useGetSourceList({ notifyOnNetworkStatusChange: true });
 
-    const { ready: sourceAccessReady, isAllowed, config } = useSaasSourceAccess();
-    const featuredIds = useMemo(() => new Set(config.featuredSourceIds), [config.featuredSourceIds]);
+    const { ready: sourceAccessReady, isAllowed } = useSaasSourceAccess();
 
     const sources = data?.sources.nodes;
     const approvedSources = useMemo(() => {
@@ -64,20 +63,15 @@ export function Sources({ tabsMenuHeight }: { tabsMenuHeight: number }) {
 
         s = s.filter(isAllowed);
 
-        const filtered = SourceService.filter(s, {
+        // No promotion/curation of specific sources (ADR-0011): sources are
+        // presented neutrally, grouped by language. The user picks what to read.
+        return SourceService.filter(s, {
             showNsfw,
             languages: shownLangs,
             keepLocalSource: true,
             enabled: true,
         });
-        // Admin-featured (maintained "primary") sources surface first.
-        if (featuredIds.size) {
-            return [...filtered].sort(
-                (a, b) => Number(featuredIds.has(String(b.id))) - Number(featuredIds.has(String(a.id))),
-            );
-        }
-        return filtered;
-    }, [sources, shownLangs, sourceAccessReady, isAllowed, featuredIds]);
+    }, [sources, shownLangs, sourceAccessReady, isAllowed]);
     // Apply the user's personal source visibility preference (within the approved set).
     const filteredSources = useMemo(
         () => approvedSources.filter((src) => !hiddenSources.has(String(src.id))),

@@ -115,6 +115,7 @@ export function Store() {
     useAppTitle('Get Coins');
     const tokens = useBillingStore((state) => state.tokens);
     const isPremium = useBillingStore((state) => state.isPremium);
+    const paymentsEnabled = useBillingStore((state) => state.paymentsEnabled);
     const purchasePolicy = useBillingStore((state) => state.purchasePolicy);
     const [busy, setBusy] = useState(false);
     const [purchase, setPurchase] = useQueryParam('purchase', StringParam);
@@ -200,19 +201,29 @@ export function Store() {
         <Box sx={{ p: { xs: 2, sm: 3 }, maxWidth: 880, mx: 'auto' }}>
             <Stack sx={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
                 <Typography variant="h5" sx={{ fontWeight: 900 }}>
-                    Get Coins
+                    {paymentsEnabled ? 'Get Coins' : 'Support Nexus'}
                 </Typography>
-                <Chip
-                    icon={<MonetizationOnIcon />}
-                    label={isPremium ? 'Premium' : `${tokens} Coins`}
-                    color="primary"
-                    sx={{ fontWeight: 800 }}
-                />
+                {paymentsEnabled && (
+                    <Chip
+                        icon={<MonetizationOnIcon />}
+                        label={isPremium ? 'Premium' : `${tokens} Coins`}
+                        color="primary"
+                        sx={{ fontWeight: 800 }}
+                    />
+                )}
             </Stack>
+
+            {/* Soft launch: payments are off, so the Store shows only the tip jar. */}
+            {!paymentsEnabled && (
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                    Everything is free right now while we grow. If you are enjoying Nexus, a tip below helps keep it
+                    going. Coins and Premium are coming soon.
+                </Typography>
+            )}
 
             {/* Native "save on web" nudge — only where the region permits an
                 external purchase link (ADR-0008). Opens the system browser. */}
-            {channel.showWebLink && channel.webDiscountPercent > 0 && (
+            {paymentsEnabled && channel.showWebLink && channel.webDiscountPercent > 0 && (
                 <Stack
                     sx={{
                         flexDirection: 'row',
@@ -240,100 +251,105 @@ export function Store() {
                 </Stack>
             )}
 
-            {/* Premium */}
-            <Stack
-                sx={{
-                    p: 3,
-                    mb: 4,
-                    borderRadius: 4,
-                    gap: 1.5,
-                    background: (theme) =>
-                        `linear-gradient(135deg, ${theme.palette.primary.main}22, ${theme.palette.secondary.main}22)`,
-                    border: '1px solid rgba(255,255,255,0.10)',
-                }}
-            >
-                <Stack sx={{ flexDirection: 'row', alignItems: 'center', gap: 1 }}>
-                    <WorkspacePremiumIcon color="primary" />
-                    <Typography variant="h6" sx={{ fontWeight: 800 }}>
-                        Nexus Premium
+            {paymentsEnabled && (
+                <>
+                    {/* Premium */}
+                    <Stack
+                        sx={{
+                            p: 3,
+                            mb: 4,
+                            borderRadius: 4,
+                            gap: 1.5,
+                            background: (theme) =>
+                                `linear-gradient(135deg, ${theme.palette.primary.main}22, ${theme.palette.secondary.main}22)`,
+                            border: '1px solid rgba(255,255,255,0.10)',
+                        }}
+                    >
+                        <Stack sx={{ flexDirection: 'row', alignItems: 'center', gap: 1 }}>
+                            <WorkspacePremiumIcon color="primary" />
+                            <Typography variant="h6" sx={{ fontWeight: 800 }}>
+                                Nexus Premium
+                            </Typography>
+                        </Stack>
+                        <Typography variant="body2" color="text.secondary">
+                            Unlimited Fast Pass on every series, ad-free reading, offline downloads, and a monthly Coin
+                            bonus.
+                        </Typography>
+                        <Stack sx={{ flexDirection: 'row', gap: 1.5, flexWrap: 'wrap', mt: 1 }}>
+                            {plans.map((plan) => {
+                                const planPrice =
+                                    cardDiscount > 0 ? webDiscountedPrice(plan.priceUsd, cardDiscount) : plan.priceUsd;
+                                return (
+                                    <Button
+                                        key={plan.id}
+                                        variant="contained"
+                                        disabled={busy || isPremium}
+                                        onClick={() => buy(plan.id)}
+                                        sx={{ borderRadius: '50px', textTransform: 'none', fontWeight: 700 }}
+                                    >
+                                        {isPremium ? 'Active' : `${fmt(planPrice)} / ${plan.period}`}
+                                    </Button>
+                                );
+                            })}
+                            {isPremium && (
+                                <Button
+                                    variant="outlined"
+                                    startIcon={<RedeemIcon />}
+                                    onClick={claimBonus}
+                                    disabled={busy}
+                                    sx={{ borderRadius: '50px', textTransform: 'none', fontWeight: 700 }}
+                                >
+                                    Claim monthly bonus
+                                </Button>
+                            )}
+                            {isPremium && (
+                                <Button
+                                    variant="text"
+                                    onClick={manageSubscription}
+                                    disabled={busy}
+                                    sx={{ borderRadius: '50px', textTransform: 'none', fontWeight: 700 }}
+                                >
+                                    Manage subscription
+                                </Button>
+                            )}
+                        </Stack>
+                    </Stack>
+
+                    <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1.5 }}>
+                        Coin packs
                     </Typography>
-                </Stack>
-                <Typography variant="body2" color="text.secondary">
-                    Unlimited Fast Pass on every series, ad-free reading, offline downloads, and a monthly Coin bonus.
-                </Typography>
-                <Stack sx={{ flexDirection: 'row', gap: 1.5, flexWrap: 'wrap', mt: 1 }}>
-                    {plans.map((plan) => {
-                        const planPrice =
-                            cardDiscount > 0 ? webDiscountedPrice(plan.priceUsd, cardDiscount) : plan.priceUsd;
-                        return (
-                            <Button
-                                key={plan.id}
-                                variant="contained"
-                                disabled={busy || isPremium}
-                                onClick={() => buy(plan.id)}
-                                sx={{ borderRadius: '50px', textTransform: 'none', fontWeight: 700 }}
-                            >
-                                {isPremium ? 'Active' : `${fmt(planPrice)} / ${plan.period}`}
-                            </Button>
-                        );
-                    })}
-                    {isPremium && (
+                    <Box
+                        sx={{
+                            display: 'grid',
+                            gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(4, 1fr)' },
+                            gap: 2,
+                        }}
+                    >
+                        {packs.map((pack, index) => (
+                            <PackCard
+                                key={pack.id}
+                                pack={pack}
+                                highlight={index === 1}
+                                busy={busy}
+                                discountPercent={cardDiscount}
+                                onBuy={() => buy(pack.id)}
+                            />
+                        ))}
+                    </Box>
+
+                    <Box sx={{ textAlign: 'center', mt: 3 }}>
                         <Button
+                            component={Link}
+                            to={AppRoutes.earn.path}
                             variant="outlined"
                             startIcon={<RedeemIcon />}
-                            onClick={claimBonus}
-                            disabled={busy}
                             sx={{ borderRadius: '50px', textTransform: 'none', fontWeight: 700 }}
                         >
-                            Claim monthly bonus
+                            Earn free Coins
                         </Button>
-                    )}
-                    {isPremium && (
-                        <Button
-                            variant="text"
-                            onClick={manageSubscription}
-                            disabled={busy}
-                            sx={{ borderRadius: '50px', textTransform: 'none', fontWeight: 700 }}
-                        >
-                            Manage subscription
-                        </Button>
-                    )}
-                </Stack>
-            </Stack>
-
-            <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1.5 }}>
-                Coin packs
-            </Typography>
-            <Box
-                sx={{
-                    display: 'grid',
-                    gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(4, 1fr)' },
-                    gap: 2,
-                }}
-            >
-                {packs.map((pack, index) => (
-                    <PackCard
-                        key={pack.id}
-                        pack={pack}
-                        highlight={index === 1}
-                        busy={busy}
-                        discountPercent={cardDiscount}
-                        onBuy={() => buy(pack.id)}
-                    />
-                ))}
-            </Box>
-
-            <Box sx={{ textAlign: 'center', mt: 3 }}>
-                <Button
-                    component={Link}
-                    to={AppRoutes.earn.path}
-                    variant="outlined"
-                    startIcon={<RedeemIcon />}
-                    sx={{ borderRadius: '50px', textTransform: 'none', fontWeight: 700 }}
-                >
-                    Earn free Coins
-                </Button>
-            </Box>
+                    </Box>
+                </>
+            )}
 
             {/* Voluntary tip — separate from purchases, grants no Coins. Only
                 shown when VITE_TIP_URL is configured (Ko-fi / BMC / PayPal.me). */}
@@ -373,9 +389,15 @@ export function Store() {
                 </Stack>
             )}
 
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 3, textAlign: 'center' }}>
-                5 Coins unlock one Fast Pass chapter. Older chapters are always free.
-            </Typography>
+            {paymentsEnabled && (
+                <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ display: 'block', mt: 3, textAlign: 'center' }}
+                >
+                    5 Coins unlock one Fast Pass chapter. Older chapters are always free.
+                </Typography>
+            )}
         </Box>
     );
 }

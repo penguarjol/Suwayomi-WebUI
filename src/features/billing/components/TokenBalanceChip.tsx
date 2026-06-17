@@ -22,9 +22,13 @@ export const TokenBalanceChip = () => {
     const tokens = useBillingStore((state) => state.tokens);
     const isPremium = useBillingStore((state) => state.isPremium);
     const isAdmin = useBillingStore((state) => state.isAdmin);
+    const paymentsEnabled = useBillingStore((state) => state.paymentsEnabled);
     const loaded = useBillingStore((state) => state.loaded);
 
     if (!loaded) return null;
+    // Soft launch: no coins concept yet, so hide the balance chip. Keep the admin
+    // shortcut so admins can still reach the console.
+    if (!paymentsEnabled && !isAdmin) return null;
 
     return (
         <Stack sx={{ flexDirection: 'row', alignItems: 'center', gap: 0.5, mr: 1 }}>
@@ -38,16 +42,18 @@ export const TokenBalanceChip = () => {
                     <AdminPanelSettingsIcon />
                 </IconButton>
             )}
-            <Chip
-                icon={isPremium ? <WorkspacePremiumIcon /> : <MonetizationOnIcon />}
-                label={isPremium ? 'Premium' : tokens}
-                onClick={() => navigate(AppRoutes.store.path)}
-                color="primary"
-                variant="outlined"
-                size="small"
-                aria-label="coins balance"
-                sx={{ fontWeight: 800, cursor: 'pointer' }}
-            />
+            {paymentsEnabled && (
+                <Chip
+                    icon={isPremium ? <WorkspacePremiumIcon /> : <MonetizationOnIcon />}
+                    label={isPremium ? 'Premium' : tokens}
+                    onClick={() => navigate(AppRoutes.store.path)}
+                    color="primary"
+                    variant="outlined"
+                    size="small"
+                    aria-label="coins balance"
+                    sx={{ fontWeight: 800, cursor: 'pointer' }}
+                />
+            )}
         </Stack>
     );
 };

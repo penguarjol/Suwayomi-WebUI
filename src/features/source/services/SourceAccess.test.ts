@@ -46,4 +46,17 @@ describe('isSourceAllowedByConfig', () => {
         expect(isSourceAllowedByConfig(source, config, false)).toBe(true);
         expect(isSourceAllowedByConfig({ id: 'source-b', extension: { pkgName: 'pkg.b' } }, config, false)).toBe(false);
     });
+
+    it('excludes NSFW sources for regular users even when otherwise allowed', () => {
+        const config: SaasSourceConfig = {
+            allowedExtensions: [],
+            allowedSourceIds: ['source-a'],
+            featuredSourceIds: [],
+            usesGlobalSourceAllowList: true,
+        };
+
+        expect(isSourceAllowedByConfig({ ...source, isNsfw: true }, config, false)).toBe(false);
+        // Admins still see NSFW sources (they curate the allow-list).
+        expect(isSourceAllowedByConfig({ ...source, isNsfw: true }, config, true)).toBe(true);
+    });
 });
