@@ -410,3 +410,34 @@ export function openWebStore(): void {
     track('external_web_store');
     window.open('/store', '_system');
 }
+
+/**
+ * Open the Stripe Billing Customer Portal so a web subscriber can cancel, update
+ * their card, or view invoices. Returns an error code instead of a URL when the
+ * user has no Stripe customer (e.g. never subscribed on web) or it's unconfigured.
+ */
+export async function openBillingPortal(): Promise<{ ok: boolean; error?: string }> {
+    try {
+        const { data } = await supabase.auth.getSession();
+        const token = data.session?.access_token;
+        const res = await fetch('/api/saas/billing-portal', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+        });
+        if (!res.ok) {
+            if (res.status === 400) return { ok: false, error: 'no_customer' };
+            return { ok: false, error: res.status === 501 ? 'not_configured' : `status_${res.status}` };
+        }
+        const json = await res.json();
+        if (json.url) {
+            window.location.href = json.url;
+            return { ok: true };
+        }
+        return { ok: false, error: 'no_url' };
+    } catch {
+        return { ok: false, error: 'network' };
+    }
+}

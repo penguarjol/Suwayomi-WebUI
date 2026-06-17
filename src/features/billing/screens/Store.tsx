@@ -26,6 +26,7 @@ import {
     startCheckout,
     purchaseNative,
     openWebStore,
+    openBillingPortal,
     claimPremiumBonus,
     useBillingStore,
     TokenPack,
@@ -162,6 +163,18 @@ export function Store() {
         }
     };
 
+    const manageSubscription = async () => {
+        const { ok, error } = await openBillingPortal();
+        if (ok) return;
+        if (error === 'no_customer') {
+            makeToast('No web subscription found to manage on this account.', 'info');
+        } else if (error === 'not_configured') {
+            makeToast('Subscription management is not enabled yet.', 'info');
+        } else {
+            makeToast('Could not open subscription management. Please try again.', 'error');
+        }
+    };
+
     const claimBonus = async () => {
         const status = await claimPremiumBonus();
         if (status === 'claimed') makeToast('Monthly Coin bonus claimed!', 'success');
@@ -267,6 +280,16 @@ export function Store() {
                             sx={{ borderRadius: '50px', textTransform: 'none', fontWeight: 700 }}
                         >
                             Claim monthly bonus
+                        </Button>
+                    )}
+                    {isPremium && (
+                        <Button
+                            variant="text"
+                            onClick={manageSubscription}
+                            disabled={busy}
+                            sx={{ borderRadius: '50px', textTransform: 'none', fontWeight: 700 }}
+                        >
+                            Manage subscription
                         </Button>
                     )}
                 </Stack>
