@@ -15,9 +15,11 @@ import Avatar from '@mui/material/Avatar';
 import Chip from '@mui/material/Chip';
 import Button from '@mui/material/Button';
 import List from '@mui/material/List';
+import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Divider from '@mui/material/Divider';
+import ForumIcon from '@mui/icons-material/Forum';
 import BrushIcon from '@mui/icons-material/Brush';
 import RssFeedIcon from '@mui/icons-material/RssFeed';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
@@ -50,6 +52,8 @@ import { ProfileCustomizeDialog } from '@/features/profile/components/ProfileCus
 import { ListItemLink } from '@/base/components/lists/ListItemLink.tsx';
 import { AppRoutes } from '@/base/AppRoute.constants.ts';
 import { useAppTitle } from '@/features/navigation-bar/hooks/useAppTitle.ts';
+
+const DISCORD_INVITE = (import.meta.env.VITE_DISCORD_INVITE as string | undefined) || 'https://discord.gg/AU75Gnreh';
 
 const logout = async () => {
     try {
@@ -235,6 +239,12 @@ export function Profile() {
                     </ListItemIcon>
                     <ListItemText primary="Following" secondary="New chapters from creators you follow" />
                 </ListItemLink>
+                <ListItemButton component="a" href={DISCORD_INVITE} target="_blank" rel="noopener noreferrer">
+                    <ListItemIcon>
+                        <ForumIcon />
+                    </ListItemIcon>
+                    <ListItemText primary="Join our Discord" secondary="Chat with readers & creators" />
+                </ListItemButton>
                 <ListItemLink to={AppRoutes.studio.path}>
                     <ListItemIcon>
                         <BrushIcon />
