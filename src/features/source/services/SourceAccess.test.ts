@@ -28,6 +28,7 @@ describe('isSourceAllowedByConfig', () => {
             allowedExtensions: ['pkg.b'],
             allowedSourceIds: ['source-a'],
             featuredSourceIds: [],
+            forceAllowedSourceIds: [],
             usesGlobalSourceAllowList: true,
         };
 
@@ -40,6 +41,7 @@ describe('isSourceAllowedByConfig', () => {
             allowedExtensions: ['pkg.a'],
             allowedSourceIds: [],
             featuredSourceIds: [],
+            forceAllowedSourceIds: [],
             usesGlobalSourceAllowList: false,
         };
 
@@ -52,11 +54,25 @@ describe('isSourceAllowedByConfig', () => {
             allowedExtensions: [],
             allowedSourceIds: ['source-a'],
             featuredSourceIds: [],
+            forceAllowedSourceIds: [],
             usesGlobalSourceAllowList: true,
         };
 
         expect(isSourceAllowedByConfig({ ...source, isNsfw: true }, config, false)).toBe(false);
         // Admins still see NSFW sources (they curate the allow-list).
         expect(isSourceAllowedByConfig({ ...source, isNsfw: true }, config, true)).toBe(true);
+    });
+
+    it('allows a force-allowed NSFW source for regular users (ADR-0012)', () => {
+        const config: SaasSourceConfig = {
+            allowedExtensions: [],
+            allowedSourceIds: ['weeb-1'],
+            featuredSourceIds: [],
+            forceAllowedSourceIds: ['weeb-1'],
+            usesGlobalSourceAllowList: true,
+        };
+
+        expect(isSourceAllowedByConfig({ id: 'weeb-1', isNsfw: true }, config, false)).toBe(true);
+        expect(isSourceAllowedByConfig({ id: 'other', isNsfw: true }, config, false)).toBe(false);
     });
 });

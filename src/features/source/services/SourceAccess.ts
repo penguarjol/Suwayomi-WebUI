@@ -19,6 +19,7 @@ export interface SaasSourceConfig {
     allowedExtensions: string[];
     allowedSourceIds: string[];
     featuredSourceIds: string[];
+    forceAllowedSourceIds: string[];
     usesGlobalSourceAllowList: boolean;
 }
 
@@ -26,6 +27,7 @@ const EMPTY_CONFIG: SaasSourceConfig = {
     allowedExtensions: [],
     allowedSourceIds: [],
     featuredSourceIds: [],
+    forceAllowedSourceIds: [],
     usesGlobalSourceAllowList: false,
 };
 
@@ -34,6 +36,7 @@ function normalizeConfig(raw: Partial<SaasSourceConfig> | null | undefined): Saa
         allowedExtensions: Array.isArray(raw?.allowedExtensions) ? raw.allowedExtensions.map(String) : [],
         allowedSourceIds: Array.isArray(raw?.allowedSourceIds) ? raw.allowedSourceIds.map(String) : [],
         featuredSourceIds: Array.isArray(raw?.featuredSourceIds) ? raw.featuredSourceIds.map(String) : [],
+        forceAllowedSourceIds: Array.isArray(raw?.forceAllowedSourceIds) ? raw.forceAllowedSourceIds.map(String) : [],
         usesGlobalSourceAllowList: !!raw?.usesGlobalSourceAllowList,
     };
 }
@@ -53,12 +56,14 @@ export function isSourceAllowedByConfig(
 ): boolean {
     if (isAdmin) return true;
     if (!config) return false;
-    // NSFW sources are not selectable by regular users (legal posture, ADR-0011):
-    // we do not curate adult third-party content into the user-facing catalog.
-    if (source.isNsfw) return false;
+    // NSFW sources are not selectable by regular users (legal posture, ADR-0011),
+    // UNLESS force-allowed (e.g. WeebCentral) — their NSFW titles are gated by
+    // genre instead (ADR-0012).
+    const id = String(source.id);
+    if (source.isNsfw && !config.forceAllowedSourceIds.includes(id)) return false;
 
     if (config.usesGlobalSourceAllowList) {
-        return config.allowedSourceIds.includes(String(source.id));
+        return config.allowedSourceIds.includes(id);
     }
 
     const pkgName = source.extension?.pkgName;

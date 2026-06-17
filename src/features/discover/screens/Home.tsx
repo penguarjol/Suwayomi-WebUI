@@ -128,11 +128,17 @@ const SourcePopularRail = ({ sourceId }: { sourceId: string }) => {
 const SeededPopularRail = () => {
     const { data } = requestManager.useGetSourceList();
     const { ready, isApproved } = useApprovedSourceIds();
+    const { config } = useSaasSourceAccess();
     const sourceId = useMemo(() => {
         const nodes = data?.sources?.nodes ?? [];
+        // Prefer the featured (force-allowed) source, e.g. WeebCentral; its NSFW
+        // titles are filtered server-side (ADR-0012).
+        const forced = new Set(config.forceAllowedSourceIds);
+        const featured = nodes.find((s) => forced.has(String(s.id)));
+        if (featured) return String(featured.id);
         const candidate = nodes.find((s) => !s.isNsfw && s.id !== '0' && isApproved(s.id));
         return candidate?.id ?? null;
-    }, [data?.sources?.nodes, isApproved]);
+    }, [data?.sources?.nodes, isApproved, config.forceAllowedSourceIds]);
 
     if (!ready || !sourceId) return null;
     return <SourcePopularRail sourceId={sourceId} />;
@@ -186,10 +192,15 @@ const SourceLatestRow = ({ sourceId }: { sourceId: string }) => {
 const TrendingFallback = () => {
     const { data } = requestManager.useGetSourceList();
     const { ready, isApproved } = useApprovedSourceIds();
+    const { config } = useSaasSourceAccess();
     const sourceId = useMemo(() => {
-        const nodes = (data?.sources?.nodes ?? []).filter((s) => !s.isNsfw && s.id !== '0' && isApproved(s.id));
+        const all = data?.sources?.nodes ?? [];
+        const forced = new Set(config.forceAllowedSourceIds);
+        const featured = all.find((s) => forced.has(String(s.id)));
+        if (featured) return String(featured.id);
+        const nodes = all.filter((s) => !s.isNsfw && s.id !== '0' && isApproved(s.id));
         return (nodes.find((s) => s.supportsLatest) ?? nodes[0])?.id ?? null;
-    }, [data?.sources?.nodes, isApproved]);
+    }, [data?.sources?.nodes, isApproved, config.forceAllowedSourceIds]);
 
     if (!ready || !sourceId) return null;
     return <SourceLatestRow sourceId={sourceId} />;
@@ -299,14 +310,16 @@ const CuratedPickCard = ({
 
 const CuratedPicks = () => {
     const { data } = requestManager.useGetSourceList({ fetchPolicy: 'cache-first' });
-    const { ready, isAllowed } = useSaasSourceAccess();
-    const sources = useMemo(
-        () =>
-            (data?.sources.nodes ?? [])
-                .filter((source) => !source.isNsfw && isAllowed(source))
-                .map((source) => ({ id: String(source.id), displayName: source.displayName, name: source.name })),
-        [data?.sources.nodes, isAllowed],
-    );
+    const { ready, isAllowed, config } = useSaasSourceAccess();
+    const sources = useMemo(() => {
+        const all = (data?.sources.nodes ?? []).filter((source) => isAllowed(source));
+        const forced = new Set(config.forceAllowedSourceIds);
+        const featured = all.filter((source) => forced.has(String(source.id)));
+        // Resolve curated titles within the featured source (WeebCentral) when
+        // available; else across allowed non-NSFW sources.
+        const chosen = featured.length ? featured : all.filter((source) => !source.isNsfw);
+        return chosen.map((source) => ({ id: String(source.id), displayName: source.displayName, name: source.name }));
+    }, [data?.sources.nodes, isAllowed, config.forceAllowedSourceIds]);
 
     if (!ready || !sources.length) return null;
 
