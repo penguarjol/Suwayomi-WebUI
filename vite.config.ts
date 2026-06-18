@@ -23,21 +23,11 @@ export default defineConfig(({ command }) => ({
     build: {
         outDir: 'build',
         chunkSizeWarningLimit: 1500,
-        rollupOptions: {
-            output: {
-                // Split large, stable vendors into their own chunks so they stay
-                // cached across deploys and download in parallel (faster first paint).
-                manualChunks(id: string) {
-                    if (!id.includes('node_modules')) return undefined;
-                    if (/node_modules\/(react|react-dom|react-router|react-router-dom|scheduler)\//.test(id)) {
-                        return 'react-vendor';
-                    }
-                    if (id.includes('node_modules/@mui/') || id.includes('node_modules/@emotion/')) return 'mui';
-                    if (id.includes('node_modules/@apollo/') || id.includes('node_modules/graphql')) return 'apollo';
-                    return 'vendor';
-                },
-            },
-        },
+        // NOTE: do not add custom rollupOptions.output.manualChunks here. Manual
+        // vendor splitting caused a cross-chunk init-order crash ("v is not a
+        // function" in the apollo chunk) that blanked the whole app. Vite's
+        // default chunking orders module init correctly; the PWA app-shell
+        // precache already provides the cross-session caching win.
     },
     server: {
         port: Number(process.env.PORT),

@@ -18,7 +18,6 @@ import { App } from '@/App';
 import { initAnalytics } from '@/features/analytics/Analytics.ts';
 import { captureReferralFromUrl } from '@/features/referrals/Referrals.ts';
 import { requestManager } from '@/lib/requests/RequestManager.ts';
-import { restoreApolloCache } from '@/lib/requests/client/ApolloPersistor.ts';
 
 initAnalytics();
 captureReferralFromUrl();
@@ -34,5 +33,17 @@ const render = () => {
 };
 
 // Hydrate the persisted Apollo cache before first render so revisits are instant.
-// restoreApolloCache is time-boxed and fails open, so this never blocks boot.
-restoreApolloCache(requestManager.graphQLClient.client).finally(render);
+// Loaded dynamically and fully guarded so a failure in the persistence layer can
+// never block or crash app boot — render always runs.
+const boot = async () => {
+    try {
+        const { restoreApolloCache } = await import('@/lib/requests/client/ApolloPersistor.ts');
+        await restoreApolloCache(requestManager.graphQLClient.client);
+    } catch {
+        // persistence is best-effort
+    } finally {
+        render();
+    }
+};
+
+boot();
