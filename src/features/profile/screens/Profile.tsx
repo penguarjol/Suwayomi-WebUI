@@ -45,6 +45,7 @@ import {
     Badge,
     UserProfile,
     getBadgeCatalog,
+    getCachedIdentity,
     getEarnedBadges,
     getMyUsername,
     getUserProfile,
@@ -92,18 +93,17 @@ export function Profile() {
     const [customizeOpen, setCustomizeOpen] = useState(false);
 
     const loadProfileCosmetics = async (uid: string) => {
-        // Auto-award any newly-qualified achievements, then load profile + badges.
-        await syncMyAchievements();
-        const [p, catalog, earned, uname] = await Promise.all([
-            getUserProfile(uid),
-            getBadgeCatalog(),
-            getEarnedBadges(uid),
-            getMyUsername(),
-        ]);
+        // Identity first (fast) so the real name/avatar render immediately; the
+        // achievements sync + badges run after and must not gate the name.
+        const [p, uname] = await Promise.all([getUserProfile(uid), getMyUsername()]);
         setProfile(p);
-        setBadgeCatalog(catalog);
-        setEarnedIds(new Set(earned.map((b) => b.badge_id)));
         setUsername(uname);
+
+        // Badges: refresh the catalog, auto-award newly-qualified achievements,
+        // then load what's earned (sync must complete before reading earned).
+        const [catalog] = await Promise.all([getBadgeCatalog(), syncMyAchievements()]);
+        setBadgeCatalog(catalog);
+        setEarnedIds(new Set((await getEarnedBadges(uid)).map((b) => b.badge_id)));
     };
 
     useEffect(() => {
@@ -111,7 +111,13 @@ export function Profile() {
             setEmail(data.user?.email ?? '');
             const uid = data.user?.id ?? '';
             setUserId(uid);
-            if (uid) loadProfileCosmetics(uid).catch(() => {});
+            if (uid) {
+                // Paint the cached identity instantly, then revalidate in the background.
+                const cached = getCachedIdentity(uid);
+                if (cached?.username) setUsername(cached.username);
+                if (cached?.profile) setProfile(cached.profile);
+                loadProfileCosmetics(uid).catch(() => {});
+            }
         });
         getMyStreak()
             .then((s) => setStreak(s.current))

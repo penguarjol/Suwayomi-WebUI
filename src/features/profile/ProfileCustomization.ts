@@ -63,10 +63,43 @@ const DEFAULT_PROFILE: Omit<UserProfile, 'user_id'> = {
     flair_key: null,
 };
 
+// Stale-while-revalidate cache of the signed-in user's identity (username +
+// profile cosmetics) so the profile renders the real name/avatar instantly on
+// load instead of flashing the email fallback. Cleared on logout (localStorage.clear).
+const IDENTITY_CACHE_PREFIX = 'nexus.identity.';
+
+export interface CachedIdentity {
+    username: string | null;
+    profile: UserProfile | null;
+}
+
+export function getCachedIdentity(uid: string): CachedIdentity | null {
+    if (!uid) return null;
+    try {
+        const raw = localStorage.getItem(IDENTITY_CACHE_PREFIX + uid);
+        return raw ? (JSON.parse(raw) as CachedIdentity) : null;
+    } catch {
+        return null;
+    }
+}
+
+function writeCachedIdentity(uid: string, patch: Partial<CachedIdentity>): void {
+    if (!uid) return;
+    try {
+        const current = getCachedIdentity(uid) ?? { username: null, profile: null };
+        localStorage.setItem(IDENTITY_CACHE_PREFIX + uid, JSON.stringify({ ...current, ...patch }));
+    } catch {
+        /* quota/serialization — cache is best-effort */
+    }
+}
+
 export async function getUserProfile(userId: string): Promise<UserProfile> {
     try {
         const { data } = await supabase.from('user_profile').select('*').eq('user_id', userId).maybeSingle();
-        if (data) return data as UserProfile;
+        if (data) {
+            writeCachedIdentity(userId, { profile: data as UserProfile });
+            return data as UserProfile;
+        }
     } catch {
         /* fall through to defaults */
     }
@@ -133,7 +166,9 @@ export async function getMyUsername(): Promise<string | null> {
         const uid = userData.user?.id;
         if (!uid) return null;
         const { data } = await supabase.from('profiles').select('username').eq('id', uid).maybeSingle();
-        return (data?.username as string | null) ?? null;
+        const username = (data?.username as string | null) ?? null;
+        writeCachedIdentity(uid, { username });
+        return username;
     } catch {
         return null;
     }
