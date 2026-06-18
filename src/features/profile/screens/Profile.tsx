@@ -36,6 +36,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import Tooltip from '@mui/material/Tooltip';
 import { supabase } from '@/lib/SupabaseClient.ts';
 import { requestManager } from '@/lib/requests/RequestManager.ts';
+import { purgeApolloCache } from '@/lib/requests/client/ApolloPersistor.ts';
 import { useBillingStore } from '@/features/billing/Billing.ts';
 import { Collection, getMyCollections } from '@/features/marketplace/Marketplace.ts';
 import { Thread, getMyThreads } from '@/features/social/Forum.ts';
@@ -67,6 +68,7 @@ const logout = async () => {
     } catch {
         /* ensure local cleanup regardless */
     } finally {
+        await purgeApolloCache(); // IndexedDB isn't covered by localStorage.clear()
         localStorage.clear();
         sessionStorage.clear();
         requestManager.reset();
